@@ -13,7 +13,7 @@ public sealed class ReplPlugin : BaseUnityPlugin
 {
     public const string PluginGuid = "com.hotrepl.bepinex";
     public const string PluginName = "HotRepl";
-    public const string PluginVersion = VersionInfo.SemVer;
+    public const string PluginVersion = VersionInfo.PluginVersion;
 
     private BepInExHost? _host;
     private ReplEngine? _engine;
@@ -26,7 +26,7 @@ public sealed class ReplPlugin : BaseUnityPlugin
             _engine = new ReplEngine(_host, new ReplConfig { Port = 18590 });
             _engine.Start();
 
-            Logger.LogInfo($"{PluginName} v{PluginVersion} loaded — REPL server on port 18590");
+            Logger.LogInfo($"{PluginName} v{VersionInfo.SemVer} loaded — REPL server on port 18590");
         }
         catch (Exception ex)
         {

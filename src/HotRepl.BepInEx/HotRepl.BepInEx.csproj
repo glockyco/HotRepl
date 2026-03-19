@@ -40,16 +40,24 @@
     </Reference>
   </ItemGroup>
 
-  <!-- Generate VersionInfo.g.cs so BepInPlugin attribute can use a const version string -->
+  <!-- Generate VersionInfo.g.cs so BepInPlugin attribute can use a const version string.
+       BepInEx 5.x requires System.Version format (X.Y.Z) — no prerelease suffixes.
+       MinVer's Major.Minor.Patch components are used for the plugin attribute;
+       the full semver string is kept separately for logging. -->
   <Target Name="GenerateVersionInfo" BeforeTargets="CoreCompile;GetAssemblyVersion" DependsOnTargets="MinVer">
     <PropertyGroup>
       <_VersionInfoPath>$(IntermediateOutputPath)VersionInfo.g.cs</_VersionInfoPath>
+      <_BepInExVersion>$(MinVerMajor).$(MinVerMinor).$(MinVerPatch)</_BepInExVersion>
     </PropertyGroup>
     <WriteLinesToFile File="$(_VersionInfoPath)" Overwrite="true" Lines="
 // &lt;auto-generated/&gt;
 namespace HotRepl.BepInEx%3B
 internal static class VersionInfo
 {
+    /// &lt;summary&gt;BepInEx-compatible version (Major.Minor.Patch, no prerelease).&lt;/summary&gt;
+    public const string PluginVersion = &quot;$(_BepInExVersion)&quot;%3B
+
+    /// &lt;summary&gt;Full semver from MinVer (may include prerelease suffix).&lt;/summary&gt;
     public const string SemVer = &quot;$(MinVerVersion)&quot;%3B
 }
 " />
