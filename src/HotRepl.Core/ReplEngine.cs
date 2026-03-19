@@ -142,6 +142,12 @@ public sealed class ReplEngine : IDisposable
             (id, code, timeoutMs) => GuardedEvaluate(id, code, timeoutMs),
             (connId, json) => _clients!.SendTo(connId, json),
             _serializer!);
+
+        // 5. Drain stale cancel IDs. Any cancel received during this Tick has
+        //    already pre-empted a queued eval or aborted the running one.
+        //    Leftover entries are for evals that finished or never existed.
+        if (!_cancelledIds.IsEmpty)
+            _cancelledIds.Clear();
     }
 
     public void Dispose()
