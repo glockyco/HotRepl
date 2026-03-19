@@ -12,17 +12,20 @@ Agent-first runtime C# REPL that runs inside any Mono-based Unity game via BepIn
 - **REPL state persistence** -- variables, types, and imports survive across evaluations within a session
 - **Timeout and cancel** -- per-request timeout (default 10s) with cancel support to abort runaway code
 - **Structured JSON responses** -- typed results with value, type info, stdout capture, duration, and error details
-- **Main-thread dispatch** -- evaluations run on the game's main thread for safe access to Unity APIs
-- **Handshake on connect** -- server advertises capabilities (C# version, default usings) on connection
+- **Frame-driven ticking** -- evaluations run on the game's main thread via the host's `Update()` loop for safe access to Unity APIs
+- **Autocomplete** -- cursor-aware code completion without executing the snippet
+- **Subscriptions / watches** -- repeated evaluation on a timer or on value change, with sequence tracking
+- **Built-in helpers** -- `Help()`, `Screenshot()`, `SceneGraph()`, `Describe()`, `Inspect()`, and more are injected into every session
+- **Handshake on connect** -- server advertises capabilities (C# version, default usings, available helpers) on connection
 
 ## Installation (BepInEx)
 
 1. Install [BepInEx 5.x](https://github.com/BepInEx/BepInEx) into your Unity game
-2. Copy `HotRepl.Core.dll` and `HotRepl.BepInEx.dll` into `BepInEx/plugins/`
+2. Copy `HotRepl.BepInEx.dll` and `mcs.dll` into `BepInEx/plugins/`
 3. Launch the game
 4. Connect to `ws://localhost:18590`
 
-`Mono.CSharp.dll` is bundled as an embedded dependency in the core assembly.
+`mcs.dll` (the Mono compiler) ships alongside the plugin and must be in the same directory.
 
 ## Quick Start
 
@@ -33,7 +36,7 @@ Connect to the WebSocket server and send JSON messages:
 {"type": "eval", "id": "1", "code": "1 + 1"}
 ```
 ```json
-{"type": "eval_result", "id": "1", "hasValue": true, "value": "2", "valueType": "System.Int32", "stdout": null, "durationMs": 12}
+{"type": "eval_result", "id": "1", "hasValue": true, "value": "2", "valueType": "System.Int32", "durationMs": 12}
 ```
 
 **Multi-statement with state:**
@@ -64,26 +67,31 @@ Connect to the WebSocket server and send JSON messages:
 
 | Type     | Fields                          | Description                            |
 |----------|---------------------------------|----------------------------------------|
-| `eval`   | `id`, `code`, `timeoutMs?`      | Evaluate C# code (default timeout 10s) |
-| `cancel` | `id`                            | Cancel a running evaluation by id      |
-| `reset`  | `id`                            | Reset evaluator state (clear variables)|
-| `ping`   | `id`                            | Heartbeat ping                         |
+| `eval`      | `id`, `code`, `timeoutMs?`                            | Evaluate C# code (default timeout 10s)             |
+| `cancel`    | `id`                                                  | Cancel a running evaluation by id                  |
+| `reset`     | `id`                                                  | Reset evaluator state (clear variables)            |
+| `ping`      | `id`                                                  | Heartbeat ping                                     |
+| `complete`  | `id`, `code`, `cursorPos?`                            | Autocomplete suggestions (does not execute)        |
+| `subscribe` | `id`, `code`, `intervalFrames?`, `onChange?`, `limit?`, `timeoutMs?` | Repeated evaluation (watches)         |
 
 ### Server -> Client
 
 | Type           | Key Fields                                           | Description                     |
 |----------------|------------------------------------------------------|---------------------------------|
-| `handshake`    | `version`, `csharpVersion`, `defaultUsings`          | Sent on connection              |
-| `eval_result`  | `id`, `hasValue`, `value`, `valueType`, `stdout`, `durationMs` | Successful evaluation  |
-| `eval_error`   | `id`, `errorKind`, `message`, `stackTrace?`          | Compile error, exception, or timeout |
-| `reset_result` | `id`, `success`                                      | Reset confirmation              |
-| `pong`         | `id`                                                 | Heartbeat response              |
+| `handshake`        | `version`, `csharpVersion`, `defaultUsings`, `helpers`         | Sent on connection                      |
+| `eval_result`      | `id`, `hasValue`, `value`, `valueType`, `stdout`, `durationMs` | Successful evaluation                   |
+| `eval_error`       | `id`, `errorKind`, `message`, `stackTrace?`                    | Compile error, exception, timeout, or cancellation |
+| `reset_result`     | `id`, `success`                                                | Reset confirmation                      |
+| `pong`             | `id`                                                           | Heartbeat response                      |
+| `complete_result`  | `id`, `completions`, `durationMs`                              | Autocomplete results                    |
+| `subscribe_result` | `id`, `seq`, `hasValue`, `value?`, `valueType?`, `durationMs`, `final` | Subscription value update       |
+| `subscribe_error`  | `id`, `seq`, `errorKind`, `message`, `final`                   | Subscription evaluation error           |
 
 ## Building from Source
 
 ```bash
-dotnet build                          # Build all projects
-dotnet build src/HotRepl.BepInEx/     # Build BepInEx adapter only
+dotnet build src/HotRepl.Core/       # Build core (no Unity DLLs needed)
+dotnet build                          # Full build (requires Unity DLLs in lib/)
 ```
 
 Output DLLs land in each project's `bin/Debug/netstandard2.1/` directory.
@@ -99,13 +107,13 @@ Output DLLs land in each project's `bin/Debug/netstandard2.1/` directory.
 |  ReplPlugin      |     |  IReplHost --------+--- interface
 +------------------+     +--------------------+
                                   |
-                           Mono.CSharp.dll
+                             mcs.dll
                          (runtime compiler)
 ```
 
 **HotRepl.Core** contains all REPL logic: the WebSocket server (Fleck), the Mono.CSharp evaluator, protocol serialization, result formatting, and the `IReplHost` abstraction. It has zero dependencies on any game framework.
 
-**HotRepl.BepInEx** implements `IReplHost` for BepInEx 5.x on Unity Mono. It provides reference assemblies, default usings (UnityEngine, System.Linq, etc.), main-thread dispatch via `Update()`, and logging through BepInEx's `ManualLogSource`.
+**HotRepl.BepInEx** implements `IReplHost` for BepInEx 5.x on Unity Mono. It provides reference assemblies, default usings (UnityEngine, System.Linq, etc.), frame-driven ticking via `Update()`, and logging through BepInEx's `ManualLogSource`.
 
 ## Creating Custom Adapters
 
@@ -116,7 +124,6 @@ public interface IReplHost
 {
     IReadOnlyList<Assembly> ReferenceAssemblies { get; }
     IReadOnlyList<string> DefaultUsings { get; }
-    void RunOnMainThread(Action action);
     void Log(LogLevel level, string message);
 }
 ```

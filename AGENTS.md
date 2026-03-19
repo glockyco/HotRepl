@@ -23,25 +23,25 @@ bd close <id>         # Complete work
 HotRepl.slnx                          # Solution file (slnx format)
 src/
   HotRepl.Core/                        # Framework-agnostic core (netstandard2.1)
-    Evaluation/                        # MonoEvaluator, ICodeEvaluator, EvalResult
+    Evaluation/                        # MonoEvaluator, ICodeEvaluator, EvalResult, AssemblyFilter
     Hosting/                           # IReplHost interface, ReplEngine, ReplConfig
     Protocol/                          # Message types, MessageSerializer
     Serialization/                     # ResultSerializer (value formatting)
+    Helpers/                           # ReplHelpers (injected REPL helper methods)
     Server/                            # ReplServer (Fleck WebSocket)
     Polyfills/                         # IsExternalInit for record support
   HotRepl.BepInEx/                     # BepInEx 5.x adapter (netstandard2.1)
     ReplPlugin.cs                      # BepInEx plugin entry point
     BepInExHost.cs                     # IReplHost implementation
 lib/
-  Mono.CSharp.dll                      # Mono compiler (net35, from mcs-unity)
+  mcs.dll                              # Mono compiler (mcs-unity)
 ```
 
 ## Building
 
 ```bash
-dotnet build                           # Build all projects
-dotnet build src/HotRepl.Core/         # Build core only
-dotnet build src/HotRepl.BepInEx/      # Build BepInEx adapter only
+dotnet build src/HotRepl.Core/         # Build core (CI default)
+dotnet build src/HotRepl.BepInEx/      # Build adapter (requires Unity DLLs in lib/)
 ```
 
 There are no tests yet. When added:
@@ -49,14 +49,26 @@ There are no tests yet. When added:
 dotnet test                            # Run all tests
 ```
 
+
+## Code Quality
+
+CI enforces build + format checks on HotRepl.Core. A pre-commit hook mirrors these locally:
+
+```bash
+git config core.hooksPath .githooks    # One-time setup (activates pre-commit hook)
+dotnet format src/HotRepl.Core/        # Auto-fix formatting before commit
+```
+
+The hook runs `dotnet build` and `dotnet format --verify-no-changes` automatically on each commit.
+
 ## Deploying for Testing
 
 Copy the built DLLs to a BepInEx-enabled game:
 
 ```bash
 GAME_DIR="/path/to/game"
-cp -f src/HotRepl.Core/bin/Debug/netstandard2.1/HotRepl.Core.dll "$GAME_DIR/BepInEx/plugins/"
 cp -f src/HotRepl.BepInEx/bin/Debug/netstandard2.1/HotRepl.BepInEx.dll "$GAME_DIR/BepInEx/plugins/"
+cp -f src/HotRepl.BepInEx/bin/Debug/netstandard2.1/mcs.dll "$GAME_DIR/BepInEx/plugins/"
 ```
 
 Launch the game, then connect to `ws://localhost:18590`.
