@@ -28,7 +28,6 @@ public sealed class ReplPlugin : BaseUnityPlugin
 
     private void Update()
     {
-        _host?.DrainMainThread();
         _engine?.Tick();
     }
 

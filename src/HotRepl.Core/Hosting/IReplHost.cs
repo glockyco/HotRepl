@@ -6,7 +6,7 @@ namespace HotRepl.Hosting
 {
     /// <summary>
     /// Abstraction over the host environment (game engine, test harness, etc.)
-    /// that provides assemblies, usings, main-thread dispatch, and logging.
+    /// that provides assemblies, usings, and logging.
     /// </summary>
     public interface IReplHost
     {
@@ -21,12 +21,6 @@ namespace HotRepl.Hosting
         /// (e.g. "System", "System.Linq", "UnityEngine").
         /// </summary>
         IReadOnlyList<string> DefaultUsings { get; }
-
-        /// <summary>
-        /// Schedules <paramref name="action"/> to execute on the host's main thread.
-        /// The host must guarantee the action runs before the next frame ends.
-        /// </summary>
-        void RunOnMainThread(Action action);
 
         /// <summary>
         /// Emits a log message through the host's logging infrastructure.
