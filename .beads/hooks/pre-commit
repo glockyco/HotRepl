@@ -22,3 +22,18 @@ if command -v bd >/dev/null 2>&1; then
   if [ $_bd_exit -ne 0 ]; then exit $_bd_exit; fi
 fi
 # --- END BEADS INTEGRATION v0.61.0 ---
+
+# --- pre-commit checks (build + format) ---
+# Mirrors CI so failures are caught locally.
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+PROJECT="$REPO_ROOT/src/HotRepl.Core/HotRepl.Core.csproj"
+
+echo "[pre-commit] Building..."
+dotnet build "$REPO_ROOT/HotRepl.slnx" --nologo -clp:ErrorsOnly -v quiet
+
+echo "[pre-commit] Checking format..."
+dotnet format "$PROJECT" --verify-no-changes --no-restore --verbosity quiet
+
+echo "[pre-commit] All checks passed."
