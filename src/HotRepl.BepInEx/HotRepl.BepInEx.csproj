@@ -4,6 +4,7 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
+    <AnalysisMode>Recommended</AnalysisMode>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>HotRepl.BepInEx</RootNamespace>
     <AssemblyName>HotRepl.BepInEx</AssemblyName>
@@ -17,6 +18,9 @@
 
     <!-- ILRepack for merging dependencies into single DLL -->
     <PackageReference Include="ILRepack.Lib.MSBuild.Task" Version="2.0.34.2" />
+
+    <!-- Auto-versioning from git tags (e.g. git tag v0.2.0) -->
+    <PackageReference Include="MinVer" Version="6.*" PrivateAssets="all" />
   </ItemGroup>
 
   <!-- Project reference to Core -->
@@ -35,6 +39,24 @@
       <Private>false</Private>
     </Reference>
   </ItemGroup>
+
+  <!-- Generate VersionInfo.g.cs so BepInPlugin attribute can use a const version string -->
+  <Target Name="GenerateVersionInfo" BeforeTargets="CoreCompile;GetAssemblyVersion" DependsOnTargets="MinVer">
+    <PropertyGroup>
+      <_VersionInfoPath>$(IntermediateOutputPath)VersionInfo.g.cs</_VersionInfoPath>
+    </PropertyGroup>
+    <WriteLinesToFile File="$(_VersionInfoPath)" Overwrite="true" Lines="
+// &lt;auto-generated/&gt;
+namespace HotRepl.BepInEx%3B
+internal static class VersionInfo
+{
+    public const string SemVer = &quot;$(MinVerVersion)&quot;%3B
+}
+" />
+    <ItemGroup>
+      <Compile Include="$(_VersionInfoPath)" />
+    </ItemGroup>
+  </Target>
 
   <!-- Copy mcs.dll to output (not merged by ILRepack, shipped alongside) -->
   <Target Name="CopyMcs" AfterTargets="Build">
