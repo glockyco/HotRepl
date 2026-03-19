@@ -153,7 +153,6 @@ namespace HotRepl.Hosting
             // 4. Process subscriptions.
             _frameCounter++;
             ProcessSubscriptions();
-            ExecuteEval(request);
         }
 
         /// <summary>Stops the WebSocket server and releases the evaluator.</summary>
