@@ -36,9 +36,9 @@
     </Reference>
   </ItemGroup>
 
-  <!-- Copy Mono.CSharp.dll to output (not merged by ILRepack, shipped alongside) -->
-  <Target Name="CopyMonoCSharp" AfterTargets="Build">
-    <Copy SourceFiles="../../lib/Mono.CSharp.dll" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="true" />
+  <!-- Copy mcs.dll to output (not merged by ILRepack, shipped alongside) -->
+  <Target Name="CopyMcs" AfterTargets="Build">
+    <Copy SourceFiles="../../lib/mcs.dll" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="true" />
   </Target>
 
 </Project>

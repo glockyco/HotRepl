@@ -44,20 +44,20 @@
     <Message Text="ILRepack: merged into $(TargetName)$(TargetExt)" Importance="high" />
   </Target>
 
-  <!-- Clean up merged DLLs, keep only the final plugin + Mono.CSharp.dll -->
+  <!-- Clean up merged DLLs, keep only the final plugin + mcs.dll -->
   <Target Name="CleanupAfterMerge" AfterTargets="ILRepackMod"
           Condition="'$(SkipILRepack)' != 'true'">
     <ItemGroup>
       <KeepFiles Include="$(OutputPath)$(TargetName).dll" />
       <KeepFiles Include="$(OutputPath)$(TargetName).pdb" />
       <KeepFiles Include="$(OutputPath)$(TargetName).deps.json" />
-      <!-- Mono.CSharp.dll must survive for runtime use -->
-      <KeepFiles Include="$(OutputPath)Mono.CSharp.dll" />
+      <!-- mcs.dll must survive for runtime use -->
+      <KeepFiles Include="$(OutputPath)mcs.dll" />
       <AllFiles Include="$(OutputPath)*.*" />
       <DeleteFiles Include="@(AllFiles)" Exclude="@(KeepFiles)" />
     </ItemGroup>
     <Delete Files="@(DeleteFiles)" />
-    <Message Text="Cleaned up — HotRepl.BepInEx.dll + Mono.CSharp.dll ready" Importance="high" />
+    <Message Text="Cleaned up \u2014 HotRepl.BepInEx.dll + mcs.dll ready" Importance="high" />
   </Target>
 
 </Project>

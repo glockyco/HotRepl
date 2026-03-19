@@ -16,10 +16,10 @@
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
 
-  <!-- Mono.CSharp reference — runtime dependency, NOT a NuGet package -->
+  <!-- mcs (Mono C# compiler) — runtime dependency, NOT a NuGet package -->
   <ItemGroup>
-    <Reference Include="Mono.CSharp">
-      <HintPath>../../lib/Mono.CSharp.dll</HintPath>
+    <Reference Include="mcs">
+      <HintPath>../../lib/mcs.dll</HintPath>
       <Private>false</Private>
     </Reference>
   </ItemGroup>
