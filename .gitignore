@@ -1,4 +1,8 @@
-
-# Dolt database files (added by bd init)
-.dolt/
-*.db
+bin/
+obj/
+*.user
+.vs/
+.idea/
+*.DotSettings.user
+lib/Mono.CSharp.dll
+src/HotRepl.BepInEx/lib/

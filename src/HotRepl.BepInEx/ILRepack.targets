@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <!-- Copy BepInEx for type resolution -->
+  <Target Name="CopyReferenceAssemblies" BeforeTargets="ILRepackMod"
+          Condition="'$(SkipILRepack)' != 'true'">
+    <PropertyGroup>
+      <NuGetPackagesPath Condition="'$(NuGetPackageRoot)' != ''">$(NuGetPackageRoot)</NuGetPackagesPath>
+      <NuGetPackagesPath Condition="'$(NuGetPackagesPath)' == '' AND '$(OS)' == 'Windows_NT'">$(USERPROFILE)\.nuget\packages</NuGetPackagesPath>
+      <NuGetPackagesPath Condition="'$(NuGetPackagesPath)' == ''">$(HOME)/.nuget/packages</NuGetPackagesPath>
+      <BepInExSource>$(NuGetPackagesPath)/bepinex.baselib/5.4.20/lib/netstandard2.0/BepInEx.dll</BepInExSource>
+    </PropertyGroup>
+    <Copy SourceFiles="$(BepInExSource)" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="true" />
+  </Target>
+
+  <!-- Discover dependencies to merge -->
+  <Target Name="DiscoverDependencies" BeforeTargets="ILRepackMod" DependsOnTargets="CopyReferenceAssemblies"
+          Condition="'$(SkipILRepack)' != 'true'">
+    <ItemGroup>
+      <MergeAssemblies Include="$(OutputPath)$(TargetName)$(TargetExt)" />
+      <!-- Merge Core + its NuGet deps (Fleck, Newtonsoft.Json) into the plugin DLL -->
+      <MergeAssemblies Include="$(OutputPath)HotRepl.Core.dll" />
+      <MergeAssemblies Include="$(OutputPath)Fleck.dll" />
+      <MergeAssemblies Include="$(OutputPath)Newtonsoft.Json.dll" />
+      <!-- NOTE: Mono.CSharp.dll is NOT merged — it must ship alongside as a separate DLL.
+           ILRepack internalizes types, which breaks the Evaluator's self-references
+           from dynamically compiled code. -->
+    </ItemGroup>
+    <Message Text="ILRepack: merging %(MergeAssemblies.Filename)%(MergeAssemblies.Extension)" Importance="high" />
+  </Target>
+
+  <!-- Run ILRepack -->
+  <Target Name="ILRepackMod" AfterTargets="Build" DependsOnTargets="DiscoverDependencies"
+          Condition="'$(SkipILRepack)' != 'true'">
+    <ILRepack
+      Parallel="true"
+      DebugInfo="true"
+      Internalize="true"
+      InputAssemblies="@(MergeAssemblies)"
+      LibraryPath="$(OutputPath);$(ProjectDir)../../lib"
+      TargetKind="Dll"
+      OutputFile="$(OutputPath)$(TargetName)$(TargetExt)"
+    />
+    <Message Text="ILRepack: merged into $(TargetName)$(TargetExt)" Importance="high" />
+  </Target>
+
+  <!-- Clean up merged DLLs, keep only the final plugin + Mono.CSharp.dll -->
+  <Target Name="CleanupAfterMerge" AfterTargets="ILRepackMod"
+          Condition="'$(SkipILRepack)' != 'true'">
+    <ItemGroup>
+      <KeepFiles Include="$(OutputPath)$(TargetName).dll" />
+      <KeepFiles Include="$(OutputPath)$(TargetName).pdb" />
+      <KeepFiles Include="$(OutputPath)$(TargetName).deps.json" />
+      <!-- Mono.CSharp.dll must survive for runtime use -->
+      <KeepFiles Include="$(OutputPath)Mono.CSharp.dll" />
+      <AllFiles Include="$(OutputPath)*.*" />
+      <DeleteFiles Include="@(AllFiles)" Exclude="@(KeepFiles)" />
+    </ItemGroup>
+    <Delete Files="@(DeleteFiles)" />
+    <Message Text="Cleaned up — HotRepl.BepInEx.dll + Mono.CSharp.dll ready" Importance="high" />
+  </Target>
+
+</Project>

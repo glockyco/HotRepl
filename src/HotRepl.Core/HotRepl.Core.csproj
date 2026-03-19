@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <RootNamespace>HotRepl</RootNamespace>
+    <AssemblyName>HotRepl.Core</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- WebSocket server -->
+    <PackageReference Include="Fleck" Version="1.*" />
+
+    <!-- JSON serialization -->
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
+  <!-- Mono.CSharp reference — runtime dependency, NOT a NuGet package -->
+  <ItemGroup>
+    <Reference Include="Mono.CSharp">
+      <HintPath>../../lib/Mono.CSharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>

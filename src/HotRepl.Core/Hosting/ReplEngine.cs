@@ -1,0 +1,400 @@
+using System;
+using System.Collections.Concurrent;
+using System.Diagnostics;
+using System.Linq;
+using System.Threading;
+using HotRepl.Evaluation;
+using HotRepl.Protocol;
+using HotRepl.Serialization;
+using HotRepl.Server;
+
+namespace HotRepl.Hosting
+{
+    /// <summary>
+    /// Composition root for the REPL system. Owns the WebSocket server and code
+    /// evaluator, bridges incoming messages to the host's main thread via
+    /// <see cref="Tick"/>, and enforces per-evaluation timeouts.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The host creates a single <see cref="ReplEngine"/> at startup, calls
+    /// <see cref="Start"/>, and invokes <see cref="Tick"/> once per frame from
+    /// the main thread. The engine processes at most one evaluation per tick to
+    /// avoid frame stalls.
+    /// </para>
+    /// <para>
+    /// Thread safety: the concurrent queues accept messages from Fleck's thread
+    /// pool. All compilation and execution happens on the thread that calls
+    /// <see cref="Tick"/>.
+    /// </para>
+    /// </remarks>
+    public sealed class ReplEngine : IDisposable
+    {
+        private readonly IReplHost _host;
+        private readonly ReplConfig _config;
+
+        // Created in Start(), torn down in Stop().
+        private ReplServer? _server;
+        private ICodeEvaluator? _evaluator;
+
+        /// <summary>
+        /// The thread that called <see cref="Start"/>. The watchdog timer uses
+        /// this to abort a runaway evaluation.
+        /// </summary>
+        private Thread? _mainThread;
+
+        // Inbound queues — written by Fleck threads, drained by Tick().
+        private readonly ConcurrentQueue<QueuedEval> _evalQueue = new();
+        private readonly ConcurrentQueue<string> _cancelQueue = new();
+        private readonly ConcurrentQueue<QueuedCommand> _commandQueue = new();
+
+        /// <summary>
+        /// The message id of the evaluation currently executing inside
+        /// <see cref="Tick"/>. Volatile so the watchdog timer can read it
+        /// without a lock.
+        /// </summary>
+        private volatile string? _activeEvalId;
+
+        /// <summary>
+        /// Set by the cancel path (or the watchdog timer) to signal the
+        /// currently executing evaluation should be treated as aborted.
+        /// Checked after <see cref="Thread.ResetAbort"/>.
+        /// </summary>
+        private volatile bool _cancelRequested;
+
+        private bool _disposed;
+
+        /// <summary>Creates an engine but does not start it.</summary>
+        /// <param name="host">Host environment providing assemblies, usings, and logging.</param>
+        /// <param name="config">Optional configuration; defaults are used when null.</param>
+        public ReplEngine(IReplHost host, ReplConfig? config = null)
+        {
+            _host = host ?? throw new ArgumentNullException(nameof(host));
+            _config = config ?? new ReplConfig();
+        }
+
+        /// <summary>
+        /// Initializes the evaluator and starts the WebSocket server.
+        /// Must be called from the host's main thread — the calling thread is
+        /// captured for the watchdog timer.
+        /// </summary>
+        public void Start()
+        {
+            ThrowIfDisposed();
+            if (_server != null)
+                throw new InvalidOperationException("Engine is already running.");
+
+            _mainThread = Thread.CurrentThread;
+
+            _evaluator = CreateEvaluator();
+
+            var handshake = MessageSerializer.Serialize(new HandshakeMessage
+            {
+                Version = "1.0.0",
+                CsharpVersion = "7.x",
+                DefaultUsings = _host.DefaultUsings.ToArray()
+            });
+
+            _server = new ReplServer(
+                _config.Port,
+                handshake,
+                OnMessageReceived,
+                msg => _host.Log(LogLevel.Debug, msg));
+
+            _server.Start();
+
+            _host.Log(LogLevel.Info, $"HotRepl engine started on port {_config.Port}.");
+        }
+
+        /// <summary>
+        /// Processes at most one queued message per call. The host must call
+        /// this once per frame from its main thread.
+        /// </summary>
+        public void Tick()
+        {
+            if (_evaluator == null || _server == null)
+                return;
+
+            // 1. Drain cancel queue — mark active eval for cancellation.
+            while (_cancelQueue.TryDequeue(out var cancelId))
+            {
+                if (_activeEvalId != null && _activeEvalId == cancelId)
+                {
+                    _cancelRequested = true;
+                    _mainThread?.Abort();
+                }
+            }
+
+            // 2. Drain command queue (reset, ping).
+            while (_commandQueue.TryDequeue(out var cmd))
+            {
+                HandleCommand(cmd);
+            }
+
+            // 3. Process one eval request.
+            if (!_evalQueue.TryDequeue(out var request))
+                return;
+
+            ExecuteEval(request);
+        }
+
+        /// <summary>Stops the WebSocket server and releases the evaluator.</summary>
+        public void Stop()
+        {
+            if (_server != null)
+            {
+                _server.Dispose();
+                _server = null;
+            }
+
+            if (_evaluator != null)
+            {
+                _evaluator.Dispose();
+                _evaluator = null;
+            }
+
+            _mainThread = null;
+            _host.Log(LogLevel.Info, "HotRepl engine stopped.");
+        }
+
+        /// <inheritdoc/>
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _disposed = true;
+            Stop();
+        }
+
+        // ------------------------------------------------------------------
+        // Message routing — called by ReplServer on Fleck's thread pool
+        // ------------------------------------------------------------------
+
+        private void OnMessageReceived(string messageType, string rawJson)
+        {
+            switch (messageType)
+            {
+                case "eval":
+                    var eval = MessageSerializer.Deserialize<EvalRequest>(rawJson);
+                    _evalQueue.Enqueue(new QueuedEval(
+                        eval.Id,
+                        eval.Code,
+                        eval.TimeoutMs > 0 ? eval.TimeoutMs : _config.DefaultTimeoutMs));
+                    break;
+
+                case "cancel":
+                    var cancel = MessageSerializer.Deserialize<CancelRequest>(rawJson);
+                    EnqueueCancel(cancel.Id);
+                    break;
+
+                case "reset":
+                    var reset = MessageSerializer.Deserialize<ResetRequest>(rawJson);
+                    _commandQueue.Enqueue(new QueuedCommand(reset.Id, CommandKind.Reset));
+                    break;
+
+                case "ping":
+                    var ping = MessageSerializer.Deserialize<PingRequest>(rawJson);
+                    _commandQueue.Enqueue(new QueuedCommand(ping.Id, CommandKind.Ping));
+                    break;
+
+                default:
+                    _host.Log(LogLevel.Warning, $"Unknown message type: {messageType}");
+                    break;
+            }
+        }
+
+        private void EnqueueCancel(string id)
+        {
+            _cancelQueue.Enqueue(id);
+
+            // If the target is already running, abort its thread immediately.
+            if (_activeEvalId == id && _mainThread != null)
+            {
+                _cancelRequested = true;
+                _mainThread.Abort();
+            }
+        }
+
+        // ------------------------------------------------------------------
+        // Evaluation lifecycle
+        // ------------------------------------------------------------------
+
+        private void ExecuteEval(QueuedEval request)
+        {
+            _activeEvalId = request.Id;
+            _cancelRequested = false;
+
+            var sw = Stopwatch.StartNew();
+            Timer? watchdog = null;
+            EvalResult result;
+
+            try
+            {
+                // Arm the watchdog — fires on the ThreadPool, aborts _mainThread.
+                watchdog = new Timer(
+                    _ => AbortMainThread(),
+                    state: null,
+                    dueTime: request.TimeoutMs,
+                    period: Timeout.Infinite);
+
+                result = _evaluator!.Evaluate(request.Code);
+            }
+            catch (ThreadAbortException)
+            {
+                Thread.ResetAbort();
+                sw.Stop();
+                result = EvalResult.Timeout(cancelled: _cancelRequested, sw.ElapsedMilliseconds);
+            }
+            catch (Exception ex)
+            {
+                sw.Stop();
+                _host.Log(LogLevel.Error, $"Unexpected error during eval: {ex}");
+                result = EvalResult.RuntimeError(ex.Message, ex.StackTrace, stdout: null, sw.ElapsedMilliseconds);
+            }
+            finally
+            {
+                sw.Stop();
+                watchdog?.Dispose();
+            }
+
+            _activeEvalId = null;
+            SendResult(request.Id, result);
+        }
+
+        private void SendResult(string id, EvalResult result)
+        {
+            try
+            {
+                string json;
+                if (result.Success)
+                {
+                    var serializedValue = result.HasValue
+                        ? ResultSerializer.Serialize(result.Value, _config.MaxEnumerableElements)
+                        : null;
+
+                    // Truncate oversized values to prevent flooding the wire.
+                    if (serializedValue != null && serializedValue.Length > _config.MaxResultLength)
+                        serializedValue = serializedValue.Substring(0, _config.MaxResultLength) + "…(truncated)";
+
+                    json = MessageSerializer.Serialize(new EvalResultMessage
+                    {
+                        Id = id,
+                        HasValue = result.HasValue,
+                        Value = serializedValue,
+                        ValueType = result.ValueType,
+                        Stdout = result.Stdout,
+                        DurationMs = result.DurationMs
+                    });
+                }
+                else
+                {
+                    json = MessageSerializer.Serialize(new EvalErrorMessage
+                    {
+                        Id = id,
+                        ErrorKind = result.ErrorKind ?? "runtime",
+                        Message = result.Error ?? "Unknown error",
+                        StackTrace = result.StackTrace
+                    });
+                }
+
+                _server?.Send(json);
+            }
+            catch (Exception ex)
+            {
+                _host.Log(LogLevel.Error, $"Failed to send eval result: {ex.Message}");
+            }
+        }
+
+        private void AbortMainThread()
+        {
+            var thread = _mainThread;
+            if (thread != null && _activeEvalId != null)
+            {
+                _host.Log(LogLevel.Warning, $"Watchdog: aborting eval '{_activeEvalId}' after timeout.");
+                thread.Abort();
+            }
+        }
+
+        // ------------------------------------------------------------------
+        // Commands
+        // ------------------------------------------------------------------
+
+        private void HandleCommand(QueuedCommand cmd)
+        {
+            switch (cmd.Kind)
+            {
+                case CommandKind.Reset:
+                    _host.Log(LogLevel.Info, "Resetting evaluator.");
+                    _evaluator?.Dispose();
+                    _evaluator = CreateEvaluator();
+
+                    var resetJson = MessageSerializer.Serialize(new ResetResultMessage
+                    {
+                        Id = cmd.Id,
+                        Success = true
+                    });
+                    _server?.Send(resetJson);
+                    break;
+
+                case CommandKind.Ping:
+                    var pongJson = MessageSerializer.Serialize(new PongMessage { Id = cmd.Id });
+                    _server?.Send(pongJson);
+                    break;
+
+                default:
+                    _host.Log(LogLevel.Warning, $"Unknown command kind: {cmd.Kind}");
+                    break;
+            }
+        }
+
+        // ------------------------------------------------------------------
+        // Evaluator factory
+        // ------------------------------------------------------------------
+
+        private ICodeEvaluator CreateEvaluator()
+        {
+            return new MonoEvaluator(_host.ReferenceAssemblies, _host.DefaultUsings);
+        }
+
+        private void ThrowIfDisposed()
+        {
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(ReplEngine));
+        }
+
+        // ------------------------------------------------------------------
+        // Internal message types — value types to avoid heap churn in queues
+        // ------------------------------------------------------------------
+
+        private readonly struct QueuedEval
+        {
+            public string Id { get; }
+            public string Code { get; }
+            public int TimeoutMs { get; }
+
+            public QueuedEval(string id, string code, int timeoutMs)
+            {
+                Id = id;
+                Code = code;
+                TimeoutMs = timeoutMs;
+            }
+        }
+
+        private readonly struct QueuedCommand
+        {
+            public string Id { get; }
+            public CommandKind Kind { get; }
+
+            public QueuedCommand(string id, CommandKind kind)
+            {
+                Id = id;
+                Kind = kind;
+            }
+        }
+
+        private enum CommandKind
+        {
+            Reset,
+            Ping
+        }
+    }
+}

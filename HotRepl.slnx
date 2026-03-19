@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/HotRepl.BepInEx/HotRepl.BepInEx.csproj" />
+    <Project Path="src/HotRepl.Core/HotRepl.Core.csproj" />
+  </Folder>
+</Solution>
