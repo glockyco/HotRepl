@@ -271,27 +271,7 @@ namespace HotRepl.Hosting
         private void ExecuteEval(QueuedEval request)
         {
             var result = GuardedEvaluate(request.Id, request.Code, request.TimeoutMs);
-
-            // After Thread.Abort() + Thread.ResetAbort() the Mono evaluator can hold
-            // an internal lock from the interrupted eval. Calling Evaluate() again
-            // (e.g. in RecordHistory) would deadlock, leaving Tick() permanently blocked.
-            // Reinitialise the evaluator to guarantee a clean state. REPL variable state
-            // is lost, but that is the correct tradeoff: the eval was abandoned anyway.
-            bool aborted = result.ErrorKind is "timeout" or "cancelled";
-            if (aborted)
-            {
-                _host.Log(LogLevel.Warning,
-                    $"Reinitialising evaluator after {result.ErrorKind} to prevent Mono lock deadlock.");
-                try
-                { _evaluator?.Dispose(); }
-                catch { }
-                _evaluator = CreateEvaluator();
-            }
-            else
-            {
-                RecordHistory(request.Code, result);
-            }
-
+            RecordHistory(request.Code, result);
             SendResult(request.Id, result);
         }
 
