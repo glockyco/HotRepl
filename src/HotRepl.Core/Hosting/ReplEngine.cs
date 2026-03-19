@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
+using System.Text;
 using HotRepl.Evaluation;
 using HotRepl.Protocol;
 using HotRepl.Serialization;
@@ -267,8 +268,33 @@ namespace HotRepl.Hosting
             }
 
             _activeEvalId = null;
+
+            RecordHistory(request.Code, result);
             SendResult(request.Id, result);
         }
+
+        /// <summary>
+        /// Records the eval result in the REPL-side HotRepl._history list.
+        /// Uses Base64 encoding to avoid C# string-escaping issues.
+        /// </summary>
+        private void RecordHistory(string code, EvalResult result)
+        {
+            try
+            {
+                var codeB64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(code));
+                var valueB64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(
+                    result.HasValue && result.Value != null ? result.Value.ToString()! : ""));
+                var errorB64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(result.Error ?? ""));
+
+                _evaluator?.Evaluate(
+                    $"HotRepl._AddHistory(\"{codeB64}\", \"{valueB64}\", \"{errorB64}\");");
+            }
+            catch (Exception ex)
+            {
+                _host.Log(LogLevel.Debug, $"Failed to record history: {ex.Message}");
+            }
+        }
+
 
         private void SendResult(string id, EvalResult result)
         {
