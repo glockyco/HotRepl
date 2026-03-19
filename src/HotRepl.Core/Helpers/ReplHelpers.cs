@@ -19,9 +19,28 @@ internal static class ReplHelpers
     public const string Source = @"
 public static class HotRepl
 {
-    // --- Helpers are added here by follow-up tasks ---
-    // Each helper is a static method returning a serialization-friendly type
-    // (string, Dictionary, List, primitive) so ResultSerializer handles it.
+    private static readonly System.Collections.Generic.List<System.Collections.Generic.Dictionary<string, object>> _history
+        = new System.Collections.Generic.List<System.Collections.Generic.Dictionary<string, object>>();
+
+    /// <summary>Records an eval result. Called internally by the engine after each evaluation.</summary>
+    public static void _AddHistory(string codeB64, string valueB64, string errorB64)
+    {
+        _history.Add(new System.Collections.Generic.Dictionary<string, object>
+        {
+            {""code"", System.Text.Encoding.UTF8.GetString(System.Convert.FromBase64String(codeB64))},
+            {""value"", System.Text.Encoding.UTF8.GetString(System.Convert.FromBase64String(valueB64))},
+            {""error"", System.Text.Encoding.UTF8.GetString(System.Convert.FromBase64String(errorB64))},
+            {""timestamp"", System.DateTime.UtcNow.ToString(""o"")}
+        });
+        if (_history.Count > 100) _history.RemoveAt(0);
+    }
+
+    /// <summary>Returns recent eval history entries (most recent last).</summary>
+    public static object History(int limit = 20)
+    {
+        return _history.Skip(System.Math.Max(0, _history.Count - limit)).ToList();
+    }
+
 
     /// <summary>Returns the list of available helper methods.</summary>
     public static string[] Help()
@@ -185,6 +204,150 @@ public static class HotRepl
             { ""methods"", methods },
         };
     }
+
+    /// <summary>Deeply inspects an object via reflection, returning a Dictionary tree.</summary>
+    public static object Inspect(object obj, int depth = 2, int maxChildren = 50)
+    {
+        return _InspectCore(obj, depth, maxChildren, new HashSet<object>(new _RefComparer()));
+    }
+
+    private static object _InspectCore(object obj, int depth, int maxChildren, HashSet<object> visited)
+    {
+        if (obj == null) return null;
+
+        var type = obj.GetType();
+
+        // Destroyed Unity objects: operator== returns true for null but the reference is non-null
+        var uo = obj as UnityEngine.Object;
+        if (uo != null && !uo)
+        {
+            return new Dictionary<string, object>
+            {
+                { ""_type"", type.FullName },
+                { ""_destroyed"", true }
+            };
+        }
+
+        // Primitives, strings, enums -- return directly
+        if (type.IsPrimitive || type.IsEnum || obj is string || obj is decimal)
+            return obj;
+
+        // Circular reference guard (reference types only)
+        if (!type.IsValueType)
+        {
+            if (!visited.Add(obj))
+                return new Dictionary<string, object>
+                {
+                    { ""_type"", type.FullName },
+                    { ""_circular"", true }
+                };
+        }
+
+        // Depth limit
+        if (depth <= 0)
+            return new Dictionary<string, object>
+            {
+                { ""_type"", type.FullName },
+                { ""_truncated"", true }
+            };
+
+        var result = new Dictionary<string, object>();
+        result[""_type""] = type.FullName;
+
+        try { result[""_value""] = obj.ToString(); }
+        catch (System.Exception ex) { result[""_value""] = ""<ToString error: "" + ex.Message + "">""; }
+
+        // GameObject specifics
+        var go = obj as UnityEngine.GameObject;
+        if (go != null)
+        {
+            result[""_active""] = go.activeSelf;
+            result[""_layer""] = go.layer;
+            var comps = go.GetComponents<UnityEngine.Component>();
+            var compNames = new List<string>();
+            foreach (var c in comps)
+                compNames.Add(c != null ? c.GetType().FullName : ""<null>"");
+            result[""_components""] = compNames;
+            var children = new List<string>();
+            for (int i = 0; i < go.transform.childCount && i < maxChildren; i++)
+                children.Add(go.transform.GetChild(i).name);
+            result[""_children""] = children;
+        }
+
+        // Component specifics
+        var comp = obj as UnityEngine.Component;
+        if (comp != null && go == null)
+        {
+            try { result[""_gameObject""] = comp.gameObject.name; }
+            catch (System.Exception ex) { result[""_gameObject""] = new Dictionary<string, object> { { ""_error"", ex.Message } }; }
+        }
+
+        // Collections -- enumerate up to maxChildren elements
+        var enumerable = obj as System.Collections.IEnumerable;
+        if (enumerable != null && !(obj is string))
+        {
+            var items = new List<object>();
+            int count = 0;
+            foreach (var item in enumerable)
+            {
+                if (count >= maxChildren) break;
+                items.Add(_InspectCore(item, depth - 1, maxChildren, visited));
+                count++;
+            }
+            result[""_items""] = items;
+            result[""_count""] = count;
+            return result;
+        }
+
+        // Reflect public instance properties
+        var props = type.GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+        int childCount = 0;
+        foreach (var prop in props)
+        {
+            if (childCount >= maxChildren) break;
+            if (prop.GetIndexParameters().Length > 0) continue; // skip indexers
+            try
+            {
+                var val = prop.GetValue(obj, null);
+                result[prop.Name] = _InspectCore(val, depth - 1, maxChildren, visited);
+                childCount++;
+            }
+            catch (System.Exception ex)
+            {
+                result[prop.Name] = new Dictionary<string, object> { { ""_error"", ex.Message } };
+                childCount++;
+            }
+        }
+
+        // Reflect public instance fields
+        var fields = type.GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+        foreach (var field in fields)
+        {
+            if (childCount >= maxChildren) break;
+            if (result.ContainsKey(field.Name)) continue; // property already covered it
+            try
+            {
+                var val = field.GetValue(obj);
+                result[field.Name] = _InspectCore(val, depth - 1, maxChildren, visited);
+                childCount++;
+            }
+            catch (System.Exception ex)
+            {
+                result[field.Name] = new Dictionary<string, object> { { ""_error"", ex.Message } };
+                childCount++;
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>Reference equality comparer for the circular-reference visited set.</summary>
+    private class _RefComparer : System.Collections.Generic.IEqualityComparer<object>
+    {
+        public new bool Equals(object x, object y) { return object.ReferenceEquals(x, y); }
+        public int GetHashCode(object obj) { return System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(obj); }
+    }
+
 }
 ";
 
@@ -199,5 +362,7 @@ public static class HotRepl
         "HotRepl.ScreenshotBase64() -> string",
         "HotRepl.SceneGraph(filter = null, layer = null, depth = 3, maxResults = 200) -> Object",
         "HotRepl.Describe(Type) -> object",
+        "HotRepl.History(Int32 limit = 20) -> Object",
+        "HotRepl.Inspect(object, depth?, maxChildren?) -> object",
     };
 }
