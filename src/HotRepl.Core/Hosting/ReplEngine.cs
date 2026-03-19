@@ -265,8 +265,19 @@ namespace HotRepl.Hosting
 
         private void ExecuteEval(QueuedEval request)
         {
+            var result = GuardedEvaluate(request.Id, request.Code, request.TimeoutMs);
+            RecordHistory(request.Code, result);
+            SendResult(request.Id, result);
+        }
+
+        /// <summary>
+        /// Evaluates code with a watchdog timer that aborts the main thread
+        /// on timeout. Used by both regular evals and subscriptions.
+        /// </summary>
+        private EvalResult GuardedEvaluate(string id, string code, int timeoutMs)
+        {
             var gen = Interlocked.Increment(ref _evalGeneration);
-            _activeEvalId = request.Id;
+            _activeEvalId = id;
             _cancelRequested = false;
 
             var sw = Stopwatch.StartNew();
@@ -275,14 +286,13 @@ namespace HotRepl.Hosting
 
             try
             {
-                // Arm the watchdog — fires on the ThreadPool, aborts _mainThread.
                 watchdog = new Timer(
                     _ => AbortMainThread(gen),
                     state: null,
-                    dueTime: request.TimeoutMs,
+                    dueTime: timeoutMs,
                     period: Timeout.Infinite);
 
-                result = _evaluator!.Evaluate(request.Code);
+                result = _evaluator!.Evaluate(code);
             }
             catch (ThreadAbortException)
             {
@@ -298,16 +308,12 @@ namespace HotRepl.Hosting
             }
             finally
             {
-                // Clear _activeEvalId BEFORE disposing the watchdog to close the
-                // race window where the watchdog fires between finally-entry and
-                // the id-clear, aborting code outside ExecuteEval's handler.
                 _activeEvalId = null;
                 sw.Stop();
                 watchdog?.Dispose();
             }
 
-            RecordHistory(request.Code, result);
-            SendResult(request.Id, result);
+            return result;
         }
 
         /// <summary>
@@ -496,7 +502,7 @@ namespace HotRepl.Hosting
                 sub.LastEvalFrame = _frameCounter;
                 sub.Seq++;
 
-                var result = _evaluator.Evaluate(sub.Code);
+                var result = GuardedEvaluate(sub.Id, sub.Code, sub.TimeoutMs);
 
                 if (result.Success)
                 {
