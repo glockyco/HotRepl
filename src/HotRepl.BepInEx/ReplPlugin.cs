@@ -1,3 +1,4 @@
+using System;
 using BepInEx;
 using HotRepl.Hosting;
 
@@ -19,11 +20,20 @@ public sealed class ReplPlugin : BaseUnityPlugin
 
     private void Awake()
     {
-        _host = new BepInExHost(Logger);
-        _engine = new ReplEngine(_host, new ReplConfig { Port = 18590 });
-        _engine.Start();
+        try
+        {
+            _host = new BepInExHost(Logger);
+            _engine = new ReplEngine(_host, new ReplConfig { Port = 18590 });
+            _engine.Start();
 
-        Logger.LogInfo($"{PluginName} v{PluginVersion} loaded — REPL server on port 18590");
+            Logger.LogInfo($"{PluginName} v{PluginVersion} loaded — REPL server on port 18590");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError($"{PluginName} failed to initialize: {ex}");
+            _engine = null;
+            _host = null;
+        }
     }
 
     private void Update()
