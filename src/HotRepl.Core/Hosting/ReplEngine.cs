@@ -501,7 +501,6 @@ namespace HotRepl.Hosting
                     continue;
 
                 sub.LastEvalFrame = _frameCounter;
-                sub.Seq++;
 
                 var result = GuardedEvaluate(sub.Id, sub.Code, sub.TimeoutMs);
 
@@ -518,6 +517,9 @@ namespace HotRepl.Hosting
 
                     sub.LastValue = serialized;
 
+                    // Increment seq AFTER the onChange check so it counts
+                    // actual deliveries, not evaluation ticks.
+                    sub.Seq++;
                     bool isFinal = sub.Limit > 0 && sub.Seq >= sub.Limit;
 
                     _server?.Send(MessageSerializer.Serialize(new SubscribeResultMessage
@@ -538,6 +540,7 @@ namespace HotRepl.Hosting
                 }
                 else
                 {
+                    sub.Seq++;
                     sub.ConsecutiveErrors++;
                     bool isFinal = sub.ConsecutiveErrors >= MaxConsecutiveErrors;
 
