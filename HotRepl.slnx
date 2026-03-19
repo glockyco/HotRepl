@@ -3,4 +3,7 @@
     <Project Path="src/HotRepl.BepInEx/HotRepl.BepInEx.csproj" />
     <Project Path="src/HotRepl.Core/HotRepl.Core.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/HotRepl.Tests/HotRepl.Tests.csproj" />
+  </Folder>
 </Solution>

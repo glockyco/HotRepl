@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>HotRepl.Tests</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.*" />
+    <PackageReference Include="xunit" Version="2.*" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.*" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/HotRepl.Core/HotRepl.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="mcs">
+      <HintPath>../../lib/mcs.dll</HintPath>
+    </Reference>
+    <None Include="../../lib/mcs.dll" CopyToOutputDirectory="PreserveNewest" Link="mcs.dll" />
+  </ItemGroup>
+</Project>

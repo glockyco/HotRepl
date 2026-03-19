@@ -1,0 +1,39 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "hotrepl"
+version = "0.1.0"
+description = "Reference Python client for the HotRepl C# REPL protocol"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+keywords = ["hotrepl", "repl", "csharp", "websocket", "game-modding", "unity"]
+dependencies = [
+    "websockets>=13.0",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8.0", "pytest-asyncio>=0.24"]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.24", "mypy>=1.10", "ruff>=0.4"]
+
+[project.scripts]
+hotrepl = "hotrepl.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/hotrepl"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "UP", "B"]

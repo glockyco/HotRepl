@@ -7,9 +7,8 @@ on:
     branches: [main]
 
 jobs:
-  build:
+  csharp:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
         with:
@@ -20,18 +19,39 @@ jobs:
           dotnet-version: 8.x
 
       - name: Restore
-        run: dotnet restore src/HotRepl.Core/HotRepl.Core.csproj
+        run: dotnet restore
 
       - name: Build
-        run: dotnet build src/HotRepl.Core/HotRepl.Core.csproj --no-restore
+        run: dotnet build --no-restore
 
       - name: Format check
         run: dotnet format src/HotRepl.Core/HotRepl.Core.csproj --verify-no-changes --no-restore
 
       - name: Test
-        run: |
-          if dotnet sln list 2>/dev/null | grep -qi test; then
-            dotnet test --no-build
-          else
-            echo "No test projects found — skipping"
-          fi
+        run: dotnet test --no-build --verbosity quiet
+
+  python-client:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: astral-sh/setup-uv@v4
+
+      - name: Install
+        run: uv pip install --system -e '.[dev]'
+
+      - name: Lint
+        run: ruff check src/ tests/
+
+      - name: Type check
+        run: mypy src/hotrepl/
+
+      - name: Smoke tests (no server — all skip)
+        run: pytest tests/ -v --tb=short

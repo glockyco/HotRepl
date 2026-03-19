@@ -33,6 +33,11 @@ src/
   HotRepl.BepInEx/                     # BepInEx 5.x adapter (netstandard2.1)
     ReplPlugin.cs                      # BepInEx plugin entry point
     BepInExHost.cs                     # IReplHost implementation
+tests/
+  HotRepl.Tests/                       # C# unit tests (xUnit, net10.0)
+client/                                # Python reference client + smoke tests
+  src/hotrepl/                         # Client library + CLI
+  tests/                               # Protocol smoke test suite (~38 tests)
 lib/
   mcs.dll                              # Mono compiler (mcs-unity)
 ```
@@ -44,10 +49,36 @@ dotnet build src/HotRepl.Core/         # Build core (CI default)
 dotnet build src/HotRepl.BepInEx/      # Build adapter (requires Unity DLLs in lib/)
 ```
 
-There are no tests yet. When added:
+## Testing
+
+### C# unit tests (always available, no game required)
 ```bash
-dotnet test                            # Run all tests
+dotnet test tests/HotRepl.Tests/       # Run C# unit tests
 ```
+Tests cover serialization round-trips, result formatting, protocol types, and
+configuration defaults. These run in CI on every push.
+
+### Python client + smoke tests (requires a running game)
+```bash
+cd client && uv pip install -e '.[test]'  # Install client + test deps
+hotrepl ping                              # Check if a game is running with HotRepl
+hotrepl eval '1 + 1'                      # Evaluate C# code
+hotrepl test                              # Run protocol smoke tests
+hotrepl test --url ws://host:port         # Against a remote game
+```
+The smoke tests exercise the full WebSocket protocol: eval, errors, state
+persistence, reset, ping, autocomplete, subscriptions, and edge cases. They
+skip automatically when no server is reachable.
+
+### What you can't test without a game
+- Code evaluation against game assemblies (UnityEngine, game types)
+- Plugin loading via BepInEx
+- Unity main-thread execution (frame-driven Tick())
+- Thread.Abort timeout behavior (Mono-only)
+- Helper methods that use UnityEngine (Screenshot, SceneGraph)
+
+The smoke tests in `client/tests/` are the protocol contract. Read them to
+understand exactly what HotRepl promises to its clients.
 
 
 ## Code Quality
