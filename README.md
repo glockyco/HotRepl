@@ -150,6 +150,7 @@ engine.Dispose();
 - **Mono runtime only** -- will not work on IL2CPP builds (the runtime compiler requires JIT)
 - **Memory leaks from type definitions** -- types defined via `eval` (classes, structs) are loaded into the AppDomain and cannot be unloaded; use `reset` to mitigate but the assemblies remain in memory until the process exits
 - **Single client** -- one WebSocket connection at a time; subsequent connections replace the previous one
+- **`identifier * expr` parses as pointer type** -- Mono's interactive parser treats `a * 2` as a pointer-type declaration when `a` was defined in a previous eval. Use `2 * a` (literal on left) or a method call instead. This is a mcs.dll parser limitation; it does not affect `+`, `-`, or `/`.
 
 ## License
 
