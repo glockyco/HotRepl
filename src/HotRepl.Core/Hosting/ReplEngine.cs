@@ -198,6 +198,14 @@ namespace HotRepl.Hosting
                     _commandQueue.Enqueue(new QueuedCommand(ping.Id, CommandKind.Ping));
                     break;
 
+                case "complete":
+                    var complete = MessageSerializer.Deserialize<CompleteRequest>(rawJson);
+                    var code = complete.CursorPos >= 0 && complete.CursorPos < complete.Code.Length
+                        ? complete.Code.Substring(0, complete.CursorPos)
+                        : complete.Code;
+                    _commandQueue.Enqueue(new QueuedCommand(complete.Id, CommandKind.Complete, code));
+                    break;
+
                 default:
                     _host.Log(LogLevel.Warning, $"Unknown message type: {messageType}");
                     break;
@@ -342,6 +350,19 @@ namespace HotRepl.Hosting
                     _server?.Send(pongJson);
                     break;
 
+                case CommandKind.Complete:
+                    var sw = Stopwatch.StartNew();
+                    var completions = _evaluator?.GetCompletions(cmd.Data ?? "") ?? Array.Empty<string>();
+                    sw.Stop();
+                    var completeJson = MessageSerializer.Serialize(new CompleteResultMessage
+                    {
+                        Id = cmd.Id,
+                        Completions = completions,
+                        DurationMs = sw.ElapsedMilliseconds,
+                    });
+                    _server?.Send(completeJson);
+                    break;
+
                 default:
                     _host.Log(LogLevel.Warning, $"Unknown command kind: {cmd.Kind}");
                     break;
@@ -392,18 +413,21 @@ namespace HotRepl.Hosting
         {
             public string Id { get; }
             public CommandKind Kind { get; }
+            public string? Data { get; }
 
-            public QueuedCommand(string id, CommandKind kind)
+            public QueuedCommand(string id, CommandKind kind, string? data = null)
             {
                 Id = id;
                 Kind = kind;
+                Data = data;
             }
         }
 
         private enum CommandKind
         {
             Reset,
-            Ping
+            Ping,
+            Complete,
         }
     }
 }

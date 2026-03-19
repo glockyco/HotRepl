@@ -140,6 +140,22 @@ namespace HotRepl.Evaluation
         }
 
         /// <inheritdoc />
+        public string[] GetCompletions(string code)
+        {
+            try
+            {
+                string prefix;
+                var completions = _evaluator.GetCompletions(code, out prefix);
+                return completions ?? Array.Empty<string>();
+            }
+            catch
+            {
+                return Array.Empty<string>();
+            }
+        }
+
+
+        /// <inheritdoc />
         public void Dispose()
         {
             AppDomain.CurrentDomain.AssemblyLoad -= OnAssemblyLoad;

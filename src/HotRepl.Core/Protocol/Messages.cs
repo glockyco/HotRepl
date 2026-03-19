@@ -137,4 +137,41 @@ namespace HotRepl.Protocol
         [JsonProperty("id")]
         public string Id { get; set; } = string.Empty;
     }
+
+    // =====================================================================
+    // Autocomplete
+    // =====================================================================
+
+    /// <summary>Autocomplete request — does not execute code.</summary>
+    internal sealed class CompleteRequest
+    {
+        [JsonProperty("type")]
+        public string Type { get; set; } = "complete";
+
+        [JsonProperty("id")]
+        public string Id { get; set; } = string.Empty;
+
+        [JsonProperty("code")]
+        public string Code { get; set; } = string.Empty;
+
+        [JsonProperty("cursorPos")]
+        public int CursorPos { get; set; } = -1; // -1 = end of code
+    }
+
+    /// <summary>Autocomplete result with completion candidates.</summary>
+    internal sealed class CompleteResultMessage
+    {
+        [JsonProperty("type")]
+        public string Type { get; set; } = "complete_result";
+
+        [JsonProperty("id")]
+        public string Id { get; set; } = string.Empty;
+
+        [JsonProperty("completions")]
+        public string[] Completions { get; set; } = System.Array.Empty<string>();
+
+        [JsonProperty("durationMs")]
+        public long DurationMs { get; set; }
+    }
+
 }

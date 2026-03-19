@@ -37,5 +37,12 @@ namespace HotRepl.Evaluation
         /// preserving only the original reference assemblies and usings.
         /// </summary>
         void Reset();
+
+        /// <summary>
+        /// Returns autocomplete suggestions for the partial code at the given
+        /// cursor position. Does not execute any code.
+        /// </summary>
+        string[] GetCompletions(string code);
+
     }
 }
