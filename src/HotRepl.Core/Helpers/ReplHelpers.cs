@@ -350,19 +350,4 @@ public static class HotRepl
 
 }
 ";
-
-    /// <summary>
-    /// Method signatures advertised in the handshake message.
-    /// Updated manually when helpers are added.
-    /// </summary>
-    public static readonly string[] AdvertisedHelpers = new[]
-    {
-        "HotRepl.Help() -> string[]",
-        "HotRepl.Screenshot(path = null) -> string",
-        "HotRepl.ScreenshotBase64() -> string",
-        "HotRepl.SceneGraph(filter = null, layer = null, depth = 3, maxResults = 200) -> Object",
-        "HotRepl.Describe(Type) -> object",
-        "HotRepl.History(Int32 limit = 20) -> Object",
-        "HotRepl.Inspect(object, depth?, maxChildren?) -> object",
-    };
 }

@@ -39,6 +39,10 @@ namespace HotRepl.Hosting
         private ReplServer? _server;
         private ICodeEvaluator? _evaluator;
 
+        // Helper method signatures derived from the injected HotRepl.Help().
+        // Used in the handshake; auto-populated by CreateEvaluator().
+        private string[] _advertised = Array.Empty<string>();
+
         /// <summary>
         /// The thread that called <see cref="Start"/>. The watchdog timer uses
         /// this to abort a runaway evaluation.
@@ -112,7 +116,7 @@ namespace HotRepl.Hosting
                 Version = "1.0.0",
                 CsharpVersion = "7.x",
                 DefaultUsings = _host.DefaultUsings.ToArray(),
-                Helpers = Helpers.ReplHelpers.AdvertisedHelpers,
+                Helpers = _advertised,
             });
 
             _server = new ReplServer(
@@ -584,10 +588,18 @@ namespace HotRepl.Hosting
         {
             var eval = new MonoEvaluator(_host.ReferenceAssemblies, _host.DefaultUsings);
 
-            // Inject helper library into the REPL environment
+            // Inject helper library — fail loudly so broken helpers are
+            // caught immediately rather than degrading silently.
             var helperResult = eval.Evaluate(Helpers.ReplHelpers.Source);
             if (!helperResult.Success)
-                _host.Log(LogLevel.Warning, $"Failed to inject helpers: {helperResult.Error}");
+                throw new InvalidOperationException(
+                    $"Failed to inject REPL helpers: {helperResult.Error}");
+
+            // Derive advertised helpers from the injected Help() method
+            // so the handshake is always in sync with the actual implementation.
+            var helpResult = eval.Evaluate("HotRepl.Help()");
+            if (helpResult.Success && helpResult.Value is string[] signatures)
+                _advertised = signatures;
 
             return eval;
         }
