@@ -50,11 +50,22 @@ namespace HotRepl.Hosting
         private readonly ConcurrentQueue<string> _cancelQueue = new();
         private readonly ConcurrentQueue<QueuedCommand> _commandQueue = new();
 
+        // Eval IDs that have been cancelled before they were dequeued.
+        private readonly HashSet<string> _cancelledIds = new();
+
         // Active subscriptions — keyed by subscription id.
         private readonly Dictionary<string, ActiveSubscription> _subscriptions = new();
         private const int MaxSubscriptions = 8;
         private const int MaxConsecutiveErrors = 3;
         private int _frameCounter;
+
+        /// <summary>
+        /// Monotonically increasing generation counter for the current eval.
+        /// Incremented at the start of each eval; the watchdog and cancel
+        /// paths capture it and only abort if the generation still matches,
+        /// preventing stale aborts from hitting the wrong eval.
+        /// </summary>
+        private long _evalGeneration;
 
         /// <summary>
         /// The message id of the evaluation currently executing inside
@@ -124,17 +135,10 @@ namespace HotRepl.Hosting
             if (_evaluator == null || _server == null)
                 return;
 
-            // 1. Drain cancel queue — cancel active eval or remove subscription.
+            // 1. Drain cancel queue — record for queued-eval filtering, remove subscriptions.
             while (_cancelQueue.TryDequeue(out var cancelId))
             {
-                // Cancel active eval
-                if (_activeEvalId != null && _activeEvalId == cancelId)
-                {
-                    _cancelRequested = true;
-                    _mainThread?.Abort();
-                }
-
-                // Cancel subscription
+                _cancelledIds.Add(cancelId);
                 _subscriptions.Remove(cancelId);
             }
 
@@ -144,10 +148,16 @@ namespace HotRepl.Hosting
                 HandleCommand(cmd);
             }
 
-            // 3. Process one eval request (if any).
-            if (_evalQueue.TryDequeue(out var request))
+            // 3. Process one eval request (if any), skipping cancelled ones.
+            while (_evalQueue.TryDequeue(out var request))
             {
+                if (_cancelledIds.Remove(request.Id))
+                {
+                    _host.Log(LogLevel.Debug, $"Skipping cancelled eval '{request.Id}'.");
+                    continue;
+                }
                 ExecuteEval(request);
+                break; // At most one eval per tick.
             }
 
             // 4. Process subscriptions.
@@ -239,10 +249,13 @@ namespace HotRepl.Hosting
             _cancelQueue.Enqueue(id);
 
             // If the target is already running, abort its thread immediately.
+            // Capture the generation to prevent aborting a different eval that
+            // starts between our read and the actual abort.
+            var gen = Interlocked.Read(ref _evalGeneration);
             if (_activeEvalId == id && _mainThread != null)
             {
                 _cancelRequested = true;
-                _mainThread.Abort();
+                AbortMainThread(gen);
             }
         }
 
@@ -252,6 +265,7 @@ namespace HotRepl.Hosting
 
         private void ExecuteEval(QueuedEval request)
         {
+            var gen = Interlocked.Increment(ref _evalGeneration);
             _activeEvalId = request.Id;
             _cancelRequested = false;
 
@@ -263,7 +277,7 @@ namespace HotRepl.Hosting
             {
                 // Arm the watchdog — fires on the ThreadPool, aborts _mainThread.
                 watchdog = new Timer(
-                    _ => AbortMainThread(),
+                    _ => AbortMainThread(gen),
                     state: null,
                     dueTime: request.TimeoutMs,
                     period: Timeout.Infinite);
@@ -284,11 +298,13 @@ namespace HotRepl.Hosting
             }
             finally
             {
+                // Clear _activeEvalId BEFORE disposing the watchdog to close the
+                // race window where the watchdog fires between finally-entry and
+                // the id-clear, aborting code outside ExecuteEval's handler.
+                _activeEvalId = null;
                 sw.Stop();
                 watchdog?.Dispose();
             }
-
-            _activeEvalId = null;
 
             RecordHistory(request.Code, result);
             SendResult(request.Id, result);
@@ -361,12 +377,19 @@ namespace HotRepl.Hosting
             }
         }
 
-        private void AbortMainThread()
+        /// <summary>
+        /// Aborts the main thread if the given generation still matches the
+        /// current eval. This prevents a stale watchdog or cancel from
+        /// aborting a subsequent, unrelated evaluation.
+        /// </summary>
+        private void AbortMainThread(long expectedGeneration)
         {
             var thread = _mainThread;
-            if (thread != null && _activeEvalId != null)
+            if (thread != null
+                && _activeEvalId != null
+                && Interlocked.Read(ref _evalGeneration) == expectedGeneration)
             {
-                _host.Log(LogLevel.Warning, $"Watchdog: aborting eval '{_activeEvalId}' after timeout.");
+                _host.Log(LogLevel.Warning, $"Watchdog: aborting eval '{_activeEvalId}' (gen {expectedGeneration}).");
                 thread.Abort();
             }
         }
