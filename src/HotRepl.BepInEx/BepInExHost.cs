@@ -1,5 +1,6 @@
 using System.Reflection;
 using BepInEx.Logging;
+using HotRepl.Evaluation;
 using HotRepl.Hosting;
 
 namespace HotRepl.BepInEx;
@@ -10,10 +11,6 @@ namespace HotRepl.BepInEx;
 /// </summary>
 internal sealed class BepInExHost : IReplHost
 {
-    private static readonly HashSet<string> StdLib = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "mscorlib", "System.Core", "System", "System.Xml",
-    };
 
     private readonly ManualLogSource _logger;
     public BepInExHost(ManualLogSource logger)
@@ -29,7 +26,7 @@ internal sealed class BepInExHost : IReplHost
             foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
             {
                 var name = asm.GetName().Name;
-                if (name == null || StdLib.Contains(name))
+                if (name == null || AssemblyFilter.StdLibNames.Contains(name))
                     continue;
                 result.Add(asm);
             }

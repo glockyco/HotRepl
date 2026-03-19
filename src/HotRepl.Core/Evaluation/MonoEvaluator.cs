@@ -15,18 +15,6 @@ namespace HotRepl.Evaluation
     /// </summary>
     internal sealed class MonoEvaluator : ICodeEvaluator
     {
-        /// <summary>
-        /// Assemblies that Mono.CSharp references implicitly. Referencing them
-        /// again causes duplicate-type errors, so skip them.
-        /// </summary>
-        private static readonly HashSet<string> StdLibNames = new(StringComparer.OrdinalIgnoreCase)
-        {
-            "mscorlib",
-            "System",
-            "System.Core",
-            "System.Xml"
-        };
-
         private readonly IReadOnlyList<Assembly> _initialReferences;
         private readonly IReadOnlyList<string> _initialUsings;
 
@@ -119,25 +107,6 @@ namespace HotRepl.Evaluation
             }
         }
 
-        /// <inheritdoc />
-        public void AddReference(Assembly assembly)
-        {
-            _evaluator.ReferenceAssembly(assembly);
-        }
-
-        /// <inheritdoc />
-        public void AddUsing(string ns)
-        {
-            Evaluate($"using {ns};");
-        }
-
-        /// <inheritdoc />
-        public void Reset()
-        {
-            AppDomain.CurrentDomain.AssemblyLoad -= OnAssemblyLoad;
-            _compilerWriter.Dispose();
-            Init();
-        }
 
         /// <inheritdoc />
         public string[] GetCompletions(string code)
@@ -218,7 +187,7 @@ namespace HotRepl.Evaluation
                 if (name == "completions")
                     return;
 
-                if (StdLibNames.Contains(name))
+                if (AssemblyFilter.StdLibNames.Contains(name))
                     return;
 
                 _evaluator.ReferenceAssembly(assembly);
@@ -226,8 +195,7 @@ namespace HotRepl.Evaluation
             catch
             {
                 // Dynamic assemblies, collectible assemblies, or assemblies from
-                // unsupported load contexts can throw. Swallow and continue —
-                // the user can always add them explicitly via AddReference.
+                // unsupported load contexts can throw. Swallow and continue.
             }
         }
 
