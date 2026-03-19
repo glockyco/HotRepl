@@ -15,7 +15,7 @@ Agent-first runtime C# REPL that runs inside any Mono-based Unity game via BepIn
 - **Frame-driven ticking** -- evaluations run on the game's main thread via the host's `Update()` loop for safe access to Unity APIs
 - **Autocomplete** -- cursor-aware code completion without executing the snippet
 - **Subscriptions / watches** -- repeated evaluation on a timer or on value change, with sequence tracking
-- **Built-in helpers** -- `Help()`, `Screenshot()`, `SceneGraph()`, `Describe()`, `Inspect()`, and more are injected into every session
+- **Built-in helpers** -- `Repl.Help()`, `Repl.Screenshot()`, `Repl.SceneGraph()`, `Repl.Describe()`, `Repl.Inspect()`, and more are injected into every session
 - **Handshake on connect** -- server advertises capabilities (C# version, default usings, available helpers) on connection
 
 ## Installation (BepInEx)

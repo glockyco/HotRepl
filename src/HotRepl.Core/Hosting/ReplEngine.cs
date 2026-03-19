@@ -322,7 +322,7 @@ namespace HotRepl.Hosting
         }
 
         /// <summary>
-        /// Records the eval result in the REPL-side HotRepl._history list.
+        /// Records the eval result in the REPL-side Repl._history list.
         /// Uses Base64 encoding to avoid C# string-escaping issues.
         /// </summary>
         private void RecordHistory(string code, EvalResult result)
@@ -335,7 +335,7 @@ namespace HotRepl.Hosting
                 var errorB64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(result.Error ?? ""));
 
                 _evaluator?.Evaluate(
-                    $"HotRepl.__RecordEntry(\"{codeB64}\", \"{valueB64}\", \"{errorB64}\");");
+                    $"Repl.__RecordEntry(\"{codeB64}\", \"{valueB64}\", \"{errorB64}\");");
             }
             catch (ThreadAbortException)
             {
@@ -598,7 +598,7 @@ namespace HotRepl.Hosting
 
             // Derive advertised helpers from the injected Help() method
             // so the handshake is always in sync with the actual implementation.
-            var helpResult = eval.Evaluate("HotRepl.Help()");
+            var helpResult = eval.Evaluate("Repl.Help()");
             if (helpResult.Success && helpResult.Value is string[] signatures)
                 _advertised = signatures;
 

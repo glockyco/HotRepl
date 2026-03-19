@@ -2,22 +2,22 @@ namespace HotRepl.Helpers;
 
 /// <summary>
 /// Contains the C# source code for helper functions injected into the REPL
-/// environment. These become available as <c>HotRepl.MethodName()</c> in
+/// environment. These become available as <c>Repl.MethodName()</c> in
 /// evaluated code.
 /// </summary>
 /// <remarks>
-/// New helpers are added here as methods on the <c>HotRepl</c> class.
+/// New helpers are added here as methods on the <c>Repl</c> class.
 /// The source is evaluated once during evaluator initialization, so helpers
 /// have full access to all referenced assemblies and default usings.
 /// </remarks>
 internal static class ReplHelpers
 {
     /// <summary>
-    /// C# source code defining the HotRepl static helper class.
+    /// C# source code defining the Repl static helper class.
     /// Evaluated into the REPL on startup and after each reset.
     /// </summary>
     public const string Source = @"
-public static class HotRepl
+public static class Repl
 {
     private static readonly System.Collections.Generic.List<System.Collections.Generic.Dictionary<string, object>> _history
         = new System.Collections.Generic.List<System.Collections.Generic.Dictionary<string, object>>();
@@ -45,9 +45,9 @@ public static class HotRepl
     /// <summary>Returns the list of available helper methods.</summary>
     public static string[] Help()
     {
-        return typeof(HotRepl)
+        return typeof(Repl)
             .GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
-            .Where(m => m.DeclaringType == typeof(HotRepl) && m.Name != ""GetType"" && !m.Name.StartsWith(""__""))
+            .Where(m => m.DeclaringType == typeof(Repl) && m.Name != ""GetType"" && !m.Name.StartsWith(""__""))
             .Select(m =>
             {
                 var ps = m.GetParameters();
