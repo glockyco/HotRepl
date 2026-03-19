@@ -205,7 +205,7 @@ namespace HotRepl.Hosting
         {
             switch (messageType)
             {
-                case "eval":
+                case MessageTypes.Eval:
                     var eval = MessageSerializer.Deserialize<EvalRequest>(rawJson);
                     _evalQueue.Enqueue(new QueuedEval(
                         eval.Id,
@@ -213,22 +213,22 @@ namespace HotRepl.Hosting
                         eval.TimeoutMs > 0 ? eval.TimeoutMs : _config.DefaultTimeoutMs));
                     break;
 
-                case "cancel":
+                case MessageTypes.Cancel:
                     var cancel = MessageSerializer.Deserialize<CancelRequest>(rawJson);
                     EnqueueCancel(cancel.Id);
                     break;
 
-                case "reset":
+                case MessageTypes.Reset:
                     var reset = MessageSerializer.Deserialize<ResetRequest>(rawJson);
                     _commandQueue.Enqueue(new QueuedCommand(reset.Id, CommandKind.Reset));
                     break;
 
-                case "ping":
+                case MessageTypes.Ping:
                     var ping = MessageSerializer.Deserialize<PingRequest>(rawJson);
                     _commandQueue.Enqueue(new QueuedCommand(ping.Id, CommandKind.Ping));
                     break;
 
-                case "complete":
+                case MessageTypes.Complete:
                     var complete = MessageSerializer.Deserialize<CompleteRequest>(rawJson);
                     var completionCode = complete.CursorPos >= 0 && complete.CursorPos < complete.Code.Length
                         ? complete.Code.Substring(0, complete.CursorPos)
@@ -237,7 +237,7 @@ namespace HotRepl.Hosting
                         code: completionCode));
                     break;
 
-                case "subscribe":
+                case MessageTypes.Subscribe:
                     var sub = MessageSerializer.Deserialize<SubscribeRequest>(rawJson);
                     _commandQueue.Enqueue(new QueuedCommand(sub.Id, CommandKind.Subscribe,
                         subscribe: sub));

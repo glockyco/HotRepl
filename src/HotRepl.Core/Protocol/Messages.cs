@@ -2,13 +2,32 @@ using Newtonsoft.Json;
 
 namespace HotRepl.Protocol
 {
+    /// <summary>Canonical wire-format type discriminants for all protocol messages.</summary>
+    internal static class MessageTypes
+    {
+        public const string Eval = "eval";
+        public const string Cancel = "cancel";
+        public const string Reset = "reset";
+        public const string Ping = "ping";
+        public const string Complete = "complete";
+        public const string Subscribe = "subscribe";
+        public const string Handshake = "handshake";
+        public const string EvalResult = "eval_result";
+        public const string EvalError = "eval_error";
+        public const string ResetResult = "reset_result";
+        public const string Pong = "pong";
+        public const string CompleteResult = "complete_result";
+        public const string SubscribeResult = "subscribe_result";
+        public const string SubscribeError = "subscribe_error";
+    }
+
     // ── Inbound (client → server) ──────────────────────────────────────
 
     /// <summary>Request to evaluate a C# expression or statement.</summary>
     internal sealed class EvalRequest
     {
         [JsonProperty("type")]
-        public string Type { get; set; } = "eval";
+        public string Type { get; set; } = MessageTypes.Eval;
 
         [JsonProperty("id")]
         public string Id { get; set; } = string.Empty;
@@ -24,7 +43,7 @@ namespace HotRepl.Protocol
     internal sealed class CancelRequest
     {
         [JsonProperty("type")]
-        public string Type { get; set; } = "cancel";
+        public string Type { get; set; } = MessageTypes.Cancel;
 
         [JsonProperty("id")]
         public string Id { get; set; } = string.Empty;
@@ -34,7 +53,7 @@ namespace HotRepl.Protocol
     internal sealed class ResetRequest
     {
         [JsonProperty("type")]
-        public string Type { get; set; } = "reset";
+        public string Type { get; set; } = MessageTypes.Reset;
 
         [JsonProperty("id")]
         public string Id { get; set; } = string.Empty;
@@ -44,7 +63,7 @@ namespace HotRepl.Protocol
     internal sealed class PingRequest
     {
         [JsonProperty("type")]
-        public string Type { get; set; } = "ping";
+        public string Type { get; set; } = MessageTypes.Ping;
 
         [JsonProperty("id")]
         public string Id { get; set; } = string.Empty;
@@ -56,7 +75,7 @@ namespace HotRepl.Protocol
     internal sealed class HandshakeMessage
     {
         [JsonProperty("type")]
-        public string Type { get; set; } = "handshake";
+        public string Type { get; set; } = MessageTypes.Handshake;
 
         [JsonProperty("version")]
         public string Version { get; set; } = string.Empty;
@@ -75,7 +94,7 @@ namespace HotRepl.Protocol
     internal sealed class EvalResultMessage
     {
         [JsonProperty("type")]
-        public string Type { get; set; } = "eval_result";
+        public string Type { get; set; } = MessageTypes.EvalResult;
 
         [JsonProperty("id")]
         public string Id { get; set; } = string.Empty;
@@ -100,7 +119,7 @@ namespace HotRepl.Protocol
     internal sealed class EvalErrorMessage
     {
         [JsonProperty("type")]
-        public string Type { get; set; } = "eval_error";
+        public string Type { get; set; } = MessageTypes.EvalError;
 
         [JsonProperty("id")]
         public string Id { get; set; } = string.Empty;
@@ -119,7 +138,7 @@ namespace HotRepl.Protocol
     internal sealed class ResetResultMessage
     {
         [JsonProperty("type")]
-        public string Type { get; set; } = "reset_result";
+        public string Type { get; set; } = MessageTypes.ResetResult;
 
         [JsonProperty("id")]
         public string Id { get; set; } = string.Empty;
@@ -132,7 +151,7 @@ namespace HotRepl.Protocol
     internal sealed class PongMessage
     {
         [JsonProperty("type")]
-        public string Type { get; set; } = "pong";
+        public string Type { get; set; } = MessageTypes.Pong;
 
         [JsonProperty("id")]
         public string Id { get; set; } = string.Empty;
@@ -146,7 +165,7 @@ namespace HotRepl.Protocol
     internal sealed class CompleteRequest
     {
         [JsonProperty("type")]
-        public string Type { get; set; } = "complete";
+        public string Type { get; set; } = MessageTypes.Complete;
 
         [JsonProperty("id")]
         public string Id { get; set; } = string.Empty;
@@ -162,7 +181,7 @@ namespace HotRepl.Protocol
     internal sealed class CompleteResultMessage
     {
         [JsonProperty("type")]
-        public string Type { get; set; } = "complete_result";
+        public string Type { get; set; } = MessageTypes.CompleteResult;
 
         [JsonProperty("id")]
         public string Id { get; set; } = string.Empty;
@@ -183,7 +202,7 @@ namespace HotRepl.Protocol
     internal sealed class SubscribeRequest
     {
         [JsonProperty("type")]
-        public string Type { get; set; } = "subscribe";
+        public string Type { get; set; } = MessageTypes.Subscribe;
 
         [JsonProperty("id")]
         public string Id { get; set; } = string.Empty;
@@ -208,7 +227,7 @@ namespace HotRepl.Protocol
     internal sealed class SubscribeResultMessage
     {
         [JsonProperty("type")]
-        public string Type { get; set; } = "subscribe_result";
+        public string Type { get; set; } = MessageTypes.SubscribeResult;
 
         [JsonProperty("id")]
         public string Id { get; set; } = string.Empty;
@@ -236,7 +255,7 @@ namespace HotRepl.Protocol
     internal sealed class SubscribeErrorMessage
     {
         [JsonProperty("type")]
-        public string Type { get; set; } = "subscribe_error";
+        public string Type { get; set; } = MessageTypes.SubscribeError;
 
         [JsonProperty("id")]
         public string Id { get; set; } = string.Empty;
