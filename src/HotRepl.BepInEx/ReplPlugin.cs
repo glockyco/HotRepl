@@ -13,12 +13,9 @@ namespace HotRepl.BepInEx;
 /// Update() — calls Tick() once per frame; initializes the evaluator on the
 ///            very first call (deferred from Awake for startup speed).
 /// </summary>
-[BepInPlugin(PluginGuid, PluginName, VersionInfo.PluginVersion)]
+[BepInPlugin(PluginInfo.GUID, PluginInfo.Name, PluginInfo.Version)]
 public sealed class ReplPlugin : BaseUnityPlugin
 {
-    public const string PluginGuid = "hotrepl.bepinex";
-    public const string PluginName = "HotRepl";
-    public const string PluginVersion = VersionInfo.PluginVersion;
 
     private ReplEngine? _engine;
 
@@ -30,11 +27,11 @@ public sealed class ReplPlugin : BaseUnityPlugin
             _engine = new ReplEngine(host);
             _engine.Start();
 
-            Logger.LogInfo($"{PluginName} v{VersionInfo.SemVer} loaded — REPL on port {host.Config.Port}.");
+            Logger.LogInfo($"{PluginInfo.Name} v{PluginInfo.Version} loaded \u2014 REPL on port {host.Config.Port}.");
         }
         catch (Exception ex)
         {
-            Logger.LogError($"{PluginName} failed to start: {ex}");
+            Logger.LogError($"{PluginInfo.Name} failed to start: {ex}");
             _engine = null;
         }
     }

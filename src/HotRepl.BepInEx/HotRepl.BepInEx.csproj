@@ -19,8 +19,6 @@
     <!-- ILRepack for merging dependencies into single DLL -->
     <PackageReference Include="ILRepack.Lib.MSBuild.Task" Version="2.0.34.2" />
 
-    <!-- Auto-versioning from git tags (e.g. git tag v0.2.0) -->
-    <PackageReference Include="MinVer" Version="6.*" PrivateAssets="all" />
   </ItemGroup>
 
   <!-- Project reference to Core -->
@@ -40,29 +38,38 @@
     </Reference>
   </ItemGroup>
 
-  <!-- Generate VersionInfo.g.cs so BepInPlugin attribute can use a const version string.
-       BepInEx 5.x requires System.Version format (X.Y.Z) — no prerelease suffixes.
-       MinVer's Major.Minor.Patch components are used for the plugin attribute;
-       the full semver string is kept separately for logging. -->
-  <Target Name="GenerateVersionInfo" BeforeTargets="CoreCompile;GetAssemblyVersion" DependsOnTargets="MinVer">
+  <!-- CalVer version: YYYY.MDD.0 from latest git commit date.
+       Use -p:ModVersion=X to override (e.g. Thunderstore publish). -->
+  <Target Name="SetModVersion" BeforeTargets="GeneratePluginInfo" Condition="'$(ModVersion)' != ''">
     <PropertyGroup>
-      <_VersionInfoPath>$(IntermediateOutputPath)VersionInfo.g.cs</_VersionInfoPath>
-      <_BepInExVersion>$(MinVerMajor).$(MinVerMinor).$(MinVerPatch)</_BepInExVersion>
+      <Version>$(ModVersion)</Version>
     </PropertyGroup>
-    <WriteLinesToFile File="$(_VersionInfoPath)" Overwrite="true" Lines="
-// &lt;auto-generated/&gt;
-namespace HotRepl.BepInEx%3B
-internal static class VersionInfo
-{
-    /// &lt;summary&gt;BepInEx-compatible version (Major.Minor.Patch, no prerelease).&lt;/summary&gt;
-    public const string PluginVersion = &quot;$(_BepInExVersion)&quot;%3B
+  </Target>
 
-    /// &lt;summary&gt;Full semver from MinVer (may include prerelease suffix).&lt;/summary&gt;
-    public const string SemVer = &quot;$(MinVerVersion)&quot;%3B
-}
-" />
+  <Target Name="GetGitVersion" BeforeTargets="GeneratePluginInfo" Condition="'$(ModVersion)' == ''">
+    <Exec Command="python3 ../../scripts/generate-mod-version.py . $(Configuration)"
+          ConsoleToMSBuild="true"
+          IgnoreExitCode="false"
+          StandardOutputImportance="low"
+          EchoOff="true">
+      <Output TaskParameter="ConsoleOutput" PropertyName="GitVersion" />
+    </Exec>
+    <PropertyGroup>
+      <Version>$(GitVersion)</Version>
+    </PropertyGroup>
+  </Target>
+
+  <!-- Generate PluginInfo.g.cs with version -->
+  <Target Name="GeneratePluginInfo" BeforeTargets="CoreCompile" DependsOnTargets="SetModVersion;GetGitVersion">
+    <PropertyGroup>
+      <PluginInfoFile>$(IntermediateOutputPath)PluginInfo.g.cs</PluginInfoFile>
+      <PluginInfoLine1>namespace HotRepl.BepInEx%3B</PluginInfoLine1>
+      <PluginInfoLine2>internal static partial class PluginInfo { public const string Version = "$(Version)"%3B }</PluginInfoLine2>
+    </PropertyGroup>
+    <WriteLinesToFile File="$(PluginInfoFile)" Lines="$(PluginInfoLine1)" Overwrite="true" />
+    <WriteLinesToFile File="$(PluginInfoFile)" Lines="$(PluginInfoLine2)" Overwrite="false" />
     <ItemGroup>
-      <Compile Include="$(_VersionInfoPath)" />
+      <Compile Include="$(PluginInfoFile)" />
     </ItemGroup>
   </Target>
 
