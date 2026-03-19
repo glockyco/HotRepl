@@ -127,6 +127,64 @@ public static class HotRepl
         dict[""children""] = childNodes;
         return dict;
     }
+
+    /// <summary>Describes a Type: base, interfaces, properties, fields, methods.</summary>
+    public static object Describe(System.Type type)
+    {
+        const System.Reflection.BindingFlags flags =
+            System.Reflection.BindingFlags.Public
+            | System.Reflection.BindingFlags.NonPublic
+            | System.Reflection.BindingFlags.Instance
+            | System.Reflection.BindingFlags.Static
+            | System.Reflection.BindingFlags.DeclaredOnly;
+
+        var properties = type.GetProperties(flags)
+            .Select(p => new Dictionary<string, object>
+            {
+                { ""name"", p.Name },
+                { ""type"", p.PropertyType.FullName ?? p.PropertyType.Name },
+                { ""canRead"", p.CanRead },
+                { ""canWrite"", p.CanWrite },
+            })
+            .ToArray();
+
+        var fields = type.GetFields(flags)
+            .Select(f => new Dictionary<string, object>
+            {
+                { ""name"", f.Name },
+                { ""type"", f.FieldType.FullName ?? f.FieldType.Name },
+                { ""isPublic"", f.IsPublic },
+            })
+            .ToArray();
+
+        var skipNames = new System.Collections.Generic.HashSet<string>
+            { ""Equals"", ""GetHashCode"", ""GetType"", ""ToString"" };
+
+        var methods = type.GetMethods(System.Reflection.BindingFlags.Public
+                | System.Reflection.BindingFlags.Instance
+                | System.Reflection.BindingFlags.Static
+                | System.Reflection.BindingFlags.DeclaredOnly)
+            .Where(m => !m.IsSpecialName && !skipNames.Contains(m.Name))
+            .Select(m => new Dictionary<string, object>
+            {
+                { ""name"", m.Name },
+                { ""returnType"", m.ReturnType.FullName ?? m.ReturnType.Name },
+                { ""parameters"", m.GetParameters()
+                    .Select(p => p.ParameterType.Name + "" "" + p.Name)
+                    .ToArray() },
+            })
+            .ToArray();
+
+        return new Dictionary<string, object>
+        {
+            { ""type"", type.FullName ?? type.Name },
+            { ""baseType"", type.BaseType != null ? (type.BaseType.FullName ?? type.BaseType.Name) : null },
+            { ""interfaces"", type.GetInterfaces().Select(i => i.FullName ?? i.Name).ToArray() },
+            { ""properties"", properties },
+            { ""fields"", fields },
+            { ""methods"", methods },
+        };
+    }
 }
 ";
 
@@ -140,5 +198,6 @@ public static class HotRepl
         "HotRepl.Screenshot(path = null) -> string",
         "HotRepl.ScreenshotBase64() -> string",
         "HotRepl.SceneGraph(filter = null, layer = null, depth = 3, maxResults = 200) -> Object",
+        "HotRepl.Describe(Type) -> object",
     };
 }
