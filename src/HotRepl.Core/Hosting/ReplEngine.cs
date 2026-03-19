@@ -331,7 +331,14 @@ namespace HotRepl.Hosting
                 var errorB64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(result.Error ?? ""));
 
                 _evaluator?.Evaluate(
-                    $"HotRepl._AddHistory(\"{codeB64}\", \"{valueB64}\", \"{errorB64}\");");
+                    $"HotRepl.__RecordEntry(\"{codeB64}\", \"{valueB64}\", \"{errorB64}\");");
+            }
+            catch (ThreadAbortException)
+            {
+                // A stale watchdog can fire during RecordHistory since it runs
+                // after _activeEvalId is cleared. Absorb it here.
+                Thread.ResetAbort();
+                _host.Log(LogLevel.Debug, "RecordHistory interrupted by thread abort.");
             }
             catch (Exception ex)
             {

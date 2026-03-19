@@ -22,8 +22,8 @@ public static class HotRepl
     private static readonly System.Collections.Generic.List<System.Collections.Generic.Dictionary<string, object>> _history
         = new System.Collections.Generic.List<System.Collections.Generic.Dictionary<string, object>>();
 
-    /// <summary>Records an eval result. Called internally by the engine after each evaluation.</summary>
-    public static void _AddHistory(string codeB64, string valueB64, string errorB64)
+    /// <summary>Engine-internal: records an eval result. Not intended for user code.</summary>
+    public static void __RecordEntry(string codeB64, string valueB64, string errorB64)
     {
         _history.Add(new System.Collections.Generic.Dictionary<string, object>
         {
@@ -47,7 +47,7 @@ public static class HotRepl
     {
         return typeof(HotRepl)
             .GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
-            .Where(m => m.DeclaringType == typeof(HotRepl) && m.Name != ""GetType"")
+            .Where(m => m.DeclaringType == typeof(HotRepl) && m.Name != ""GetType"" && !m.Name.StartsWith(""__""))
             .Select(m =>
             {
                 var ps = m.GetParameters();
