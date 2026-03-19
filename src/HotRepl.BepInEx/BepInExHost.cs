@@ -1,60 +1,53 @@
+using System;
+using System.Collections.Generic;
 using System.Reflection;
 using BepInEx.Logging;
-using HotRepl.Evaluation;
-using HotRepl.Hosting;
+using HotRepl;
+using HotRepl.BepInEx.Helpers;
+using HotRepl.Helpers;
 
 namespace HotRepl.BepInEx;
 
 /// <summary>
-/// IReplHost implementation for BepInEx 5.x on Unity Mono.
-/// Bridges BepInEx logging to the REPL host abstraction.
+/// Bridges the Core ReplEngine to BepInEx 5.x.
+/// Provides logging via ManualLogSource and injects UnityHelpers into eval sessions.
+/// All Log* methods route to BepInEx's log pipeline, which is thread-safe.
 /// </summary>
 internal sealed class BepInExHost : IReplHost
 {
-
     private readonly ManualLogSource _logger;
-    public BepInExHost(ManualLogSource logger)
+
+    // Computed once at class load — reflects over the compiled UnityHelpers type.
+    private static readonly string[] _unityHelperSignatures =
+        HelperInjector.BuildSignatures(typeof(UnityHelpers));
+
+    private static readonly IReadOnlyList<Assembly> _additionalAssemblies =
+        new[] { typeof(UnityHelpers).Assembly };
+
+    private static readonly IReadOnlyList<string> _additionalUsings =
+        new[] { "HotRepl.BepInEx.Helpers" };
+
+    public BepInExHost(ManualLogSource logger, ReplConfig? config = null)
     {
         _logger = logger;
+        Config = config ?? new ReplConfig();
     }
 
-    public IReadOnlyList<Assembly> ReferenceAssemblies
+    // ── IReplHost ─────────────────────────────────────────────────────────────
+
+    public ReplConfig Config { get; }
+
+    public void LogInfo(string message) => _logger.LogInfo(message);
+    public void LogWarning(string message) => _logger.LogWarning(message);
+    public void LogError(string message, Exception? ex = null)
     {
-        get
-        {
-            var result = new List<Assembly>();
-            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
-            {
-                var name = asm.GetName().Name;
-                if (name == null || AssemblyFilter.StdLibNames.Contains(name))
-                    continue;
-                result.Add(asm);
-            }
-            return result;
-        }
+        if (ex != null)
+            _logger.LogError($"{message}\n{ex}");
+        else
+            _logger.LogError(message);
     }
 
-    public IReadOnlyList<string> DefaultUsings => new[]
-    {
-        "System",
-        "System.Collections",
-        "System.Collections.Generic",
-        "System.Linq",
-        "System.Reflection",
-        "UnityEngine",
-        "UnityEngine.SceneManagement",
-    };
-
-    public void Log(Hosting.LogLevel level, string message)
-    {
-        var bepLevel = level switch
-        {
-            Hosting.LogLevel.Debug => global::BepInEx.Logging.LogLevel.Debug,
-            Hosting.LogLevel.Info => global::BepInEx.Logging.LogLevel.Info,
-            Hosting.LogLevel.Warning => global::BepInEx.Logging.LogLevel.Warning,
-            Hosting.LogLevel.Error => global::BepInEx.Logging.LogLevel.Error,
-            _ => global::BepInEx.Logging.LogLevel.Info,
-        };
-        _logger.Log(bepLevel, message);
-    }
+    public IReadOnlyList<Assembly> AdditionalAssemblies => _additionalAssemblies;
+    public IReadOnlyList<string> AdditionalUsings => _additionalUsings;
+    public string[] AdditionalHelperSignatures => _unityHelperSignatures;
 }
