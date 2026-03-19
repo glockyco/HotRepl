@@ -20,7 +20,7 @@ namespace HotRepl.Server
         private readonly Action<string> _log;
 
         private WebSocketServer? _server;
-        private IWebSocketConnection? _client;
+        private volatile IWebSocketConnection? _client;
         private bool _disposed;
 
         /// <summary>
