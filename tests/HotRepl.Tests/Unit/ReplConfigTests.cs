@@ -1,4 +1,4 @@
-using HotRepl.Hosting;
+using HotRepl;
 using Xunit;
 
 namespace HotRepl.Tests.Unit;

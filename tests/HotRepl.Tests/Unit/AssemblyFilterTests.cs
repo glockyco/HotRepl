@@ -1,4 +1,4 @@
-using HotRepl.Evaluation;
+using HotRepl.Evaluator;
 using Xunit;
 
 namespace HotRepl.Tests.Unit;
@@ -10,32 +10,28 @@ public class AssemblyFilterTests
     [InlineData("System")]
     [InlineData("System.Core")]
     [InlineData("System.Xml")]
-    public void Contains_AllStdLibNames(string name)
+    [InlineData("completions")]
+    [InlineData("netstandard")]
+    public void IsFiltered_StdlibAndArtifacts(string name)
     {
-        Assert.Contains(name, AssemblyFilter.StdLibNames);
+        Assert.True(AssemblyFilter.IsFiltered(name));
     }
 
     [Theory]
     [InlineData("MSCORLIB")]
     [InlineData("system")]
     [InlineData("System.CORE")]
-    public void CaseInsensitive(string name)
+    public void IsFiltered_CaseInsensitive(string name)
     {
-        Assert.Contains(name, AssemblyFilter.StdLibNames);
+        Assert.True(AssemblyFilter.IsFiltered(name));
     }
 
     [Theory]
     [InlineData("UnityEngine")]
     [InlineData("Newtonsoft.Json")]
     [InlineData("HotRepl.Core")]
-    public void DoesNotContain_NonStdLib(string name)
+    public void IsFiltered_ReturnsFalse_ForNonStdLib(string name)
     {
-        Assert.DoesNotContain(name, AssemblyFilter.StdLibNames);
-    }
-
-    [Fact]
-    public void HasExpectedCount()
-    {
-        Assert.Equal(4, AssemblyFilter.StdLibNames.Count);
+        Assert.False(AssemblyFilter.IsFiltered(name));
     }
 }

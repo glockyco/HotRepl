@@ -54,7 +54,8 @@ internal sealed class JsonResultSerializer : IResultSerializer
     private static object CapEnumerable(object value, int max)
     {
         // Strings are IEnumerable<char> — never cap them.
-        if (value is string)
+        // Byte arrays are serialized by Json.NET as base64 — don't unroll them.
+        if (value is string || value is byte[])
             return value;
 
         if (value is IEnumerable enumerable)

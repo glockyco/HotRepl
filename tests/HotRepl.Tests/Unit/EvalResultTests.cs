@@ -1,4 +1,4 @@
-using HotRepl.Evaluation;
+using HotRepl.Evaluator;
 using Xunit;
 
 namespace HotRepl.Tests.Unit;
@@ -8,7 +8,7 @@ public class EvalResultTests
     [Fact]
     public void Ok_SetsAllProperties()
     {
-        var result = EvalResult.Ok(42, "System.Int32", null, 5);
+        var result = EvalOutcome.Ok(42, "System.Int32", null, 5);
 
         Assert.True(result.Success);
         Assert.True(result.HasValue);
@@ -21,7 +21,7 @@ public class EvalResultTests
     [Fact]
     public void Ok_NullValue_HasValueFalse()
     {
-        var result = EvalResult.Ok(null, null, null, 1);
+        var result = EvalOutcome.Ok(null, null, null, 1);
 
         Assert.True(result.Success);
         Assert.False(result.HasValue);
@@ -31,7 +31,7 @@ public class EvalResultTests
     [Fact]
     public void OkVoid_NoValue()
     {
-        var result = EvalResult.OkVoid(null, 3);
+        var result = EvalOutcome.OkVoid(null, 3);
 
         Assert.True(result.Success);
         Assert.False(result.HasValue);
@@ -41,26 +41,26 @@ public class EvalResultTests
     [Fact]
     public void OkVoid_CapturesStdout()
     {
-        var result = EvalResult.OkVoid("hello", 1);
+        var result = EvalOutcome.OkVoid("hello", 1);
 
         Assert.Equal("hello", result.Stdout);
     }
 
     [Fact]
-    public void CompilationError_SetsErrorKind()
+    public void CompileError_SetsErrorKind()
     {
-        var result = EvalResult.CompilationError("CS0001: syntax error", null, 2);
+        var result = EvalOutcome.CompileError("CS0001: syntax error", null, 2);
 
         Assert.False(result.Success);
-        Assert.Equal("compilation", result.ErrorKind);
-        Assert.NotNull(result.Error);
-        Assert.Contains("CS0001", result.Error);
+        Assert.Equal("compile", result.ErrorKind);
+        Assert.NotNull(result.ErrorMessage);
+        Assert.Contains("CS0001", result.ErrorMessage);
     }
 
     [Fact]
     public void RuntimeError_IncludesStackTrace()
     {
-        var result = EvalResult.RuntimeError("NullRef", "at Foo.Bar()", null, 10);
+        var result = EvalOutcome.RuntimeError("NullRef", "at Foo.Bar()", null, 10);
 
         Assert.False(result.Success);
         Assert.Equal("runtime", result.ErrorKind);
@@ -69,22 +69,22 @@ public class EvalResultTests
     }
 
     [Fact]
-    public void Timeout_NotCancelled()
+    public void Timeout_SetsKindAndMessage()
     {
-        var result = EvalResult.Timeout(cancelled: false, durationMs: 10000);
+        var result = EvalOutcome.Timeout(10_000);
 
         Assert.False(result.Success);
-        Assert.Contains("timed out", result.Error);
         Assert.Equal("timeout", result.ErrorKind);
+        Assert.Contains("timed out", result.ErrorMessage);
     }
 
     [Fact]
-    public void Timeout_Cancelled()
+    public void Cancelled_SetsKindAndMessage()
     {
-        var result = EvalResult.Timeout(cancelled: true, durationMs: 500);
+        var result = EvalOutcome.Cancelled(500);
 
         Assert.False(result.Success);
-        Assert.Contains("cancelled", result.Error);
         Assert.Equal("cancelled", result.ErrorKind);
+        Assert.Contains("cancelled", result.ErrorMessage);
     }
 }

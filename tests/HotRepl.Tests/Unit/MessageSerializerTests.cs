@@ -7,6 +7,8 @@ namespace HotRepl.Tests.Unit;
 
 public class MessageSerializerTests
 {
+    // ── ParseType ─────────────────────────────────────────────────────────────
+
     [Fact]
     public void ParseType_ExtractsType()
     {
@@ -28,18 +30,57 @@ public class MessageSerializerTests
             MessageSerializer.ParseType("not json"));
     }
 
-    [Fact]
-    public void RoundTrip_EvalRequest()
-    {
-        var msg = new EvalRequest { Id = "t-1", Code = "1+1", TimeoutMs = 5000 };
-        var json = MessageSerializer.Serialize(msg);
-        var back = MessageSerializer.Deserialize<EvalRequest>(json);
+    // ── Inbound round-trips ───────────────────────────────────────────────────
 
-        Assert.Equal(MessageTypes.Eval, back.Type);
+    [Fact]
+    public void RoundTrip_EvalMessage()
+    {
+        var msg = new EvalMessage { Id = "t-1", Code = "1+1", TimeoutMs = 5000 };
+        var json = MessageSerializer.Serialize(msg);
+        var back = MessageSerializer.Deserialize<EvalMessage>(json);
+
+        Assert.Equal(MessageType.Eval, back.Type);
         Assert.Equal("t-1", back.Id);
         Assert.Equal("1+1", back.Code);
         Assert.Equal(5000, back.TimeoutMs);
     }
+
+    [Fact]
+    public void RoundTrip_CompleteMessage()
+    {
+        var msg = new CompleteMessage { Id = "t-6", Code = "Console.", CursorPos = 8 };
+        var json = MessageSerializer.Serialize(msg);
+        var back = MessageSerializer.Deserialize<CompleteMessage>(json);
+
+        Assert.Equal(MessageType.Complete, back.Type);
+        Assert.Equal("Console.", back.Code);
+        Assert.Equal(8, back.CursorPos);
+    }
+
+    [Fact]
+    public void RoundTrip_SubscribeMessage()
+    {
+        var msg = new SubscribeMessage
+        {
+            Id = "t-8",
+            Code = "Time.time",
+            IntervalFrames = 60,
+            OnChange = true,
+            Limit = 10,
+            TimeoutMs = 3000,
+        };
+        var json = MessageSerializer.Serialize(msg);
+        var back = MessageSerializer.Deserialize<SubscribeMessage>(json);
+
+        Assert.Equal(MessageType.Subscribe, back.Type);
+        Assert.Equal("Time.time", back.Code);
+        Assert.Equal(60, back.IntervalFrames);
+        Assert.True(back.OnChange);
+        Assert.Equal(10, back.Limit);
+        Assert.Equal(3000, back.TimeoutMs);
+    }
+
+    // ── Outbound round-trips ──────────────────────────────────────────────────
 
     [Fact]
     public void RoundTrip_HandshakeMessage()
@@ -49,7 +90,7 @@ public class MessageSerializerTests
             Version = "1.0.0",
             CsharpVersion = "7.3",
             DefaultUsings = new[] { "System", "System.Linq" },
-            Helpers = new[] { "dump" }
+            Helpers = new[] { "dump" },
         };
         var json = MessageSerializer.Serialize(msg);
         var back = MessageSerializer.Deserialize<HandshakeMessage>(json);
@@ -70,7 +111,7 @@ public class MessageSerializerTests
             Value = "42",
             ValueType = "System.Int32",
             Stdout = null,
-            DurationMs = 7
+            DurationMs = 7,
         };
         var json = MessageSerializer.Serialize(msg);
         var back = MessageSerializer.Deserialize<EvalResultMessage>(json);
@@ -79,7 +120,6 @@ public class MessageSerializerTests
         Assert.True(back.HasValue);
         Assert.Equal("42", back.Value);
         Assert.Equal("System.Int32", back.ValueType);
-        // Stdout is null and omitted, so deserializes back to default (null)
         Assert.Null(back.Stdout);
     }
 
@@ -91,7 +131,7 @@ public class MessageSerializerTests
             Id = "t-3",
             ErrorKind = "runtime",
             Message = "NullRef",
-            StackTrace = null
+            StackTrace = null,
         };
         var json = MessageSerializer.Serialize(msg);
         var back = MessageSerializer.Deserialize<EvalErrorMessage>(json);
@@ -119,19 +159,8 @@ public class MessageSerializerTests
         var json = MessageSerializer.Serialize(msg);
         var back = MessageSerializer.Deserialize<PongMessage>(json);
 
-        Assert.Equal(MessageTypes.Pong, back.Type);
+        Assert.Equal(MessageType.Pong, back.Type);
         Assert.Equal("t-5", back.Id);
-    }
-
-    [Fact]
-    public void RoundTrip_CompleteRequest()
-    {
-        var msg = new CompleteRequest { Id = "t-6", Code = "Console.", CursorPos = 8 };
-        var json = MessageSerializer.Serialize(msg);
-        var back = MessageSerializer.Deserialize<CompleteRequest>(json);
-
-        Assert.Equal("Console.", back.Code);
-        Assert.Equal(8, back.CursorPos);
     }
 
     [Fact]
@@ -141,35 +170,13 @@ public class MessageSerializerTests
         {
             Id = "t-7",
             Completions = new[] { "WriteLine", "Write" },
-            DurationMs = 12
+            DurationMs = 12,
         };
         var json = MessageSerializer.Serialize(msg);
         var back = MessageSerializer.Deserialize<CompleteResultMessage>(json);
 
         Assert.Equal(new[] { "WriteLine", "Write" }, back.Completions);
         Assert.Equal(12, back.DurationMs);
-    }
-
-    [Fact]
-    public void RoundTrip_SubscribeRequest()
-    {
-        var msg = new SubscribeRequest
-        {
-            Id = "t-8",
-            Code = "Time.time",
-            IntervalFrames = 60,
-            OnChange = true,
-            Limit = 10,
-            TimeoutMs = 3000
-        };
-        var json = MessageSerializer.Serialize(msg);
-        var back = MessageSerializer.Deserialize<SubscribeRequest>(json);
-
-        Assert.Equal("Time.time", back.Code);
-        Assert.Equal(60, back.IntervalFrames);
-        Assert.True(back.OnChange);
-        Assert.Equal(10, back.Limit);
-        Assert.Equal(3000, back.TimeoutMs);
     }
 
     [Fact]
@@ -183,7 +190,7 @@ public class MessageSerializerTests
             Value = "1.5",
             ValueType = "System.Single",
             DurationMs = 1,
-            Final = true
+            Final = true,
         };
         var json = MessageSerializer.Serialize(msg);
         var back = MessageSerializer.Deserialize<SubscribeResultMessage>(json);
@@ -203,7 +210,7 @@ public class MessageSerializerTests
             Seq = 1,
             ErrorKind = "runtime",
             Message = "boom",
-            Final = false
+            Final = false,
         };
         var json = MessageSerializer.Serialize(msg);
         var back = MessageSerializer.Deserialize<SubscribeErrorMessage>(json);
@@ -214,9 +221,13 @@ public class MessageSerializerTests
         Assert.False(back.Final);
     }
 
+    // ── Serialization properties ──────────────────────────────────────────────
+
     [Fact]
-    public void Serialize_OmitsNulls()
+    public void Serialize_OmitsNullProperties()
     {
+        // Null Value and Stdout must be absent — not emitted as "value":null.
+        // This keeps payloads minimal and lets clients use presence checks.
         var msg = new EvalResultMessage { Id = "t-11", Value = null };
         var json = MessageSerializer.Serialize(msg);
 
@@ -225,7 +236,7 @@ public class MessageSerializerTests
     }
 
     [Fact]
-    public void Serialize_UsesCamelCase()
+    public void Serialize_UsesCamelCaseFieldNames()
     {
         var msg = new EvalResultMessage { Id = "t-12", HasValue = true };
         var json = MessageSerializer.Serialize(msg);

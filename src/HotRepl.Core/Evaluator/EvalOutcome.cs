@@ -18,8 +18,8 @@ internal sealed class EvalOutcome
 
     private EvalOutcome() { }
 
-    public static EvalOutcome Ok(object value, string? valueType, string? stdout, long durationMs) =>
-        new() { Success = true, HasValue = true, Value = value, ValueType = valueType, Stdout = stdout, DurationMs = durationMs };
+    public static EvalOutcome Ok(object? value, string? valueType, string? stdout, long durationMs) =>
+        new() { Success = true, HasValue = value != null, Value = value, ValueType = valueType, Stdout = stdout, DurationMs = durationMs };
 
     public static EvalOutcome OkVoid(string? stdout, long durationMs) =>
         new() { Success = true, HasValue = false, Stdout = stdout, DurationMs = durationMs };

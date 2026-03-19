@@ -20,14 +20,6 @@ internal sealed class MonoCSharpEvaluator : ICodeEvaluator, IDisposable
 {
     // Assemblies we never want to reference: mcs autocomplete artifacts and
     // stdlib duplicates that the Mono evaluator already loads implicitly.
-    private static readonly HashSet<string> _filteredAssemblyNames = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "completions",
-        "mscorlib", "System", "System.Core", "System.Xml", "System.Xml.Linq",
-        "System.Data", "System.Runtime", "System.Collections", "System.Linq",
-        "System.Threading", "System.IO", "System.Text", "System.Net",
-        "Microsoft.CSharp", "netstandard",
-    };
 
     // Default namespaces opened in every evaluator session.
     // Exposed internally so ReplEngine can include them in the handshake defaultUsings[].
@@ -211,7 +203,7 @@ internal sealed class MonoCSharpEvaluator : ICodeEvaluator, IDisposable
             var name = asm.GetName().Name;
             if (string.IsNullOrEmpty(name))
                 return;
-            if (_filteredAssemblyNames.Contains(name))
+            if (AssemblyFilter.IsFiltered(name))
                 return;
             _evaluator?.ReferenceAssembly(asm);
         }
