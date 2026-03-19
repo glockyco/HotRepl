@@ -3,8 +3,8 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Threading;
 using System.Text;
+using System.Threading;
 using HotRepl.Evaluation;
 using HotRepl.Protocol;
 using HotRepl.Serialization;
@@ -453,37 +453,38 @@ namespace HotRepl.Hosting
                     break;
 
                 case CommandKind.Subscribe:
-                {
-                    var subReq = cmd.Subscribe;
-                    if (subReq == null) break;
-                    if (_subscriptions.Count >= MaxSubscriptions)
                     {
-                        _server?.Send(MessageSerializer.Serialize(new SubscribeErrorMessage
+                        var subReq = cmd.Subscribe;
+                        if (subReq == null)
+                            break;
+                        if (_subscriptions.Count >= MaxSubscriptions)
                         {
-                            Id = subReq.Id,
-                            Seq = 0,
-                            ErrorKind = "limit",
-                            Message = $"Maximum {MaxSubscriptions} active subscriptions reached.",
-                            Final = true,
-                        }));
-                    }
-                    else
-                    {
-                        _subscriptions[subReq.Id] = new ActiveSubscription
+                            _server?.Send(MessageSerializer.Serialize(new SubscribeErrorMessage
+                            {
+                                Id = subReq.Id,
+                                Seq = 0,
+                                ErrorKind = "limit",
+                                Message = $"Maximum {MaxSubscriptions} active subscriptions reached.",
+                                Final = true,
+                            }));
+                        }
+                        else
                         {
-                            Id = subReq.Id,
-                            Code = subReq.Code,
-                            IntervalFrames = Math.Max(1, subReq.IntervalFrames),
-                            OnChange = subReq.OnChange,
-                            Limit = subReq.Limit,
-                            TimeoutMs = subReq.TimeoutMs > 0 ? subReq.TimeoutMs : _config.DefaultTimeoutMs,
-                            LastEvalFrame = _frameCounter,
-                        };
-                        _host.Log(LogLevel.Debug,
-                            $"Subscription '{subReq.Id}' created: interval={subReq.IntervalFrames} onChange={subReq.OnChange}");
+                            _subscriptions[subReq.Id] = new ActiveSubscription
+                            {
+                                Id = subReq.Id,
+                                Code = subReq.Code,
+                                IntervalFrames = Math.Max(1, subReq.IntervalFrames),
+                                OnChange = subReq.OnChange,
+                                Limit = subReq.Limit,
+                                TimeoutMs = subReq.TimeoutMs > 0 ? subReq.TimeoutMs : _config.DefaultTimeoutMs,
+                                LastEvalFrame = _frameCounter,
+                            };
+                            _host.Log(LogLevel.Debug,
+                                $"Subscription '{subReq.Id}' created: interval={subReq.IntervalFrames} onChange={subReq.OnChange}");
+                        }
+                        break;
                     }
-                    break;
-                }
 
                 default:
                     _host.Log(LogLevel.Warning, $"Unknown command kind: {cmd.Kind}");
