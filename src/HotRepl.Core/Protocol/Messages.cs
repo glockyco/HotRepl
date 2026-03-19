@@ -174,4 +174,84 @@ namespace HotRepl.Protocol
         public long DurationMs { get; set; }
     }
 
+
+    // =====================================================================
+    // Subscriptions (watches, breakpoints, hooks)
+    // =====================================================================
+
+    /// <summary>Subscribe to repeated evaluation of an expression.</summary>
+    internal sealed class SubscribeRequest
+    {
+        [JsonProperty("type")]
+        public string Type { get; set; } = "subscribe";
+
+        [JsonProperty("id")]
+        public string Id { get; set; } = string.Empty;
+
+        [JsonProperty("code")]
+        public string Code { get; set; } = string.Empty;
+
+        [JsonProperty("intervalFrames")]
+        public int IntervalFrames { get; set; } = 1;
+
+        [JsonProperty("onChange")]
+        public bool OnChange { get; set; }
+
+        [JsonProperty("limit")]
+        public int Limit { get; set; } // 0 = unlimited
+
+        [JsonProperty("timeoutMs")]
+        public int TimeoutMs { get; set; } = 10000;
+    }
+
+    /// <summary>Subscription evaluation result (pushed repeatedly).</summary>
+    internal sealed class SubscribeResultMessage
+    {
+        [JsonProperty("type")]
+        public string Type { get; set; } = "subscribe_result";
+
+        [JsonProperty("id")]
+        public string Id { get; set; } = string.Empty;
+
+        [JsonProperty("seq")]
+        public int Seq { get; set; }
+
+        [JsonProperty("hasValue")]
+        public bool HasValue { get; set; }
+
+        [JsonProperty("value")]
+        public string? Value { get; set; }
+
+        [JsonProperty("valueType")]
+        public string? ValueType { get; set; }
+
+        [JsonProperty("durationMs")]
+        public long DurationMs { get; set; }
+
+        [JsonProperty("final")]
+        public bool Final { get; set; }
+    }
+
+    /// <summary>Subscription evaluation error.</summary>
+    internal sealed class SubscribeErrorMessage
+    {
+        [JsonProperty("type")]
+        public string Type { get; set; } = "subscribe_error";
+
+        [JsonProperty("id")]
+        public string Id { get; set; } = string.Empty;
+
+        [JsonProperty("seq")]
+        public int Seq { get; set; }
+
+        [JsonProperty("errorKind")]
+        public string ErrorKind { get; set; } = string.Empty;
+
+        [JsonProperty("message")]
+        public string Message { get; set; } = string.Empty;
+
+        [JsonProperty("final")]
+        public bool Final { get; set; }
+    }
+
 }

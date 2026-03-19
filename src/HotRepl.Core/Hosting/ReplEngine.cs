@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
@@ -48,6 +49,12 @@ namespace HotRepl.Hosting
         private readonly ConcurrentQueue<QueuedEval> _evalQueue = new();
         private readonly ConcurrentQueue<string> _cancelQueue = new();
         private readonly ConcurrentQueue<QueuedCommand> _commandQueue = new();
+
+        // Active subscriptions — keyed by subscription id.
+        private readonly Dictionary<string, ActiveSubscription> _subscriptions = new();
+        private const int MaxSubscriptions = 8;
+        private const int MaxConsecutiveErrors = 3;
+        private int _frameCounter;
 
         /// <summary>
         /// The message id of the evaluation currently executing inside
@@ -117,14 +124,18 @@ namespace HotRepl.Hosting
             if (_evaluator == null || _server == null)
                 return;
 
-            // 1. Drain cancel queue — mark active eval for cancellation.
+            // 1. Drain cancel queue — cancel active eval or remove subscription.
             while (_cancelQueue.TryDequeue(out var cancelId))
             {
+                // Cancel active eval
                 if (_activeEvalId != null && _activeEvalId == cancelId)
                 {
                     _cancelRequested = true;
                     _mainThread?.Abort();
                 }
+
+                // Cancel subscription
+                _subscriptions.Remove(cancelId);
             }
 
             // 2. Drain command queue (reset, ping).
@@ -133,10 +144,15 @@ namespace HotRepl.Hosting
                 HandleCommand(cmd);
             }
 
-            // 3. Process one eval request.
-            if (!_evalQueue.TryDequeue(out var request))
-                return;
+            // 3. Process one eval request (if any).
+            if (_evalQueue.TryDequeue(out var request))
+            {
+                ExecuteEval(request);
+            }
 
+            // 4. Process subscriptions.
+            _frameCounter++;
+            ProcessSubscriptions();
             ExecuteEval(request);
         }
 
@@ -205,6 +221,12 @@ namespace HotRepl.Hosting
                         ? complete.Code.Substring(0, complete.CursorPos)
                         : complete.Code;
                     _commandQueue.Enqueue(new QueuedCommand(complete.Id, CommandKind.Complete, code));
+                    break;
+
+                case "subscribe":
+                    var sub = MessageSerializer.Deserialize<SubscribeRequest>(rawJson);
+                    _commandQueue.Enqueue(new QueuedCommand(
+                        sub.Id, CommandKind.Subscribe, rawJson));
                     break;
 
                 default:
@@ -361,6 +383,7 @@ namespace HotRepl.Hosting
                 case CommandKind.Reset:
                     _host.Log(LogLevel.Info, "Resetting evaluator.");
                     _evaluator?.Dispose();
+                    _subscriptions.Clear();
                     _evaluator = CreateEvaluator();
 
                     var resetJson = MessageSerializer.Serialize(new ResetResultMessage
@@ -389,9 +412,128 @@ namespace HotRepl.Hosting
                     _server?.Send(completeJson);
                     break;
 
+                case CommandKind.Subscribe:
+                    if (cmd.Data != null)
+                    {
+                        var subReq = MessageSerializer.Deserialize<SubscribeRequest>(cmd.Data);
+                        if (_subscriptions.Count >= MaxSubscriptions)
+                        {
+                            _server?.Send(MessageSerializer.Serialize(new SubscribeErrorMessage
+                            {
+                                Id = subReq.Id,
+                                Seq = 0,
+                                ErrorKind = "limit",
+                                Message = $"Maximum {MaxSubscriptions} active subscriptions reached.",
+                                Final = true,
+                            }));
+                        }
+                        else
+                        {
+                            _subscriptions[subReq.Id] = new ActiveSubscription
+                            {
+                                Id = subReq.Id,
+                                Code = subReq.Code,
+                                IntervalFrames = Math.Max(1, subReq.IntervalFrames),
+                                OnChange = subReq.OnChange,
+                                Limit = subReq.Limit,
+                                TimeoutMs = subReq.TimeoutMs > 0 ? subReq.TimeoutMs : _config.DefaultTimeoutMs,
+                                LastEvalFrame = _frameCounter,
+                            };
+                            _host.Log(LogLevel.Debug,
+                                $"Subscription '{subReq.Id}' created: interval={subReq.IntervalFrames} onChange={subReq.OnChange}");
+                        }
+                    }
+                    break;
+
                 default:
                     _host.Log(LogLevel.Warning, $"Unknown command kind: {cmd.Kind}");
                     break;
+            }
+        }
+
+        // ------------------------------------------------------------------
+        // Subscriptions
+        // ------------------------------------------------------------------
+
+        private void ProcessSubscriptions()
+        {
+            if (_subscriptions.Count == 0 || _evaluator == null)
+                return;
+
+            // Collect ids to remove after iteration
+            List<string>? toRemove = null;
+
+            foreach (var kvp in _subscriptions)
+            {
+                var sub = kvp.Value;
+
+                // Check interval
+                if (_frameCounter - sub.LastEvalFrame < sub.IntervalFrames)
+                    continue;
+
+                sub.LastEvalFrame = _frameCounter;
+                sub.Seq++;
+
+                var result = _evaluator.Evaluate(sub.Code);
+
+                if (result.Success)
+                {
+                    sub.ConsecutiveErrors = 0;
+                    var serialized = result.HasValue
+                        ? ResultSerializer.Serialize(result.Value, _config.MaxEnumerableElements)
+                        : null;
+
+                    // If onChange, skip if value unchanged
+                    if (sub.OnChange && serialized == sub.LastValue)
+                        continue;
+
+                    sub.LastValue = serialized;
+
+                    bool isFinal = sub.Limit > 0 && sub.Seq >= sub.Limit;
+
+                    _server?.Send(MessageSerializer.Serialize(new SubscribeResultMessage
+                    {
+                        Id = sub.Id,
+                        Seq = sub.Seq,
+                        HasValue = result.HasValue,
+                        Value = serialized,
+                        ValueType = result.ValueType,
+                        DurationMs = result.DurationMs,
+                        Final = isFinal,
+                    }));
+
+                    if (isFinal)
+                    {
+                        (toRemove ??= new List<string>()).Add(sub.Id);
+                    }
+                }
+                else
+                {
+                    sub.ConsecutiveErrors++;
+                    bool isFinal = sub.ConsecutiveErrors >= MaxConsecutiveErrors;
+
+                    _server?.Send(MessageSerializer.Serialize(new SubscribeErrorMessage
+                    {
+                        Id = sub.Id,
+                        Seq = sub.Seq,
+                        ErrorKind = result.ErrorKind ?? "runtime",
+                        Message = result.Error ?? "Unknown error",
+                        Final = isFinal,
+                    }));
+
+                    if (isFinal)
+                    {
+                        _host.Log(LogLevel.Warning,
+                            $"Subscription '{sub.Id}' removed after {MaxConsecutiveErrors} consecutive errors.");
+                        (toRemove ??= new List<string>()).Add(sub.Id);
+                    }
+                }
+            }
+
+            if (toRemove != null)
+            {
+                foreach (var id in toRemove)
+                    _subscriptions.Remove(id);
             }
         }
 
@@ -454,6 +596,22 @@ namespace HotRepl.Hosting
             Reset,
             Ping,
             Complete,
+            Subscribe,
         }
+
+        private sealed class ActiveSubscription
+        {
+            public string Id { get; set; } = "";
+            public string Code { get; set; } = "";
+            public int IntervalFrames { get; set; } = 1;
+            public bool OnChange { get; set; }
+            public int Limit { get; set; }  // 0 = unlimited
+            public int TimeoutMs { get; set; } = 10000;
+            public int Seq { get; set; }
+            public int LastEvalFrame { get; set; }
+            public string? LastValue { get; set; }
+            public int ConsecutiveErrors { get; set; }
+        }
+
     }
 }
