@@ -17,18 +17,63 @@ bd update <id> --claim  # Claim work atomically
 bd close <id>         # Complete work
 ```
 
-## Architecture
+## Project Structure
 
-- `src/HotRepl.Core/` — Framework-agnostic core (netstandard2.1)
-- `src/HotRepl.BepInEx/` — BepInEx 5.x adapter
-- `lib/Mono.CSharp.dll` — Built from mcs-unity (net35 target)
+```
+HotRepl.slnx                          # Solution file (slnx format)
+src/
+  HotRepl.Core/                        # Framework-agnostic core (netstandard2.1)
+    Evaluation/                        # MonoEvaluator, ICodeEvaluator, EvalResult
+    Hosting/                           # IReplHost interface, ReplEngine, ReplConfig
+    Protocol/                          # Message types, MessageSerializer
+    Serialization/                     # ResultSerializer (value formatting)
+    Server/                            # ReplServer (Fleck WebSocket)
+    Polyfills/                         # IsExternalInit for record support
+  HotRepl.BepInEx/                     # BepInEx 5.x adapter (netstandard2.1)
+    ReplPlugin.cs                      # BepInEx plugin entry point
+    BepInExHost.cs                     # IReplHost implementation
+lib/
+  Mono.CSharp.dll                      # Mono compiler (net35, from mcs-unity)
+```
 
 ## Building
 
 ```bash
-dotnet build                          # Build all projects
-dotnet build src/HotRepl.BepInEx/     # Build BepInEx adapter only
+dotnet build                           # Build all projects
+dotnet build src/HotRepl.Core/         # Build core only
+dotnet build src/HotRepl.BepInEx/      # Build BepInEx adapter only
 ```
+
+There are no tests yet. When added:
+```bash
+dotnet test                            # Run all tests
+```
+
+## Deploying for Testing
+
+Copy the built DLLs to a BepInEx-enabled game:
+
+```bash
+GAME_DIR="/path/to/game"
+cp -f src/HotRepl.Core/bin/Debug/netstandard2.1/HotRepl.Core.dll "$GAME_DIR/BepInEx/plugins/"
+cp -f src/HotRepl.BepInEx/bin/Debug/netstandard2.1/HotRepl.BepInEx.dll "$GAME_DIR/BepInEx/plugins/"
+```
+
+Launch the game, then connect to `ws://localhost:18590`.
+
+## Beads Usage
+
+This project uses [beads](https://github.com/cosmicpudding/beads) (bd) for issue tracking.
+
+```bash
+bd onboard            # First-time setup
+bd ready              # List available work
+bd show <id>          # View issue details
+bd update <id> --claim  # Claim an issue
+bd close <id>         # Mark complete
+```
+
+Always claim an issue before starting work. Close it when done.
 
 ## Non-Interactive Shell Commands
 
@@ -38,4 +83,5 @@ cp -f source dest
 mv -f source dest
 rm -f file
 rm -rf directory
+dotnet build --nologo -v q    # Quiet build output
 ```

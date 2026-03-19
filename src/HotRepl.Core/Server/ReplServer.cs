@@ -120,7 +120,8 @@ namespace HotRepl.Server
                 if (previous != null && previous != socket)
                 {
                     _log("[HotRepl] Replacing previous client connection.");
-                    try { previous.Close(); }
+                    try
+                    { previous.Close(); }
                     catch { /* best-effort */ }
                 }
 

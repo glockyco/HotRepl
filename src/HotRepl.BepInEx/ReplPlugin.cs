@@ -12,7 +12,7 @@ public sealed class ReplPlugin : BaseUnityPlugin
 {
     public const string PluginGuid = "com.hotrepl.bepinex";
     public const string PluginName = "HotRepl";
-    public const string PluginVersion = "0.1.0";
+    public const string PluginVersion = VersionInfo.SemVer;
 
     private BepInExHost? _host;
     private ReplEngine? _engine;

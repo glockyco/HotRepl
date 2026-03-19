@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.x
+
+      - name: Restore
+        run: dotnet restore src/HotRepl.Core/HotRepl.Core.csproj
+
+      - name: Build
+        run: dotnet build src/HotRepl.Core/HotRepl.Core.csproj --no-restore
+
+      - name: Format check
+        run: dotnet format src/HotRepl.Core/HotRepl.Core.csproj --verify-no-changes --no-restore
+
+      - name: Test
+        run: |
+          if dotnet sln list 2>/dev/null | grep -qi test; then
+            dotnet test --no-build
+          else
+            echo "No test projects found — skipping"
+          fi
