@@ -226,16 +226,17 @@ namespace HotRepl.Hosting
 
                 case "complete":
                     var complete = MessageSerializer.Deserialize<CompleteRequest>(rawJson);
-                    var code = complete.CursorPos >= 0 && complete.CursorPos < complete.Code.Length
+                    var completionCode = complete.CursorPos >= 0 && complete.CursorPos < complete.Code.Length
                         ? complete.Code.Substring(0, complete.CursorPos)
                         : complete.Code;
-                    _commandQueue.Enqueue(new QueuedCommand(complete.Id, CommandKind.Complete, code));
+                    _commandQueue.Enqueue(new QueuedCommand(complete.Id, CommandKind.Complete,
+                        code: completionCode));
                     break;
 
                 case "subscribe":
                     var sub = MessageSerializer.Deserialize<SubscribeRequest>(rawJson);
-                    _commandQueue.Enqueue(new QueuedCommand(
-                        sub.Id, CommandKind.Subscribe, rawJson));
+                    _commandQueue.Enqueue(new QueuedCommand(sub.Id, CommandKind.Subscribe,
+                        subscribe: sub));
                     break;
 
                 default:
@@ -429,7 +430,7 @@ namespace HotRepl.Hosting
 
                 case CommandKind.Complete:
                     var sw = Stopwatch.StartNew();
-                    var completions = _evaluator?.GetCompletions(cmd.Data ?? "") ?? Array.Empty<string>();
+                    var completions = _evaluator?.GetCompletions(cmd.Code ?? "") ?? Array.Empty<string>();
                     sw.Stop();
                     var completeJson = MessageSerializer.Serialize(new CompleteResultMessage
                     {
@@ -441,37 +442,37 @@ namespace HotRepl.Hosting
                     break;
 
                 case CommandKind.Subscribe:
-                    if (cmd.Data != null)
+                {
+                    var subReq = cmd.Subscribe;
+                    if (subReq == null) break;
+                    if (_subscriptions.Count >= MaxSubscriptions)
                     {
-                        var subReq = MessageSerializer.Deserialize<SubscribeRequest>(cmd.Data);
-                        if (_subscriptions.Count >= MaxSubscriptions)
+                        _server?.Send(MessageSerializer.Serialize(new SubscribeErrorMessage
                         {
-                            _server?.Send(MessageSerializer.Serialize(new SubscribeErrorMessage
-                            {
-                                Id = subReq.Id,
-                                Seq = 0,
-                                ErrorKind = "limit",
-                                Message = $"Maximum {MaxSubscriptions} active subscriptions reached.",
-                                Final = true,
-                            }));
-                        }
-                        else
+                            Id = subReq.Id,
+                            Seq = 0,
+                            ErrorKind = "limit",
+                            Message = $"Maximum {MaxSubscriptions} active subscriptions reached.",
+                            Final = true,
+                        }));
+                    }
+                    else
+                    {
+                        _subscriptions[subReq.Id] = new ActiveSubscription
                         {
-                            _subscriptions[subReq.Id] = new ActiveSubscription
-                            {
-                                Id = subReq.Id,
-                                Code = subReq.Code,
-                                IntervalFrames = Math.Max(1, subReq.IntervalFrames),
-                                OnChange = subReq.OnChange,
-                                Limit = subReq.Limit,
-                                TimeoutMs = subReq.TimeoutMs > 0 ? subReq.TimeoutMs : _config.DefaultTimeoutMs,
-                                LastEvalFrame = _frameCounter,
-                            };
-                            _host.Log(LogLevel.Debug,
-                                $"Subscription '{subReq.Id}' created: interval={subReq.IntervalFrames} onChange={subReq.OnChange}");
-                        }
+                            Id = subReq.Id,
+                            Code = subReq.Code,
+                            IntervalFrames = Math.Max(1, subReq.IntervalFrames),
+                            OnChange = subReq.OnChange,
+                            Limit = subReq.Limit,
+                            TimeoutMs = subReq.TimeoutMs > 0 ? subReq.TimeoutMs : _config.DefaultTimeoutMs,
+                            LastEvalFrame = _frameCounter,
+                        };
+                        _host.Log(LogLevel.Debug,
+                            $"Subscription '{subReq.Id}' created: interval={subReq.IntervalFrames} onChange={subReq.OnChange}");
                     }
                     break;
+                }
 
                 default:
                     _host.Log(LogLevel.Warning, $"Unknown command kind: {cmd.Kind}");
@@ -609,13 +610,16 @@ namespace HotRepl.Hosting
         {
             public string Id { get; }
             public CommandKind Kind { get; }
-            public string? Data { get; }
+            public string? Code { get; }
+            public SubscribeRequest? Subscribe { get; }
 
-            public QueuedCommand(string id, CommandKind kind, string? data = null)
+            public QueuedCommand(string id, CommandKind kind,
+                string? code = null, SubscribeRequest? subscribe = null)
             {
                 Id = id;
                 Kind = kind;
-                Data = data;
+                Code = code;
+                Subscribe = subscribe;
             }
         }
 
