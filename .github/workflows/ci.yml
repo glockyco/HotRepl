@@ -10,25 +10,31 @@ jobs:
   csharp:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           lfs: true
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: 8.x
+          dotnet-version: 10.x
 
+      # HotRepl.BepInEx requires Unity assemblies that aren't available in CI.
+      # Build only Core and Tests.
       - name: Restore
-        run: dotnet restore
+        run: |
+          dotnet restore src/HotRepl.Core/HotRepl.Core.csproj
+          dotnet restore tests/HotRepl.Tests/HotRepl.Tests.csproj
 
       - name: Build
-        run: dotnet build --no-restore
+        run: |
+          dotnet build src/HotRepl.Core/HotRepl.Core.csproj --no-restore
+          dotnet build tests/HotRepl.Tests/HotRepl.Tests.csproj --no-restore
 
       - name: Format check
         run: dotnet format src/HotRepl.Core/HotRepl.Core.csproj --verify-no-changes --no-restore
 
       - name: Test
-        run: dotnet test --no-build --verbosity quiet
+        run: dotnet test tests/HotRepl.Tests/HotRepl.Tests.csproj --no-build --verbosity quiet
 
   python-client:
     runs-on: ubuntu-latest
@@ -36,13 +42,13 @@ jobs:
       run:
         working-directory: client
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - uses: astral-sh/setup-uv@v4
+      - uses: astral-sh/setup-uv@v7
 
       - name: Install
         run: uv pip install --system -e '.[dev]'
