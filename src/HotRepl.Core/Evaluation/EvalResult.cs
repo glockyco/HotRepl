@@ -91,7 +91,7 @@ namespace HotRepl.Evaluation
             {
                 Success = false,
                 Error = cancelled ? "Evaluation cancelled." : "Evaluation timed out.",
-                ErrorKind = "runtime",
+                ErrorKind = cancelled ? "cancelled" : "timeout",
                 DurationMs = durationMs
             };
     }
