@@ -44,4 +44,17 @@ internal sealed class BepInExHost : IReplHost
         "UnityEngine",
         "UnityEngine.SceneManagement",
     };
+
+    public void Log(Hosting.LogLevel level, string message)
+    {
+        var bepLevel = level switch
+        {
+            Hosting.LogLevel.Debug => global::BepInEx.Logging.LogLevel.Debug,
+            Hosting.LogLevel.Info => global::BepInEx.Logging.LogLevel.Info,
+            Hosting.LogLevel.Warning => global::BepInEx.Logging.LogLevel.Warning,
+            Hosting.LogLevel.Error => global::BepInEx.Logging.LogLevel.Error,
+            _ => global::BepInEx.Logging.LogLevel.Info,
+        };
+        _logger.Log(bepLevel, message);
+    }
 }
