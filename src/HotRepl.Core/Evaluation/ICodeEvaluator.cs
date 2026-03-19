@@ -1,5 +1,4 @@
 using System;
-using System.Reflection;
 
 namespace HotRepl.Evaluation
 {
@@ -19,24 +18,6 @@ namespace HotRepl.Evaluation
         /// must not spawn additional threads.
         /// </summary>
         EvalResult Evaluate(string code);
-
-        /// <summary>
-        /// Makes the types in <paramref name="assembly"/> available to
-        /// subsequent evaluations.
-        /// </summary>
-        void AddReference(Assembly assembly);
-
-        /// <summary>
-        /// Adds a <c>using</c> directive so future evaluations can reference
-        /// types in <paramref name="ns"/> without qualification.
-        /// </summary>
-        void AddUsing(string ns);
-
-        /// <summary>
-        /// Tears down the current evaluator state and reinitializes it,
-        /// preserving only the original reference assemblies and usings.
-        /// </summary>
-        void Reset();
 
         /// <summary>
         /// Returns autocomplete suggestions for the partial code at the given
