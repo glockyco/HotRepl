@@ -92,7 +92,8 @@ namespace HotRepl.Hosting
             {
                 Version = "1.0.0",
                 CsharpVersion = "7.x",
-                DefaultUsings = _host.DefaultUsings.ToArray()
+                DefaultUsings = _host.DefaultUsings.ToArray(),
+                Helpers = Helpers.ReplHelpers.AdvertisedHelpers,
             });
 
             _server = new ReplServer(
@@ -353,7 +354,14 @@ namespace HotRepl.Hosting
 
         private ICodeEvaluator CreateEvaluator()
         {
-            return new MonoEvaluator(_host.ReferenceAssemblies, _host.DefaultUsings);
+            var eval = new MonoEvaluator(_host.ReferenceAssemblies, _host.DefaultUsings);
+
+            // Inject helper library into the REPL environment
+            var helperResult = eval.Evaluate(Helpers.ReplHelpers.Source);
+            if (!helperResult.Success)
+                _host.Log(LogLevel.Warning, $"Failed to inject helpers: {helperResult.Error}");
+
+            return eval;
         }
 
         private void ThrowIfDisposed()

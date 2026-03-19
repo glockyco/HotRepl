@@ -66,6 +66,9 @@ namespace HotRepl.Protocol
 
         [JsonProperty("defaultUsings")]
         public string[] DefaultUsings { get; set; } = System.Array.Empty<string>();
+
+        [JsonProperty("helpers")]
+        public string[] Helpers { get; set; } = System.Array.Empty<string>();
     }
 
     /// <summary>Successful evaluation result.</summary>
