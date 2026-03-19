@@ -151,6 +151,7 @@ engine.Dispose();
 - **Memory leaks from type definitions** -- types defined via `eval` (classes, structs) are loaded into the AppDomain and cannot be unloaded; use `reset` to mitigate but the assemblies remain in memory until the process exits
 - **Single client** -- one WebSocket connection at a time; subsequent connections replace the previous one
 - **`identifier * expr` parses as pointer type** -- Mono's interactive parser treats `a * 2` as a pointer-type declaration when `a` was defined in a previous eval. Use `2 * a` (literal on left) or a method call instead. This is a mcs.dll parser limitation; it does not affect `+`, `-`, or `/`.
+- **Timeout and cancel are unreliable for tight loops** -- `Thread.Abort()`, used for eval timeout and cancel, is not guaranteed to interrupt tight loops like `while(true){}` on Unity's Mono JIT because Mono does not inject safepoints at loop back-edges. If an eval hangs, the game must be restarted. This is a Mono runtime limitation, not a HotRepl bug. A fix requires either Roslyn scripting (.NET 6+ / Unity 6+) or cooperative cancellation via code rewriting (fragile, changes semantics). For normal REPL usage -- inspecting game state, calling methods, exploring types -- this is rarely encountered.
 
 ## License
 

@@ -27,9 +27,21 @@ internal sealed class ReplWebSocketServer : IDisposable
     public void Start(int port)
     {
         var location = $"ws://0.0.0.0:{port}";
+
+        // Redirect Fleck's internal logger through our host logger
+        // instead of letting it hit Console.WriteLine (which BepInEx intercepts).
+        // Debug-level Fleck output is suppressed — it's high-volume startup noise.
+        Fleck.FleckLog.LogAction = (level, msg, ex) =>
+        {
+            if (level == LogLevel.Debug)
+                return;
+            _log($"[Fleck:{level}] {msg}{(ex == null ? "" : " -- " + ex.Message)}");
+        };
+
         _server = new Fleck.WebSocketServer(location);
+        _log($"[HotRepl] Calling Fleck Start()...");
         _server.Start(ConfigureSocket);
-        _log($"[HotRepl] WebSocket server listening on {location}");
+        _log($"[HotRepl] Fleck Start() returned. Server listening on {location}");
     }
 
     /// <summary>

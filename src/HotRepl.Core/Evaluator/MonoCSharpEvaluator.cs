@@ -13,8 +13,8 @@ namespace HotRepl.Evaluator;
 /// Wraps Mono.CSharp.Evaluator to compile and execute C# 7.x code at runtime.
 ///
 /// Threading: all public methods MUST be called from the Unity main thread.
-/// Evaluate() may raise ThreadAbortException when the engine's watchdog fires;
-/// the caller (ReplEngine) is responsible for catching it and calling Thread.ResetAbort().
+/// Evaluate() catches ThreadAbortException internally when the engine's watchdog fires,
+/// calls ResetAbort(), and returns an Aborted sentinel for RunGuarded to resolve.
 /// </summary>
 internal sealed class MonoCSharpEvaluator : ICodeEvaluator, IDisposable
 {
@@ -39,6 +39,14 @@ internal sealed class MonoCSharpEvaluator : ICodeEvaluator, IDisposable
     private StringBuilder? _errors;
     private bool _isInitialized;
     private bool _disposed;
+
+    // Tracks how many levels deep we are inside a Mono evaluator call.
+    // AssemblyLoad events fire synchronously on the same thread. If we're
+    // already inside Compile() or ReferenceAssembly(), a re-entrant call to
+    // ReferenceAssembly() in OnAssemblyLoad would cause the evaluator to
+    // regenerate its internal class, re-fire AssemblyLoad, and loop forever.
+    // Blocking re-entry when depth > 0 breaks the cycle.
+    private int _evaluatorCallDepth;
 
     public MonoCSharpEvaluator(IReplHost host)
     {
@@ -76,24 +84,30 @@ internal sealed class MonoCSharpEvaluator : ICodeEvaluator, IDisposable
 
     /// <summary>
     /// Compiles and runs <paramref name="code"/>. Returns a typed outcome for all
-    /// non-abort results. ThreadAbortException is NOT caught here — it propagates
-    /// to the engine's ExecuteEval / GuardedEvaluate, which owns ResetAbort().
+    /// results including abort. ThreadAbortException IS caught here — ResetAbort()
+    /// is called immediately and the Aborted sentinel is returned for RunGuarded to resolve.
     /// </summary>
     public EvalOutcome Evaluate(string code)
     {
         _errors!.Clear();
         var sw = Stopwatch.StartNew();
 
-        StdoutCapture.BeginCapture();
+        // Temporarily replace Console.Out so we capture stdout produced by eval
+        // code (e.g. Console.WriteLine) without routing it back through BepInEx's
+        // log pipeline. The TeeWriter approach creates a feedback loop: BepInEx's
+        // log listener writes to Console.Out, which is the TeeWriter, which writes
+        // back to BepInEx's listener, ad infinitum.
+        var previousOut = Console.Out;
+        var capture = new System.IO.StringWriter();
+        Console.SetOut(capture);
         try
         {
             CompiledMethod? compiled = _evaluator!.Compile(code);
 
             if (_errors.Length > 0)
             {
-                // Compile error: EndCapture discards any partial stdout.
-                var stdout1 = StdoutCapture.EndCapture();
-                return EvalOutcome.CompileError(_errors.ToString().Trim(), stdout1, sw.ElapsedMilliseconds);
+                return EvalOutcome.CompileError(_errors.ToString().Trim(),
+                    Stdout(capture), sw.ElapsedMilliseconds);
             }
 
             if (compiled != null)
@@ -101,29 +115,46 @@ internal sealed class MonoCSharpEvaluator : ICodeEvaluator, IDisposable
                 object? result = null;
                 compiled.Invoke(ref result);
                 sw.Stop();
-
-                var stdout2 = StdoutCapture.EndCapture();
                 return result != null
-                    ? EvalOutcome.Ok(result, result.GetType().FullName, stdout2, sw.ElapsedMilliseconds)
-                    : EvalOutcome.OkVoid(stdout2, sw.ElapsedMilliseconds);
+                    ? EvalOutcome.Ok(result, result.GetType().FullName, Stdout(capture), sw.ElapsedMilliseconds)
+                    : EvalOutcome.OkVoid(Stdout(capture), sw.ElapsedMilliseconds);
             }
 
-            // Valid definition (class, using, etc.) — no return value.
-            var stdout3 = StdoutCapture.EndCapture();
-            return EvalOutcome.OkVoid(stdout3, sw.ElapsedMilliseconds);
+            return EvalOutcome.OkVoid(Stdout(capture), sw.ElapsedMilliseconds);
         }
         catch (ThreadAbortException)
         {
-            // Clean up capture, then let the engine handle the abort.
-            StdoutCapture.EndCapture();
-            throw;
+            // Call ResetAbort immediately — before the finally block runs — so that
+            // Console.SetOut() in the finally executes in a normal (non-abort) context.
+            // Delaying ResetAbort until the caller (RunGuarded) causes Mono to run
+            // Console.SetOut() under a pending abort, which stalls for seconds.
+            // Return a sentinel so RunGuarded knows the eval was aborted.
+            Thread.ResetAbort();
+            sw.Stop();
+            Console.SetOut(previousOut);
+            capture.Dispose();
+            return EvalOutcome.Aborted;
         }
         catch (Exception ex)
         {
             sw.Stop();
-            var stdout4 = StdoutCapture.EndCapture();
-            return EvalOutcome.RuntimeError(ex.Message, ex.StackTrace, stdout4, sw.ElapsedMilliseconds);
+            return EvalOutcome.RuntimeError(ex.Message, ex.StackTrace, Stdout(capture), sw.ElapsedMilliseconds);
         }
+        finally
+        {
+            // Safe to call again after the TAE catch block already did this:
+            // StringWriter.Dispose() is idempotent and Console.SetOut() is harmless
+            // when called twice with the same writer. The finally ensures cleanup on
+            // all non-abort exit paths (success, compile error, runtime error).
+            Console.SetOut(previousOut);
+            capture.Dispose();
+        }
+    }
+
+    private static string? Stdout(System.IO.StringWriter w)
+    {
+        var s = w.ToString();
+        return s.Length > 0 ? s : null;
     }
 
     public CompletionResult Complete(string code, int cursorPos)
@@ -205,16 +236,36 @@ internal sealed class MonoCSharpEvaluator : ICodeEvaluator, IDisposable
                 return;
             if (AssemblyFilter.IsFiltered(name))
                 return;
-            _evaluator?.ReferenceAssembly(asm);
+
+            _evaluatorCallDepth++;
+            try
+            {
+                _evaluator?.ReferenceAssembly(asm);
+            }
+            finally
+            {
+                _evaluatorCallDepth--;
+            }
         }
         catch
         {
-            // Dynamic / collectible assemblies can throw — silently skip.
+            // Collectible assemblies can throw — silently skip.
         }
     }
 
     private void OnAssemblyLoad(object? sender, AssemblyLoadEventArgs e)
-        => TryReference(e.LoadedAssembly);
+    {
+        // Block re-entrant calls: AssemblyLoad fires synchronously on the same
+        // thread as Compile()/ReferenceAssembly(). Calling ReferenceAssembly from
+        // within itself causes the evaluator to regenerate its internal class,
+        // which re-fires AssemblyLoad — infinite loop.
+        if (_evaluatorCallDepth > 0)
+        {
+            _host.LogDebug($"skipped re-entrant load: {e.LoadedAssembly.GetName().Name}");
+            return;
+        }
+        TryReference(e.LoadedAssembly);
+    }
 
     // ── Compiler error sink ───────────────────────────────────────────────────
 

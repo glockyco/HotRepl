@@ -1,8 +1,8 @@
 namespace HotRepl.Evaluator;
 
 /// <summary>
-/// The result of one evaluation — always returned, never thrown (except for
-/// ThreadAbortException which propagates to the engine for cancel/timeout handling).
+/// The result of one evaluation. Always returned, never thrown.
+/// ThreadAbortException is caught inside Evaluate() and converted to Aborted().
 /// </summary>
 internal sealed class EvalOutcome
 {
@@ -37,4 +37,12 @@ internal sealed class EvalOutcome
     /// <summary>Produced by the engine when a cancel request matched. No stdout — TAE interrupted the capture.</summary>
     public static EvalOutcome Cancelled(long durationMs) =>
         new() { Success = false, ErrorKind = Protocol.ErrorKind.Cancelled, ErrorMessage = "Evaluation cancelled.", DurationMs = durationMs };
+
+    /// <summary>
+    /// Sentinel returned when ThreadAbortException was caught in Evaluate().
+    /// RunGuarded inspects _timedOut to determine whether this was a watchdog timeout
+    /// or a cancel request, then replaces this with Timeout() or Cancelled().
+    /// Never sent to the client directly.
+    /// </summary>
+    internal static readonly EvalOutcome Aborted = new() { Success = false, ErrorKind = "aborted" };
 }

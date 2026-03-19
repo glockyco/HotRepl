@@ -74,9 +74,6 @@ public sealed class ReplEngine : IDisposable
     {
         _mainThread = Thread.CurrentThread;
 
-        // Install stdout capture permanently — must happen before any eval.
-        StdoutCapture.Install();
-
         _history = new HistoryTracker();
         _serializer = new JsonResultSerializer();
         _subscriptions = new SubscriptionManager(_host.Config);
@@ -204,7 +201,9 @@ public sealed class ReplEngine : IDisposable
 
     /// <summary>
     /// Core execution primitive reused for both regular evals and subscriptions.
-    /// Sets up the watchdog, calls the evaluator, handles ThreadAbortException.
+    /// Sets up the watchdog, calls the evaluator, and resolves the Aborted sentinel
+    /// (returned by Evaluate() after it catches ThreadAbortException and calls ResetAbort)
+    /// into either Timeout or Cancelled based on watchdog state.
     /// </summary>
     private EvalOutcome GuardedEvaluate(string id, string code, int timeoutMs)
         => RunGuarded(id, code, timeoutMs);
@@ -237,17 +236,19 @@ public sealed class ReplEngine : IDisposable
                 }
             }, null, timeoutMs, Timeout.Infinite);
 
-            return _evaluator!.Evaluate(code);
-        }
-        catch (ThreadAbortException)
-        {
-            Thread.ResetAbort();
-            sw.Stop();
-            // _timedOut is set by the watchdog before it calls Abort.
-            // If it's false, the abort came from CancelEval().
-            return _timedOut
-                ? EvalOutcome.Timeout(sw.ElapsedMilliseconds)
-                : EvalOutcome.Cancelled(sw.ElapsedMilliseconds);
+            var outcome = _evaluator!.Evaluate(code);
+
+            // Evaluate() catches ThreadAbortException internally, calls ResetAbort(),
+            // and returns Aborted as a sentinel. Resolve it here using _timedOut.
+            if (ReferenceEquals(outcome, EvalOutcome.Aborted))
+            {
+                sw.Stop();
+                return _timedOut
+                    ? EvalOutcome.Timeout(sw.ElapsedMilliseconds)
+                    : EvalOutcome.Cancelled(sw.ElapsedMilliseconds);
+            }
+
+            return outcome;
         }
         finally
         {

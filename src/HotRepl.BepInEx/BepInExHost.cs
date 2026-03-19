@@ -38,6 +38,7 @@ internal sealed class BepInExHost : IReplHost
     public ReplConfig Config { get; }
 
     public void LogInfo(string message) => _logger.LogInfo(message);
+    public void LogDebug(string message) => _logger.LogDebug(message);
     public void LogWarning(string message) => _logger.LogWarning(message);
     public void LogError(string message, Exception? ex = null)
     {
