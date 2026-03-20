@@ -99,12 +99,12 @@ src/
     IReplHost.cs              # Host contract: Config, Log*, AdditionalAssemblies/Usings/Helpers
     ReplEngine.cs             # Composition root; drives all subsystems; called by host's Update()
     ReplConfig.cs             # Port, DefaultTimeoutMs, MaxResultLength, MaxEnumerableElements
-    Evaluator/                # MonoEvaluator wraps Mono.CSharp; ICodeEvaluator + EvalOutcome
+    Evaluator/                # MonoCSharpEvaluator wraps Mono.CSharp; ICodeEvaluator + EvalOutcome
     Protocol/                 # Messages.cs (wire records), MessageSerializer.cs
     Helpers/                  # Repl.cs (user-facing helpers), HelperInjector.cs
     Serialization/            # JsonResultSerializer (value → truncated JSON string)
     Server/                   # ReplWebSocketServer (Fleck), ClientRegistry, MessageRouter
-    Subscriptions/            # SubscriptionManager, SubscriptionJob
+    Subscriptions/            # SubscriptionManager, SubscriptionState
   HotRepl.BepInEx/            # BepInEx 5.x adapter; netstandard2.1; requires Unity DLLs in lib/
     ReplPlugin.cs             # Plugin entry point; Awake() → Start(), Update() → Tick()
     BepInExHost.cs            # IReplHost: Unity assemblies, usings, BepInEx logging
