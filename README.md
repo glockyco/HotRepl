@@ -26,59 +26,28 @@ session and cancels all active subscriptions.
 
 ## Protocol
 
-All messages are UTF-8 JSON objects with a `type` discriminant string. `id` is
-caller-assigned (any non-empty string) and echoed verbatim in the response.
+All messages are UTF-8 JSON with a `type` discriminant; `id` is caller-assigned and
+echoed verbatim. See [`src/HotRepl.Core/Protocol/Messages.cs`](src/HotRepl.Core/Protocol/Messages.cs) for the full schema.
 
-### Client → Server
-
-| `type`      | Required fields       | Optional fields                                                                       | Description                                      |
-|-------------|----------------------|---------------------------------------------------------------------------------------|--------------------------------------------------|
-| `eval`      | `id`, `code`         | `timeoutMs` (int, default: 10000)                                                     | Evaluate C# expression or statement(s)           |
-| `cancel`    | `id`                 | —                                                                                     | Cancel a running or queued eval by id            |
-| `reset`     | `id`                 | —                                                                                     | Clear all variables and type definitions         |
-| `ping`      | `id`                 | —                                                                                     | Heartbeat                                        |
-| `complete`  | `id`, `code`         | `cursorPos` (int, default: -1 meaning end-of-string)                                  | Autocomplete suggestions; does not execute code  |
-| `subscribe` | `id`, `code`         | `intervalFrames` (int, default: 1), `onChange` (bool, default: false), `limit` (int, 0 = unlimited), `timeoutMs` (int) | Repeated evaluation on a frame timer or value change |
-
-### Server → Client
-
-| `type`             | Key fields                                                               | Emitted when                        |
-|--------------------|--------------------------------------------------------------------------|-------------------------------------|
-| `handshake`        | `version`, `csharpVersion`, `defaultUsings[]`, `helpers[]`              | Client connects                     |
-| `eval_result`      | `id`, `hasValue` (bool), `value?` (string), `valueType?`, `stdout?`, `durationMs` (ms) | Eval succeeded             |
-| `eval_error`       | `id`, `errorKind`, `message`, `stackTrace?`                             | Eval failed                         |
-| `reset_result`     | `id`, `success` (bool)                                                   | Reset complete                      |
-| `pong`             | `id`                                                                     | Ping received                       |
-| `complete_result`  | `id`, `completions[]`, `durationMs`                                      | Autocomplete done                   |
-| `subscribe_result` | `id`, `seq` (int), `hasValue`, `value?`, `valueType?`, `durationMs`, `final` (bool) | Subscription tick          |
-| `subscribe_error`  | `id`, `seq`, `errorKind`, `message`, `final`                            | Subscription tick failed            |
-
-`errorKind` values: `compile` | `runtime` | `timeout` | `cancelled`
-
-`final: true` on a subscribe message means the subscription is now closed (limit
-reached, unrecoverable error, or reset).
+Notable behaviors:
+- `final: true` on a `subscribe_result` or `subscribe_error` means the subscription
+  is now closed (limit reached, unrecoverable error, or reset)
+- `errorKind`: `compile` | `runtime` | `timeout` | `cancelled`
 
 ## Evaluation Semantics
 
 - **Persistent state**: variables, using directives, and type definitions survive
   across evals within a session. Use `reset` to clear them.
-- **Main thread execution**: all evals run on the game's main thread (Unity
-  `Update()` loop). At most one eval executes per frame. Queued evals are processed
-  in order.
-- **Timeout**: wall-clock budget per eval (default 10 s). A watchdog fires
-  `Thread.Abort` on the main thread and returns `eval_error` with
-  `errorKind: "timeout"`. Override per-request with `timeoutMs`.
-- **C# 7.x only**: `async`/`await`, nullable reference types, and C# 8+ pattern
-  matching are not supported. The Mono.CSharp evaluator is pinned to C# 7.
-- **`varName * expr` parser bug**: when `varName` was previously defined in a REPL
-  session, Mono's interactive parser reads `varName * 2` as a pointer-type
-  declaration, not multiplication. Use `2 * varName` (literal on left) or a method
-  call. Operators `+`, `-`, and `/` are not affected.
+- **Main thread**: all evals run on the game's main thread. At most one executes per
+  frame; the rest queue.
+- **Timeout**: wall-clock budget per eval (default 10 s), overridable via `timeoutMs`.
+  On expiry a watchdog fires `Thread.Abort` and returns `errorKind: "timeout"`.
+- **C# 7.x only**: `async`/`await`, nullable reference types, and C# 8+ features are
+  not supported.
 
 ## Built-in Helpers
 
-Injected into every session as the static class `Repl`. Call `Repl.Help()` after
-connecting for the current full signature list.
+Injected as the static class `Repl`. Call `Repl.Help()` for the current full list.
 
 | Method | Returns | Description |
 |---|---|---|
@@ -87,83 +56,28 @@ connecting for the current full signature list.
 | `Repl.Inspect(object obj, int depth=2, int maxChildren=50)` | `object` | Deep reflection dictionary; handles circular refs |
 | `Repl.Describe(Type type)` | `object` | Type metadata: base, interfaces, properties, fields, methods |
 
-BepInEx adapter injects additional Unity helpers (e.g. `UnityHelpers.SceneGraph()`,
+The BepInEx adapter injects additional Unity helpers (e.g. `UnityHelpers.SceneGraph()`,
 `UnityHelpers.Screenshot()`). They appear in `handshake.helpers[]`.
 
-## Architecture
+## Embedding
 
-```
-HotRepl.slnx
-src/
-  HotRepl.Core/               # Framework-agnostic; netstandard2.1; no game dependencies
-    IReplHost.cs              # Host contract: Config, Log*, AdditionalAssemblies/Usings/Helpers
-    ReplEngine.cs             # Composition root; drives all subsystems; called by host's Update()
-    ReplConfig.cs             # Port, DefaultTimeoutMs, MaxResultLength, MaxEnumerableElements
-    Evaluator/                # MonoCSharpEvaluator wraps Mono.CSharp; ICodeEvaluator + EvalOutcome
-    Protocol/                 # Messages.cs (wire records), MessageSerializer.cs
-    Helpers/                  # Repl.cs (user-facing helpers), HelperInjector.cs
-    Serialization/            # JsonResultSerializer (value → truncated JSON string)
-    Server/                   # ReplWebSocketServer (Fleck), ClientRegistry, MessageRouter
-    Subscriptions/            # SubscriptionManager, SubscriptionState
-  HotRepl.BepInEx/            # BepInEx 5.x adapter; netstandard2.1; requires Unity DLLs in lib/
-    ReplPlugin.cs             # Plugin entry point; Awake() → Start(), Update() → Tick()
-    BepInExHost.cs            # IReplHost: Unity assemblies, usings, BepInEx logging
-lib/
-  mcs.dll                     # Mono compiler (mcs-unity fork); ships alongside plugin
-tests/
-  HotRepl.Tests/              # xUnit; net10.0; no game required
-client/                       # Python reference client + protocol smoke tests
-  src/hotrepl/                # hotrepl CLI + async WebSocket client library
-  tests/                      # ~38 pytest tests covering the full protocol surface
-```
-
-**Threading model**: Fleck threads write to `ConcurrentQueue`s. `Tick()` drains them
-on the main thread. The watchdog timer runs on a pool thread and calls `Thread.Abort`
-on the main thread reference captured at `Start()`.
-
-**Tick drain order** (invariant): (1) cancel requests, (2) command queue (reset/ping/
-complete/subscribe), (3) at most one eval, (4) subscription ticks.
-
-## Creating Adapters
-
-To embed HotRepl in a host other than BepInEx (MelonLoader, MonoGame, standalone
-Mono, test harness), implement `IReplHost` and drive `ReplEngine`:
-
-```csharp
-public interface IReplHost
-{
-    ReplConfig Config { get; }
-    void LogInfo(string message);
-    void LogDebug(string message);
-    void LogWarning(string message);
-    void LogError(string message, Exception? ex = null);
-    IReadOnlyList<Assembly> AdditionalAssemblies { get; }  // extra reference assemblies
-    IReadOnlyList<string> AdditionalUsings { get; }        // extra opened namespaces
-    string[] AdditionalHelperSignatures { get; }           // merged into handshake.helpers[]
-}
-```
+Implement [`IReplHost`](src/HotRepl.Core/IReplHost.cs) and drive `ReplEngine`:
 
 ```csharp
 var engine = new ReplEngine(new MyHost());
-engine.Start();   // call once from the main thread; starts WebSocket server
+engine.Start();   // once, from the main thread
 
-// per-frame (game loop):
-engine.Tick();    // drains queues; executes at most one eval; ticks subscriptions
+// per-frame:
+engine.Tick();
 
 // on shutdown:
 engine.Dispose();
 ```
 
-## Configuration
-
-All properties have safe defaults; only override what you need.
-
-| Property | Default | Description |
-|---|---|---|
-| `Port` | `18590` | WebSocket listen port |
-| `DefaultTimeoutMs` | `10000` | Per-eval wall-clock budget (ms); overridable per-request |
-| `MaxResultLength` | `100000` | Max characters in a serialized result before truncation |
-| `MaxEnumerableElements` | `100` | Max items enumerated from a collection result |
+`IReplHost` is the only coupling point between `HotRepl.Core` and any platform.
+It supplies extra assemblies, opened namespaces, and helper signatures for the
+handshake. See [`ReplConfig.cs`](src/HotRepl.Core/ReplConfig.cs) for configuration
+options (all properties have safe defaults and XML doc comments).
 
 ## Building
 
@@ -173,9 +87,7 @@ dotnet build src/HotRepl.BepInEx/     # Requires Unity DLLs in lib/
 dotnet test tests/HotRepl.Tests/      # Unit tests; no game required
 ```
 
-Output lands in `src/<Project>/bin/Debug/netstandard2.1/`.
-
-Deploy to BepInEx:
+Output: `src/<Project>/bin/Debug/netstandard2.1/`. Deploy to BepInEx:
 
 ```bash
 GAME_DIR="/path/to/game"

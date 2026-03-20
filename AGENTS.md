@@ -37,7 +37,7 @@ CI path: build Core + format check. Run both before claiming a task complete.
 cd client
 uv pip install -e '.[test]'
 hotrepl ping                        # verify server is up
-hotrepl test                        # full protocol smoke suite (~38 tests)
+hotrepl test                        # full protocol smoke suite
 hotrepl test --url ws://host:port   # against a remote endpoint
 ```
 
