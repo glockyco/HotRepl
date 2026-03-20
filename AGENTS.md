@@ -100,6 +100,13 @@ Do not break these without understanding all consequences:
   `ReplConfig.cs`.
 - `dotnet format` is the formatter; CI enforces it. Run before committing.
 
+## Commit Guidelines
+
+See `.claude/skills/commit-guidelines/SKILL.md` for the full conventions.
+Short version: `type(scope): imperative summary` — prose body explaining why,
+not what. One concept per commit. No attribution lines.
+
+
 ## Shell Conventions
 
 Always use non-interactive flags to avoid hanging:
