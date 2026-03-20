@@ -1,158 +1,195 @@
 # HotRepl
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+Runtime C# REPL over WebSocket for Mono-based games. Accepts C# code, compiles and
+executes it in the game process on the main thread, returns structured JSON.
+Primary audience: coding agents. License: MIT.
 
-Runtime C# REPL for Game Modding.
+## Connect
 
-Agent-first runtime C# REPL that runs inside any Mono-based Unity game via BepInEx. Accepts C# code over WebSocket, compiles and executes it in the game process, and returns structured JSON responses. Built for LLM coding agents but usable by humans too.
+Default endpoint: `ws://localhost:18590`
 
-## Features
+On connection the server immediately sends a `handshake` message — read it before
+sending evals. It lists the C# version, opened namespaces, and available helpers.
 
-- **WebSocket protocol** -- JSON-based request/response over a single WebSocket connection (default port 18590)
-- **REPL state persistence** -- variables, types, and imports survive across evaluations within a session
-- **Timeout and cancel** -- per-request timeout (default 10s) with cancel support to abort runaway code
-- **Structured JSON responses** -- typed results with value, type info, stdout capture, duration, and error details
-- **Frame-driven ticking** -- evaluations run on the game's main thread via the host's `Update()` loop for safe access to Unity APIs
-- **Autocomplete** -- cursor-aware code completion without executing the snippet
-- **Subscriptions / watches** -- repeated evaluation on a timer or on value change, with sequence tracking
-- **Built-in helpers** -- `Repl.Help()`, `Repl.Screenshot()`, `Repl.SceneGraph()`, `Repl.Describe()`, `Repl.Inspect()`, and more are injected into every session
-- **Handshake on connect** -- server advertises capabilities (C# version, default usings, available helpers) on connection
-
-## Installation (BepInEx)
-
-1. Install [BepInEx 5.x](https://github.com/BepInEx/BepInEx) into your Unity game
-2. Copy `HotRepl.BepInEx.dll` and `mcs.dll` into `BepInEx/plugins/`
-3. Launch the game
-4. Connect to `ws://localhost:18590`
-
-`mcs.dll` (the Mono compiler) ships alongside the plugin and must be in the same directory.
-
-## Quick Start
-
-Connect to the WebSocket server and send JSON messages:
-
-**Evaluate code:**
 ```json
-{"type": "eval", "id": "1", "code": "1 + 1"}
-```
-```json
-{"type": "eval_result", "id": "1", "hasValue": true, "value": "2", "valueType": "System.Int32", "durationMs": 12}
-```
-
-**Multi-statement with state:**
-```json
-{"type": "eval", "id": "2", "code": "var x = 42;"}
-{"type": "eval", "id": "3", "code": "x * 2"}
+{
+  "type": "handshake",
+  "version": "1.0.0",
+  "csharpVersion": "7.x",
+  "defaultUsings": ["System", "System.Linq", "UnityEngine", "..."],
+  "helpers": ["String[] Help()", "Object History(Int32 limit = 20)", "..."]
+}
 ```
 
-**Ping/pong heartbeat:**
-```json
-{"type": "ping", "id": "4"}
-```
-```json
-{"type": "pong", "id": "4"}
-```
+No authentication. Single client per server — a new connection replaces the previous
+session and cancels all active subscriptions.
 
-**Reset evaluator state:**
-```json
-{"type": "reset", "id": "5"}
-```
-```json
-{"type": "reset_result", "id": "5", "success": true}
-```
+## Protocol
 
-## Protocol Reference
+All messages are UTF-8 JSON objects with a `type` discriminant string. `id` is
+caller-assigned (any non-empty string) and echoed verbatim in the response.
 
-### Client -> Server
+### Client → Server
 
-| Type     | Fields                          | Description                            |
-|----------|---------------------------------|----------------------------------------|
-| `eval`      | `id`, `code`, `timeoutMs?`                            | Evaluate C# code (default timeout 10s)             |
-| `cancel`    | `id`                                                  | Cancel a running evaluation by id                  |
-| `reset`     | `id`                                                  | Reset evaluator state (clear variables)            |
-| `ping`      | `id`                                                  | Heartbeat ping                                     |
-| `complete`  | `id`, `code`, `cursorPos?`                            | Autocomplete suggestions (does not execute)        |
-| `subscribe` | `id`, `code`, `intervalFrames?`, `onChange?`, `limit?`, `timeoutMs?` | Repeated evaluation (watches)         |
+| `type`      | Required fields       | Optional fields                                                                       | Description                                      |
+|-------------|----------------------|---------------------------------------------------------------------------------------|--------------------------------------------------|
+| `eval`      | `id`, `code`         | `timeoutMs` (int, default: 10000)                                                     | Evaluate C# expression or statement(s)           |
+| `cancel`    | `id`                 | —                                                                                     | Cancel a running or queued eval by id            |
+| `reset`     | `id`                 | —                                                                                     | Clear all variables and type definitions         |
+| `ping`      | `id`                 | —                                                                                     | Heartbeat                                        |
+| `complete`  | `id`, `code`         | `cursorPos` (int, default: -1 meaning end-of-string)                                  | Autocomplete suggestions; does not execute code  |
+| `subscribe` | `id`, `code`         | `intervalFrames` (int, default: 1), `onChange` (bool, default: false), `limit` (int, 0 = unlimited), `timeoutMs` (int) | Repeated evaluation on a frame timer or value change |
 
-### Server -> Client
+### Server → Client
 
-| Type           | Key Fields                                           | Description                     |
-|----------------|------------------------------------------------------|---------------------------------|
-| `handshake`        | `version`, `csharpVersion`, `defaultUsings`, `helpers`         | Sent on connection                      |
-| `eval_result`      | `id`, `hasValue`, `value`, `valueType`, `stdout`, `durationMs` | Successful evaluation                   |
-| `eval_error`       | `id`, `errorKind`, `message`, `stackTrace?`                    | Compile error, exception, timeout, or cancellation |
-| `reset_result`     | `id`, `success`                                                | Reset confirmation                      |
-| `pong`             | `id`                                                           | Heartbeat response                      |
-| `complete_result`  | `id`, `completions`, `durationMs`                              | Autocomplete results                    |
-| `subscribe_result` | `id`, `seq`, `hasValue`, `value?`, `valueType?`, `durationMs`, `final` | Subscription value update       |
-| `subscribe_error`  | `id`, `seq`, `errorKind`, `message`, `final`                   | Subscription evaluation error           |
+| `type`             | Key fields                                                               | Emitted when                        |
+|--------------------|--------------------------------------------------------------------------|-------------------------------------|
+| `handshake`        | `version`, `csharpVersion`, `defaultUsings[]`, `helpers[]`              | Client connects                     |
+| `eval_result`      | `id`, `hasValue` (bool), `value?` (string), `valueType?`, `stdout?`, `durationMs` (ms) | Eval succeeded             |
+| `eval_error`       | `id`, `errorKind`, `message`, `stackTrace?`                             | Eval failed                         |
+| `reset_result`     | `id`, `success` (bool)                                                   | Reset complete                      |
+| `pong`             | `id`                                                                     | Ping received                       |
+| `complete_result`  | `id`, `completions[]`, `durationMs`                                      | Autocomplete done                   |
+| `subscribe_result` | `id`, `seq` (int), `hasValue`, `value?`, `valueType?`, `durationMs`, `final` (bool) | Subscription tick          |
+| `subscribe_error`  | `id`, `seq`, `errorKind`, `message`, `final`                            | Subscription tick failed            |
 
-## Building from Source
+`errorKind` values: `compile` | `runtime` | `timeout` | `cancelled`
 
-```bash
-dotnet build src/HotRepl.Core/       # Build core (no Unity DLLs needed)
-dotnet build                          # Full build (requires Unity DLLs in lib/)
-```
+`final: true` on a subscribe message means the subscription is now closed (limit
+reached, unrecoverable error, or reset).
 
-Output DLLs land in each project's `bin/Debug/netstandard2.1/` directory.
+## Evaluation Semantics
+
+- **Persistent state**: variables, using directives, and type definitions survive
+  across evals within a session. Use `reset` to clear them.
+- **Main thread execution**: all evals run on the game's main thread (Unity
+  `Update()` loop). At most one eval executes per frame. Queued evals are processed
+  in order.
+- **Timeout**: wall-clock budget per eval (default 10 s). A watchdog fires
+  `Thread.Abort` on the main thread and returns `eval_error` with
+  `errorKind: "timeout"`. Override per-request with `timeoutMs`.
+- **C# 7.x only**: `async`/`await`, nullable reference types, and C# 8+ pattern
+  matching are not supported. The Mono.CSharp evaluator is pinned to C# 7.
+- **`varName * expr` parser bug**: when `varName` was previously defined in a REPL
+  session, Mono's interactive parser reads `varName * 2` as a pointer-type
+  declaration, not multiplication. Use `2 * varName` (literal on left) or a method
+  call. Operators `+`, `-`, and `/` are not affected.
+
+## Built-in Helpers
+
+Injected into every session as the static class `Repl`. Call `Repl.Help()` after
+connecting for the current full signature list.
+
+| Method | Returns | Description |
+|---|---|---|
+| `Repl.Help()` | `string[]` | Signatures of all available helpers |
+| `Repl.History(int limit=20)` | `object[]` | Recent evals: `{code, value, error, timestamp}` |
+| `Repl.Inspect(object obj, int depth=2, int maxChildren=50)` | `object` | Deep reflection dictionary; handles circular refs |
+| `Repl.Describe(Type type)` | `object` | Type metadata: base, interfaces, properties, fields, methods |
+
+BepInEx adapter injects additional Unity helpers (e.g. `UnityHelpers.SceneGraph()`,
+`UnityHelpers.Screenshot()`). They appear in `handshake.helpers[]`.
 
 ## Architecture
 
 ```
-+------------------+     +--------------------+
-|  HotRepl.BepInEx |---->|    HotRepl.Core    |
-|  (adapter)       |     |  (engine, server,  |
-|                  |     |   protocol, eval)  |
-|  BepInExHost     |     |                    |
-|  ReplPlugin      |     |  IReplHost --------+--- interface
-+------------------+     +--------------------+
-                                  |
-                             mcs.dll
-                         (runtime compiler)
+HotRepl.slnx
+src/
+  HotRepl.Core/               # Framework-agnostic; netstandard2.1; no game dependencies
+    IReplHost.cs              # Host contract: Config, Log*, AdditionalAssemblies/Usings/Helpers
+    ReplEngine.cs             # Composition root; drives all subsystems; called by host's Update()
+    ReplConfig.cs             # Port, DefaultTimeoutMs, MaxResultLength, MaxEnumerableElements
+    Evaluator/                # MonoEvaluator wraps Mono.CSharp; ICodeEvaluator + EvalOutcome
+    Protocol/                 # Messages.cs (wire records), MessageSerializer.cs
+    Helpers/                  # Repl.cs (user-facing helpers), HelperInjector.cs
+    Serialization/            # JsonResultSerializer (value → truncated JSON string)
+    Server/                   # ReplWebSocketServer (Fleck), ClientRegistry, MessageRouter
+    Subscriptions/            # SubscriptionManager, SubscriptionJob
+  HotRepl.BepInEx/            # BepInEx 5.x adapter; netstandard2.1; requires Unity DLLs in lib/
+    ReplPlugin.cs             # Plugin entry point; Awake() → Start(), Update() → Tick()
+    BepInExHost.cs            # IReplHost: Unity assemblies, usings, BepInEx logging
+lib/
+  mcs.dll                     # Mono compiler (mcs-unity fork); ships alongside plugin
+tests/
+  HotRepl.Tests/              # xUnit; net10.0; no game required
+client/                       # Python reference client + protocol smoke tests
+  src/hotrepl/                # hotrepl CLI + async WebSocket client library
+  tests/                      # ~38 pytest tests covering the full protocol surface
 ```
 
-**HotRepl.Core** contains all REPL logic: the WebSocket server (Fleck), the Mono.CSharp evaluator, protocol serialization, result formatting, and the `IReplHost` abstraction. It has zero dependencies on any game framework.
+**Threading model**: Fleck threads write to `ConcurrentQueue`s. `Tick()` drains them
+on the main thread. The watchdog timer runs on a pool thread and calls `Thread.Abort`
+on the main thread reference captured at `Start()`.
 
-**HotRepl.BepInEx** implements `IReplHost` for BepInEx 5.x on Unity Mono. It provides reference assemblies, default usings (UnityEngine, System.Linq, etc.), frame-driven ticking via `Update()`, and logging through BepInEx's `ManualLogSource`.
+**Tick drain order** (invariant): (1) cancel requests, (2) command queue (reset/ping/
+complete/subscribe), (3) at most one eval, (4) subscription ticks.
 
-## Creating Custom Adapters
+## Creating Adapters
 
-To run HotRepl in a different host (MelonLoader, MonoGame, standalone Mono, test harness), implement `IReplHost`:
+To embed HotRepl in a host other than BepInEx (MelonLoader, MonoGame, standalone
+Mono, test harness), implement `IReplHost` and drive `ReplEngine`:
 
 ```csharp
 public interface IReplHost
 {
-    IReadOnlyList<Assembly> ReferenceAssemblies { get; }
-    IReadOnlyList<string> DefaultUsings { get; }
-    void Log(LogLevel level, string message);
+    ReplConfig Config { get; }
+    void LogInfo(string message);
+    void LogDebug(string message);
+    void LogWarning(string message);
+    void LogError(string message, Exception? ex = null);
+    IReadOnlyList<Assembly> AdditionalAssemblies { get; }  // extra reference assemblies
+    IReadOnlyList<string> AdditionalUsings { get; }        // extra opened namespaces
+    string[] AdditionalHelperSignatures { get; }           // merged into handshake.helpers[]
 }
 ```
 
-Then create a `ReplEngine` and drive it:
-
 ```csharp
-var host = new MyCustomHost();
-var engine = new ReplEngine(host, new ReplConfig { Port = 18590 });
-engine.Start();
+var engine = new ReplEngine(new MyHost());
+engine.Start();   // call once from the main thread; starts WebSocket server
 
-// In your game loop:
-engine.Tick();
+// per-frame (game loop):
+engine.Tick();    // drains queues; executes at most one eval; ticks subscriptions
 
-// On shutdown:
+// on shutdown:
 engine.Dispose();
 ```
 
-`ReplConfig` exposes: `Port`, `DefaultTimeoutMs`, `MaxResultLength`, `MaxEnumerableElements`.
+## Configuration
 
-## Limitations
+All properties have safe defaults; only override what you need.
 
-- **C# 7.x only** -- Mono.CSharp supports up to C# 7; no `async`/`await`, no pattern matching enhancements, no nullable reference types
-- **Mono runtime only** -- will not work on IL2CPP builds (the runtime compiler requires JIT)
-- **Memory leaks from type definitions** -- types defined via `eval` (classes, structs) are loaded into the AppDomain and cannot be unloaded; use `reset` to mitigate but the assemblies remain in memory until the process exits
-- **Single client** -- one WebSocket connection at a time; subsequent connections replace the previous one
-- **`identifier * expr` parses as pointer type** -- Mono's interactive parser treats `a * 2` as a pointer-type declaration when `a` was defined in a previous eval. Use `2 * a` (literal on left) or a method call instead. This is a mcs.dll parser limitation; it does not affect `+`, `-`, or `/`.
-- **Timeout and cancel are unreliable for tight loops** -- `Thread.Abort()`, used for eval timeout and cancel, is not guaranteed to interrupt tight loops like `while(true){}` on Unity's Mono JIT because Mono does not inject safepoints at loop back-edges. If an eval hangs, the game must be restarted. This is a Mono runtime limitation, not a HotRepl bug. A fix requires either Roslyn scripting (.NET 6+ / Unity 6+) or cooperative cancellation via code rewriting (fragile, changes semantics). For normal REPL usage -- inspecting game state, calling methods, exploring types -- this is rarely encountered.
+| Property | Default | Description |
+|---|---|---|
+| `Port` | `18590` | WebSocket listen port |
+| `DefaultTimeoutMs` | `10000` | Per-eval wall-clock budget (ms); overridable per-request |
+| `MaxResultLength` | `100000` | Max characters in a serialized result before truncation |
+| `MaxEnumerableElements` | `100` | Max items enumerated from a collection result |
 
-## License
+## Building
 
-[MIT](LICENSE)
+```bash
+dotnet build src/HotRepl.Core/        # Core only; no Unity DLLs needed
+dotnet build src/HotRepl.BepInEx/     # Requires Unity DLLs in lib/
+dotnet test tests/HotRepl.Tests/      # Unit tests; no game required
+```
+
+Output lands in `src/<Project>/bin/Debug/netstandard2.1/`.
+
+Deploy to BepInEx:
+
+```bash
+GAME_DIR="/path/to/game"
+cp -f src/HotRepl.BepInEx/bin/Debug/netstandard2.1/HotRepl.BepInEx.dll "$GAME_DIR/BepInEx/plugins/"
+cp -f lib/mcs.dll "$GAME_DIR/BepInEx/plugins/"
+```
+
+## Known Limitations
+
+| Limitation | Details |
+|---|---|
+| C# 7.x only | Mono.CSharp supports C# 7; `async`/`await`, nullable reference types, and C# 8+ features are unavailable |
+| Mono JIT only | Will not work on IL2CPP Unity builds; the runtime compiler requires JIT |
+| Type memory leak | Classes/structs/enums defined via eval are loaded into AppDomain assemblies that cannot be unloaded; `reset` does not free them |
+| Single client | A new WebSocket connection replaces the prior session; old subscriptions are cancelled |
+| `varName * expr` | When `varName` was defined in a prior eval, Mono's parser reads this as a pointer-type declaration. Use `2 * varName`. Affects `*` only |
+| `Thread.Abort` unreliable in tight loops | Mono does not inject safepoints at loop back-edges; `while(true){}` may not abort on timeout. Restart the game process to recover |
