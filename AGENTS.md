@@ -47,27 +47,7 @@ subscriptions, and edge cases. Read `client/tests/` to understand protocol contr
 
 ## Project Structure
 
-```
-src/HotRepl.Core/
-  IReplHost.cs         # Host contract — the only coupling point between Core and any platform
-  ReplEngine.cs        # Composition root; owns all subsystems; threading model lives here
-  ReplConfig.cs        # Configuration; all fields have safe defaults
-  Evaluator/           # MonoCSharpEvaluator.cs, ICodeEvaluator.cs, EvalOutcome.cs, AssemblyFilter.cs
-  Protocol/            # Messages.cs (all wire types), MessageSerializer.cs
-  Helpers/             # Repl.cs (user-facing Help/History/Inspect/Describe), HelperInjector.cs
-  Serialization/       # JsonResultSerializer.cs
-  Server/              # ReplWebSocketServer.cs (Fleck), ClientRegistry.cs, MessageRouter.cs
-  Subscriptions/       # SubscriptionManager.cs, SubscriptionState.cs
-src/HotRepl.BepInEx/
-  BepInExHost.cs       # IReplHost for BepInEx; all platform coupling lives here, nowhere else
-  ReplPlugin.cs        # Plugin entry: Awake() → engine.Start(), Update() → engine.Tick()
-tests/HotRepl.Tests/   # xUnit; net10.0; no game required
-client/                # Python reference client + protocol smoke tests
-  src/hotrepl/         # hotrepl CLI + async WebSocket client library
-  tests/               # ~38 pytest tests; the authoritative protocol contract
-lib/
-  mcs.dll              # Mono compiler (mcs-unity fork); do not update without full eval regression
-```
+See the Architecture section of README.md for the full directory tree.
 
 ## Architecture Invariants
 
