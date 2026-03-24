@@ -8,21 +8,24 @@ namespace HotRepl.BepInEx.Helpers;
 /// <summary>
 /// Unity-specific helper functions available in every REPL session as <c>UnityHelpers.*</c>.
 ///
-/// ScreenCapture and ImageConversion live in optional Unity modules that may not be
-/// present in the lib/ directory at build time. They are accessed via reflection so
-/// this assembly compiles without those module DLLs. At runtime in the game all modules
-/// are loaded and the reflection calls succeed.
+/// Screenshot methods use Camera.Render() into a RenderTexture for synchronous capture
+/// during eval. This avoids the frame-timing issues of ScreenCapture.CaptureScreenshot*
+/// which only produce output after end-of-frame rendering — too late for an eval call
+/// that runs during Update()/Tick().
+///
+/// ImageConversion is accessed via reflection because UnityEngine.ImageConversionModule
+/// may not be present at build time. At runtime in the game all modules are loaded.
 /// </summary>
 public static class UnityHelpers
 {
-    // Cached reflection targets — resolved once on first use.
-    private static readonly Lazy<(MethodInfo capture, MethodInfo encode)> _screenshotMethods =
-        new(ResolveScreenshotMethods);
+    // Cached reflection target — resolved once on first use.
+    private static readonly Lazy<MethodInfo> _encodeToPng = new(ResolveEncodeToPng);
 
     // ── Public helpers ────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Captures a screenshot and saves it as a PNG file.
+    /// Captures a screenshot of the current camera view and saves it as a PNG file.
+    /// Uses Camera.Render() for synchronous capture — works reliably from eval.
     /// </summary>
     /// <param name="path">
     /// Destination file path. Defaults to <c>Application.temporaryCachePath/hotrepl_screenshot.png</c>
@@ -31,27 +34,16 @@ public static class UnityHelpers
     /// <returns>The absolute path of the saved file.</returns>
     public static string Screenshot(string? path = null)
     {
-        var tex = CaptureTexture();
-        try
-        {
-            var png = EncodeToPng(tex);
-            path ??= Path.Combine(Application.temporaryCachePath, "hotrepl_screenshot.png");
-            File.WriteAllBytes(path, png);
-            return path;
-        }
-        finally
-        {
-            UnityEngine.Object.Destroy(tex);
-        }
+        path ??= Path.Combine(Application.temporaryCachePath, "hotrepl_screenshot.png");
+        var png = CaptureAsPng();
+        File.WriteAllBytes(path, png);
+        return path;
     }
 
     /// <summary>Captures a screenshot and returns it as a base64-encoded PNG string.</summary>
     public static string ScreenshotBase64()
     {
-        var tex = CaptureTexture();
-        try
-        { return Convert.ToBase64String(EncodeToPng(tex)); }
-        finally { UnityEngine.Object.Destroy(tex); }
+        return Convert.ToBase64String(CaptureAsPng());
     }
 
     /// <summary>
@@ -79,41 +71,98 @@ public static class UnityHelpers
         return results;
     }
 
-    // ── Private ───────────────────────────────────────────────────────────────
+    // ── Private: screenshot capture ──────────────────────────────────────────
 
-    private static Texture2D CaptureTexture()
+    /// <summary>
+    /// Render the current camera view into a RenderTexture, read pixels, encode to PNG.
+    /// Synchronous — no end-of-frame dependency.
+    /// </summary>
+    private static byte[] CaptureAsPng()
     {
-        var (capture, _) = _screenshotMethods.Value;
-        return (Texture2D)capture.Invoke(null, null)!;
+        var cam = FindCamera();
+        if (cam == null)
+            throw new InvalidOperationException(
+                "No active camera found. Tried Camera.main, 'MainCam', and Camera.allCameras.");
+
+        int w = Screen.width;
+        int h = Screen.height;
+        var rt = new RenderTexture(w, h, 24);
+        var tex = new Texture2D(w, h, TextureFormat.RGB24, false);
+
+        var prevTarget = cam.targetTexture;
+        var prevActive = RenderTexture.active;
+        try
+        {
+            cam.targetTexture = rt;
+            cam.Render();
+
+            RenderTexture.active = rt;
+            tex.ReadPixels(new Rect(0, 0, w, h), 0, 0);
+            tex.Apply();
+
+            return EncodeToPng(tex);
+        }
+        finally
+        {
+            cam.targetTexture = prevTarget;
+            RenderTexture.active = prevActive;
+            UnityEngine.Object.Destroy(tex);
+            UnityEngine.Object.Destroy(rt);
+        }
     }
+
+    /// <summary>
+    /// Find the active rendering camera. Unity's Camera.main requires the
+    /// "MainCamera" tag, which some games don't use. Falls back to name
+    /// search and then to the first enabled camera.
+    /// </summary>
+    private static Camera? FindCamera()
+    {
+        // Standard Unity tag-based lookup.
+        if (Camera.main != null)
+            return Camera.main;
+
+        // Common name-based fallback (e.g., Erenshor uses "MainCam" without the tag).
+        var go = GameObject.Find("MainCam");
+        if (go != null)
+        {
+            var cam = go.GetComponent<Camera>();
+            if (cam != null && cam.enabled)
+                return cam;
+        }
+
+        // Last resort: first enabled camera in the scene.
+        foreach (var cam in Camera.allCameras)
+        {
+            if (cam != null && cam.enabled)
+                return cam;
+        }
+
+        return null;
+    }
+
+    // ── Private: PNG encoding via reflection ─────────────────────────────────
 
     private static byte[] EncodeToPng(Texture2D tex)
     {
-        var (_, encode) = _screenshotMethods.Value;
-        return (byte[])encode.Invoke(null, new object[] { tex })!;
+        return (byte[])_encodeToPng.Value.Invoke(null, new object[] { tex })!;
     }
 
-    private static (MethodInfo capture, MethodInfo encode) ResolveScreenshotMethods()
+    private static MethodInfo ResolveEncodeToPng()
     {
-        // UnityEngine.ScreenCapture.CaptureScreenshotAsTexture()
-        var screenCapture = Type.GetType("UnityEngine.ScreenCapture, UnityEngine.ScreenCaptureModule")
-                         ?? Type.GetType("UnityEngine.ScreenCapture, UnityEngine");
-        var captureMethod = screenCapture?.GetMethod("CaptureScreenshotAsTexture",
-            BindingFlags.Public | BindingFlags.Static, null, Type.EmptyTypes, null);
-
-        // UnityEngine.ImageConversion.EncodeToPNG(Texture2D)
         var imageConversion = Type.GetType("UnityEngine.ImageConversion, UnityEngine.ImageConversionModule")
                            ?? Type.GetType("UnityEngine.ImageConversion, UnityEngine");
-        var encodeMethod = imageConversion?.GetMethod("EncodeToPNG",
-            BindingFlags.Public | BindingFlags.Static);
+        var method = imageConversion?.GetMethod("EncodeToPNG", BindingFlags.Public | BindingFlags.Static);
 
-        if (captureMethod == null || encodeMethod == null)
+        if (method == null)
             throw new InvalidOperationException(
-                "Screenshot helpers require UnityEngine.ScreenCaptureModule and UnityEngine.ImageConversionModule " +
-                "to be loaded. These are available in the running game but may be absent in test environments.");
+                "Screenshot helpers require UnityEngine.ImageConversionModule to be loaded. " +
+                "This is available in the running game but may be absent in test environments.");
 
-        return (captureMethod, encodeMethod);
+        return method;
     }
+
+    // ── Private: scene graph traversal ───────────────────────────────────────
 
     private static System.Collections.Generic.Dictionary<string, object>? TraverseGO(
         GameObject go, string? filter, string? layer,
