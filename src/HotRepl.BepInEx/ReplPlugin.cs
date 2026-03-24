@@ -25,6 +25,7 @@ public sealed class ReplPlugin : BaseUnityPlugin
         {
             var host = new BepInExHost(Logger);
             _engine = new ReplEngine(host);
+            Helpers.UnityHelpers.Initialize(this);
             _engine.Start();
 
             Logger.LogInfo($"{PluginInfo.Name} v{PluginInfo.Version} loaded \u2014 REPL on port {host.Config.Port}.");

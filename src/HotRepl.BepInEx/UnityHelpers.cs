@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.IO;
 using System.Reflection;
 using UnityEngine;
@@ -8,10 +9,10 @@ namespace HotRepl.BepInEx.Helpers;
 /// <summary>
 /// Unity-specific helper functions available in every REPL session as <c>UnityHelpers.*</c>.
 ///
-/// Screenshot methods use Camera.Render() into a RenderTexture for synchronous capture
-/// during eval. This avoids the frame-timing issues of ScreenCapture.CaptureScreenshot*
-/// which only produce output after end-of-frame rendering — too late for an eval call
-/// that runs during Update()/Tick().
+/// Screenshot uses WaitForEndOfFrame + ReadPixels to capture the full frame buffer
+/// including all UI overlays, nameplates, and ImGui. The capture runs as a coroutine
+/// on the plugin's MonoBehaviour — the eval returns the output path immediately and
+/// the file appears after the current frame finishes rendering.
 ///
 /// ImageConversion is accessed via reflection because UnityEngine.ImageConversionModule
 /// may not be present at build time. At runtime in the game all modules are loaded.
@@ -21,29 +22,49 @@ public static class UnityHelpers
     // Cached reflection target — resolved once on first use.
     private static readonly Lazy<MethodInfo> _encodeToPng = new(ResolveEncodeToPng);
 
+    // MonoBehaviour host for coroutine execution. Set by ReplPlugin.Awake().
+    private static MonoBehaviour? _coroutineHost;
+
+    /// <summary>
+    /// Provide the MonoBehaviour host for coroutine-based screenshot capture.
+    /// Called once from ReplPlugin.Awake().
+    /// </summary>
+    internal static void Initialize(MonoBehaviour host)
+    {
+        _coroutineHost = host;
+    }
+
     // ── Public helpers ────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Captures a screenshot of the current camera view and saves it as a PNG file.
-    /// Uses Camera.Render() for synchronous capture — works reliably from eval.
+    /// Captures a full-frame screenshot including all UI overlays and saves it as PNG.
+    /// The file is written asynchronously after the current frame renders.
     /// </summary>
     /// <param name="path">
     /// Destination file path. Defaults to <c>Application.temporaryCachePath/hotrepl_screenshot.png</c>
     /// when null.
     /// </param>
-    /// <returns>The absolute path of the saved file.</returns>
+    /// <returns>The path where the file will be saved.</returns>
     public static string Screenshot(string? path = null)
     {
+        if (_coroutineHost == null)
+            throw new InvalidOperationException("UnityHelpers not initialized — no coroutine host.");
+
         path ??= Path.Combine(Application.temporaryCachePath, "hotrepl_screenshot.png");
-        var png = CaptureAsPng();
-        File.WriteAllBytes(path, png);
+        _coroutineHost.StartCoroutine(CaptureFullFrame(path));
         return path;
     }
 
-    /// <summary>Captures a screenshot and returns it as a base64-encoded PNG string.</summary>
+    /// <summary>Captures a full-frame screenshot and returns it as a base64-encoded PNG string.</summary>
+    /// <remarks>
+    /// Unlike <see cref="Screenshot"/>, this must wait for the frame to render before
+    /// encoding. It blocks via a synchronous Camera.Render fallback since coroutine
+    /// results cannot be returned to the eval caller.
+    /// </remarks>
     public static string ScreenshotBase64()
     {
-        return Convert.ToBase64String(CaptureAsPng());
+        var png = CaptureViaCamera();
+        return Convert.ToBase64String(png);
     }
 
     /// <summary>
@@ -71,13 +92,40 @@ public static class UnityHelpers
         return results;
     }
 
-    // ── Private: screenshot capture ──────────────────────────────────────────
+    // ── Private: full-frame capture via coroutine ────────────────────────────
 
     /// <summary>
-    /// Render the current camera view into a RenderTexture, read pixels, encode to PNG.
-    /// Synchronous — no end-of-frame dependency.
+    /// Coroutine that waits for end-of-frame rendering to complete, then reads
+    /// the full frame buffer (including UI, nameplates, overlays) into a PNG.
     /// </summary>
-    private static byte[] CaptureAsPng()
+    private static IEnumerator CaptureFullFrame(string path)
+    {
+        // Skip one frame so all systems (markers, ImGui, nameplates) have
+        // a full frame to update and render. Then capture at the end of the
+        // following frame, after all rendering passes have completed.
+        yield return null;
+        yield return new WaitForEndOfFrame();
+
+        var tex = new Texture2D(Screen.width, Screen.height, TextureFormat.RGB24, false);
+        try
+        {
+            tex.ReadPixels(new Rect(0, 0, Screen.width, Screen.height), 0, 0);
+            tex.Apply();
+            File.WriteAllBytes(path, EncodeToPng(tex));
+        }
+        finally
+        {
+            UnityEngine.Object.Destroy(tex);
+        }
+    }
+
+    // ── Private: synchronous camera capture (3D only, no UI) ─────────────────
+
+    /// <summary>
+    /// Synchronous fallback for ScreenshotBase64: renders via Camera.Render()
+    /// into a RenderTexture. Captures the 3D scene but not UI overlays.
+    /// </summary>
+    private static byte[] CaptureViaCamera()
     {
         var cam = FindCamera();
         if (cam == null)
@@ -113,16 +161,13 @@ public static class UnityHelpers
 
     /// <summary>
     /// Find the active rendering camera. Unity's Camera.main requires the
-    /// "MainCamera" tag, which some games don't use. Falls back to name
-    /// search and then to the first enabled camera.
+    /// "MainCamera" tag, which some games don't use.
     /// </summary>
     private static Camera? FindCamera()
     {
-        // Standard Unity tag-based lookup.
         if (Camera.main != null)
             return Camera.main;
 
-        // Common name-based fallback (e.g., Erenshor uses "MainCam" without the tag).
         var go = GameObject.Find("MainCam");
         if (go != null)
         {
@@ -131,7 +176,6 @@ public static class UnityHelpers
                 return cam;
         }
 
-        // Last resort: first enabled camera in the scene.
         foreach (var cam in Camera.allCameras)
         {
             if (cam != null && cam.enabled)
