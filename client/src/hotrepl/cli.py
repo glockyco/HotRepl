@@ -9,7 +9,7 @@ import os
 import sys
 from typing import Any
 
-from hotrepl._client import DEFAULT_URL, Client
+from hotrepl._client import DEFAULT_URL, Client, EvalError
 
 
 def _get_url(args: argparse.Namespace) -> str:
@@ -24,7 +24,21 @@ async def _cmd_eval(args: argparse.Namespace) -> None:
         code = args.code
 
     async with Client(_get_url(args)) as client:
-        result = await client.eval(code, timeout_ms=args.timeout)
+        try:
+            result = await client.eval(code, timeout_ms=args.timeout)
+        except EvalError as e:
+            if args.json:
+                print(json.dumps({"error": str(e), "kind": e.kind, "stackTrace": e.stack_trace}))
+                sys.exit(1)
+            if e.kind == "compile":
+                print(f"Compile error: {e}", file=sys.stderr)
+            elif e.kind == "runtime":
+                print(f"Runtime error: {e}", file=sys.stderr)
+                if e.stack_trace:
+                    print(e.stack_trace, file=sys.stderr)
+            else:
+                print(f"Error ({e.kind}): {e}", file=sys.stderr)
+            sys.exit(1)
 
     if args.json:
         print(json.dumps(result, indent=2))
