@@ -11,6 +11,12 @@ internal interface ICodeEvaluator : System.IDisposable
     bool IsInitialized { get; }
 
     /// <summary>
+    /// True when a ScriptEngine hot-reload assembly was detected since the last
+    /// Reset(). The engine should perform a full reset and clear this flag.
+    /// </summary>
+    bool PendingHotReload { get; }
+
+    /// <summary>
     /// Initializes the compiler context, references all loaded assemblies,
     /// opens default usings, and injects helpers. Idempotent after first success.
     /// Reset() bypasses the idempotency guard and reinitializes unconditionally.

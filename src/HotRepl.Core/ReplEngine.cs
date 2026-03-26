@@ -119,6 +119,12 @@ public sealed class ReplEngine : IDisposable
         while (_commandQueue.TryDequeue(out var cmd))
             HandleCommand(cmd);
 
+        // 2b. Auto-reset on hot reload. ScriptEngine assembly loads set the
+        //     flag during OnAssemblyLoad. Reset here so subsequent evals
+        //     resolve types from the newest assembly.
+        if (_evaluator!.PendingHotReload)
+            HandleHotReload();
+
         // 3. At most one eval per Tick.
         while (_evalQueue.TryDequeue(out var job))
         {
@@ -341,6 +347,20 @@ public sealed class ReplEngine : IDisposable
             Id = cmd.Id,
             Success = true,
         }));
+    }
+
+    private void HandleHotReload()
+    {
+        try
+        {
+            _evaluator!.Reset();
+            HelperInjector.Inject(_evaluator, _host, _history!, _host.Config);
+            _host.LogInfo("[HotRepl] Evaluator auto-reset after hot reload.");
+        }
+        catch (Exception ex)
+        {
+            _host.LogError("[HotRepl] Auto-reset after hot reload failed.", ex);
+        }
     }
 
     private void HandleComplete(CompleteCmd cmd)

@@ -48,12 +48,18 @@ internal sealed class MonoCSharpEvaluator : ICodeEvaluator, IDisposable
     // Blocking re-entry when depth > 0 breaks the cycle.
     private int _evaluatorCallDepth;
 
+    // Set by OnAssemblyLoad when a ScriptEngine hot-reload assembly is detected.
+    // ReplEngine checks this in Tick() and performs the full reset (including
+    // helper re-injection and client notification).
+    private bool _pendingHotReload;
+
     public MonoCSharpEvaluator(IReplHost host)
     {
         _host = host;
     }
 
     public bool IsInitialized => _isInitialized;
+    public bool PendingHotReload => _pendingHotReload;
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
@@ -67,6 +73,7 @@ internal sealed class MonoCSharpEvaluator : ICodeEvaluator, IDisposable
 
     public void Reset()
     {
+        _pendingHotReload = false;
         Teardown();
         CreateSession();
         _isInitialized = true;
@@ -207,8 +214,11 @@ internal sealed class MonoCSharpEvaluator : ICodeEvaluator, IDisposable
         _evaluator = new Mono.CSharp.Evaluator(context);
 
         // Reference every assembly already in the AppDomain.
-        foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
-            TryReference(asm);
+        // Superseded ScriptEngine assemblies are filtered out so types
+        // resolve to the newest version after hot reload.
+        var allAssemblies = AppDomain.CurrentDomain.GetAssemblies();
+        foreach (var asm in allAssemblies)
+            TryReference(asm, allAssemblies);
 
         // Keep up with assemblies loaded after initialization
         // (AssetBundle loads, late plugins, etc.).
@@ -227,7 +237,7 @@ internal sealed class MonoCSharpEvaluator : ICodeEvaluator, IDisposable
         _isInitialized = false;
     }
 
-    private void TryReference(Assembly asm)
+    private void TryReference(Assembly asm, Assembly[]? allAssemblies = null)
     {
         try
         {
@@ -236,6 +246,11 @@ internal sealed class MonoCSharpEvaluator : ICodeEvaluator, IDisposable
                 return;
             if (AssemblyFilter.IsFiltered(name))
                 return;
+            if (allAssemblies != null && AssemblyFilter.IsSuperseded(asm, allAssemblies))
+            {
+                _host.LogDebug($"skipped superseded assembly: {name}");
+                return;
+            }
 
             _evaluatorCallDepth++;
             try
@@ -264,6 +279,21 @@ internal sealed class MonoCSharpEvaluator : ICodeEvaluator, IDisposable
             _host.LogDebug($"skipped re-entrant load: {e.LoadedAssembly.GetName().Name}");
             return;
         }
+
+        var name = e.LoadedAssembly.GetName().Name ?? "";
+
+        // Detect ScriptEngine hot reload: a new assembly with a timestamp suffix
+        // whose base name matches an already-referenced assembly. Rebuild the
+        // entire evaluator session so types resolve to the newest version.
+        if (AssemblyFilter.TryParseScriptEngineName(name, out _, out _))
+        {
+            _host.LogInfo($"[HotRepl] Hot-reload detected ({name}). Rebuilding evaluator session.");
+            _pendingHotReload = true;
+            // Don't reference the new assembly here — Reset() will pick it up
+            // during CreateSession and filter out superseded versions.
+            return;
+        }
+
         TryReference(e.LoadedAssembly);
     }
 

@@ -1,13 +1,22 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
+using System.Text.RegularExpressions;
 
 namespace HotRepl.Evaluator;
 
 /// <summary>
 /// Determines which assemblies should NOT be referenced in the Mono evaluator session.
-/// Filtered names are either mcs autocomplete artifacts or stdlib assemblies the
-/// evaluator already loads implicitly (adding them twice causes duplicate-symbol errors
-/// in some Mono versions).
+///
+/// Filters three categories:
+/// 1. mcs autocomplete artifacts ("completions")
+/// 2. Stdlib duplicates implicitly loaded by Mono.CSharp.Evaluator
+/// 3. Superseded hot-reload assemblies (older ScriptEngine versions)
+///
+/// ScriptEngine (BepInEx) renames assemblies on each F6 reload using the pattern
+/// "{BaseName}-{DateTime.Now.Ticks}". When multiple versions coexist in the
+/// AppDomain, only the newest (highest ticks) should be referenced. Older
+/// versions are filtered out so Mono.CSharp resolves types from the live code.
 /// </summary>
 internal static class AssemblyFilter
 {
@@ -35,6 +44,64 @@ internal static class AssemblyFilter
         "netstandard",
     };
 
+    // ScriptEngine naming: {BaseName}-{Ticks} where Ticks is DateTime.Now.Ticks.
+    // Ticks is a 17-19 digit integer; values below ~630000000000000000 (~year 2000)
+    // are implausible timestamps, avoiding false positives on assembly names that
+    // happen to end with a dash and digits.
+    private static readonly Regex ScriptEnginePattern =
+        new(@"^(.+)-(\d{17,19})$", RegexOptions.Compiled);
+    private const long MinPlausibleTicks = 630000000000000000L; // ~year 2000
+
     /// <summary>Returns true when the named assembly should be skipped during referencing.</summary>
     internal static bool IsFiltered(string name) => FilteredNames.Contains(name);
+
+    /// <summary>
+    /// Parse a ScriptEngine-style assembly name into its base name and ticks.
+    /// Returns false if the name doesn't match the pattern.
+    /// </summary>
+    internal static bool TryParseScriptEngineName(string name, out string baseName, out long ticks)
+    {
+        var match = ScriptEnginePattern.Match(name);
+        if (match.Success && long.TryParse(match.Groups[2].Value, out ticks) && ticks > MinPlausibleTicks)
+        {
+            baseName = match.Groups[1].Value;
+            return true;
+        }
+        baseName = name;
+        ticks = 0;
+        return false;
+    }
+
+    /// <summary>
+    /// Check if an assembly is superseded by a newer ScriptEngine version
+    /// already loaded in the AppDomain. Returns true if a newer version exists
+    /// (meaning this assembly should NOT be referenced).
+    /// </summary>
+    internal static bool IsSuperseded(Assembly candidate, Assembly[] allAssemblies)
+    {
+        var candidateName = candidate.GetName().Name;
+        if (string.IsNullOrEmpty(candidateName))
+            return false;
+
+        if (!TryParseScriptEngineName(candidateName, out var baseName, out var candidateTicks))
+            return false;
+
+        // Check if any other assembly has the same base name but higher ticks.
+        foreach (var asm in allAssemblies)
+        {
+            if (ReferenceEquals(asm, candidate))
+                continue;
+            var otherName = asm.GetName().Name;
+            if (string.IsNullOrEmpty(otherName))
+                continue;
+            if (TryParseScriptEngineName(otherName, out var otherBase, out var otherTicks)
+                && string.Equals(baseName, otherBase, StringComparison.OrdinalIgnoreCase)
+                && otherTicks > candidateTicks)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }
