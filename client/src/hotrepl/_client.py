@@ -172,7 +172,8 @@ class Client:
                 # Unsolicited server notification — log and keep waiting.
                 if resp.get("type") == "assembly_reload":
                     asm = resp.get("assembly") or "unknown"
-                    print(f"[HotRepl] Assembly reloaded: {asm}. REPL session reset.", file=sys.stderr)
+                    msg = f"[HotRepl] Assembly reloaded: {asm}. REPL session reset."
+                    print(msg, file=sys.stderr)
                     continue
 
                 if resp.get("id") != msg_id:
@@ -213,7 +214,8 @@ class Client:
             # Unsolicited server notification — log and keep waiting.
             if resp.get("type") == "assembly_reload":
                 asm = resp.get("assembly") or "unknown"
-                print(f"[HotRepl] Assembly reloaded: {asm}. REPL session reset.", file=sys.stderr)
+                msg = f"[HotRepl] Assembly reloaded: {asm}. REPL session reset."
+                print(msg, file=sys.stderr)
                 continue
 
             if resp.get("id") == msg_id:
