@@ -17,6 +17,12 @@ internal interface ICodeEvaluator : System.IDisposable
     bool PendingHotReload { get; }
 
     /// <summary>
+    /// Base name of the assembly that triggered the pending hot reload, or null
+    /// if no reload is pending.
+    /// </summary>
+    string? PendingHotReloadAssembly { get; }
+
+    /// <summary>
     /// Initializes the compiler context, references all loaded assemblies,
     /// opens default usings, and injects helpers. Idempotent after first success.
     /// Reset() bypasses the idempotency guard and reinitializes unconditionally.

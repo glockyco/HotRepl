@@ -351,11 +351,18 @@ public sealed class ReplEngine : IDisposable
 
     private void HandleHotReload()
     {
+        var assembly = _evaluator!.PendingHotReloadAssembly;
         try
         {
             _evaluator!.Reset();
             HelperInjector.Inject(_evaluator, _host, _history!, _host.Config);
             _host.LogInfo("[HotRepl] Evaluator auto-reset after hot reload.");
+
+            _clients!.Send(MessageSerializer.Serialize(new AssemblyReloadMessage
+            {
+                Assembly = assembly,
+                Message = "Hot-reload detected. REPL session reset.",
+            }));
         }
         catch (Exception ex)
         {
@@ -442,11 +449,17 @@ public sealed class ReplEngine : IDisposable
         }
         else
         {
+            var errorKind = outcome.ErrorKind ?? ErrorKind.Runtime;
+            var errorMessage = outcome.ErrorMessage ?? "Unknown error.";
+
+            if (errorKind == ErrorKind.Runtime)
+                errorMessage = AppendCrossAssemblyHint(errorMessage);
+
             json = MessageSerializer.Serialize(new EvalErrorMessage
             {
                 Id = id,
-                ErrorKind = outcome.ErrorKind ?? ErrorKind.Runtime,
-                Message = outcome.ErrorMessage ?? "Unknown error.",
+                ErrorKind = errorKind,
+                Message = errorMessage,
                 StackTrace = outcome.StackTrace,
             });
         }
@@ -477,6 +490,54 @@ public sealed class ReplEngine : IDisposable
 
     private System.Collections.Generic.IReadOnlyCollection<SubscriptionState> GetAllSubscriptions()
         => _subscriptions!.GetAll();
+
+    /// <summary>
+    /// Detects known cross-assembly error patterns in runtime errors and appends a
+    /// helpful suggestion. These occur after hot reloads when the evaluator holds
+    /// references to types from a now-unloaded assembly.
+    /// </summary>
+    private static string AppendCrossAssemblyHint(string message)
+    {
+        const string hint =
+            "\n\n[HotRepl] This error is likely caused by stale assembly references "
+            + "after a hot reload. The evaluator should auto-reset on the next hot reload. "
+            + "If the problem persists, try: eval reset";
+
+        // FieldInfo.GetValue cross-assembly mismatch
+        if (message.Contains("is not a field on the target object")
+            || message.Contains("is not a field on the target type"))
+            return message + hint;
+
+        // InvalidCastException where source and target type names are identical
+        // (e.g. "Cannot cast object of type 'Foo' to type 'Foo'")
+        if (message.Contains("InvalidCastException")
+            || message.StartsWith("Cannot cast object of type", StringComparison.Ordinal))
+        {
+            // Look for the pattern: type 'X' to type 'X' — same name from different assemblies
+            int firstQuote = message.IndexOf('\'');
+            if (firstQuote >= 0)
+            {
+                int endFirst = message.IndexOf('\'', firstQuote + 1);
+                if (endFirst > firstQuote)
+                {
+                    string firstName = message.Substring(firstQuote + 1, endFirst - firstQuote - 1);
+                    int secondQuote = message.IndexOf('\'', endFirst + 1);
+                    if (secondQuote >= 0)
+                    {
+                        int endSecond = message.IndexOf('\'', secondQuote + 1);
+                        if (endSecond > secondQuote)
+                        {
+                            string secondName = message.Substring(secondQuote + 1, endSecond - secondQuote - 1);
+                            if (string.Equals(firstName, secondName, StringComparison.Ordinal))
+                                return message + hint;
+                        }
+                    }
+                }
+            }
+        }
+
+        return message;
+    }
 }
 
 // ── Engine command types (internal to this file) ──────────────────────────────

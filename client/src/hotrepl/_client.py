@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import sys
 import time
 from typing import TYPE_CHECKING, Any
 
@@ -168,6 +169,12 @@ class Client:
                 raw = await asyncio.wait_for(self._ws.recv(), timeout=CLIENT_TIMEOUT_S)
                 resp: dict[str, Any] = json.loads(raw)
 
+                # Unsolicited server notification — log and keep waiting.
+                if resp.get("type") == "assembly_reload":
+                    asm = resp.get("assembly") or "unknown"
+                    print(f"[HotRepl] Assembly reloaded: {asm}. REPL session reset.", file=sys.stderr)
+                    continue
+
                 if resp.get("id") != msg_id:
                     continue  # Not ours; skip.
 
@@ -202,6 +209,12 @@ class Client:
 
             raw = await asyncio.wait_for(self._ws.recv(), timeout=remaining)
             resp: dict[str, Any] = json.loads(raw)
+
+            # Unsolicited server notification — log and keep waiting.
+            if resp.get("type") == "assembly_reload":
+                asm = resp.get("assembly") or "unknown"
+                print(f"[HotRepl] Assembly reloaded: {asm}. REPL session reset.", file=sys.stderr)
+                continue
 
             if resp.get("id") == msg_id:
                 if resp.get("type") == "eval_error":

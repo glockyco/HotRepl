@@ -23,6 +23,7 @@ internal static class MessageType
     public const string CompleteResult = "complete_result";
     public const string SubscribeResult = "subscribe_result";
     public const string SubscribeError = "subscribe_error";
+    public const string AssemblyReload = "assembly_reload";
 }
 
 /// <summary>Eval error kind discriminants.</summary>
@@ -153,4 +154,11 @@ internal sealed class SubscribeErrorMessage
     [JsonProperty("errorKind")] public string ErrorKind { get; set; } = string.Empty;
     [JsonProperty("message")] public string Message { get; set; } = string.Empty;
     [JsonProperty("final")] public bool Final { get; set; }
+}
+
+internal sealed class AssemblyReloadMessage
+{
+    [JsonProperty("type")] public string Type => MessageType.AssemblyReload;
+    [JsonProperty("assembly")] public string? Assembly { get; set; }
+    [JsonProperty("message")] public string? Message { get; set; }
 }

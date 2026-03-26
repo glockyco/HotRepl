@@ -51,7 +51,7 @@ internal sealed class MonoCSharpEvaluator : ICodeEvaluator, IDisposable
     // Set by OnAssemblyLoad when a ScriptEngine hot-reload assembly is detected.
     // ReplEngine checks this in Tick() and performs the full reset (including
     // helper re-injection and client notification).
-    private bool _pendingHotReload;
+    private string? _pendingHotReloadAssembly;
 
     public MonoCSharpEvaluator(IReplHost host)
     {
@@ -59,7 +59,8 @@ internal sealed class MonoCSharpEvaluator : ICodeEvaluator, IDisposable
     }
 
     public bool IsInitialized => _isInitialized;
-    public bool PendingHotReload => _pendingHotReload;
+    public bool PendingHotReload => _pendingHotReloadAssembly != null;
+    public string? PendingHotReloadAssembly => _pendingHotReloadAssembly;
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
@@ -73,7 +74,7 @@ internal sealed class MonoCSharpEvaluator : ICodeEvaluator, IDisposable
 
     public void Reset()
     {
-        _pendingHotReload = false;
+        _pendingHotReloadAssembly = null;
         Teardown();
         CreateSession();
         _isInitialized = true;
@@ -285,10 +286,10 @@ internal sealed class MonoCSharpEvaluator : ICodeEvaluator, IDisposable
         // Detect ScriptEngine hot reload: a new assembly with a timestamp suffix
         // whose base name matches an already-referenced assembly. Rebuild the
         // entire evaluator session so types resolve to the newest version.
-        if (AssemblyFilter.TryParseScriptEngineName(name, out _, out _))
+        if (AssemblyFilter.TryParseScriptEngineName(name, out var baseName, out _))
         {
             _host.LogInfo($"[HotRepl] Hot-reload detected ({name}). Rebuilding evaluator session.");
-            _pendingHotReload = true;
+            _pendingHotReloadAssembly = baseName;
             // Don't reference the new assembly here — Reset() will pick it up
             // during CreateSession and filter out superseded versions.
             return;
