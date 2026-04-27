@@ -6,10 +6,13 @@
     <AnalysisMode>Recommended</AnalysisMode>
     <RootNamespace>HotRepl.Evaluator.Roslyn</RootNamespace>
     <AssemblyName>HotRepl.Evaluator.Roslyn</AssemblyName>
+    <!-- MelonLoader 0.7 ships System.Collections.Immutable/System.Reflection.Metadata 9.x
+         in its net6 runtime; align Roslyn with that resolver surface. -->
+    <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="../HotRepl.Core/HotRepl.Core.csproj" />
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Scripting" Version="4.8.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Scripting" Version="4.14.0" />
   </ItemGroup>
 </Project>

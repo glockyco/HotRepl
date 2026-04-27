@@ -8,6 +8,8 @@
     <RootNamespace>HotRepl.Host.MelonLoader</RootNamespace>
     <AssemblyName>HotRepl.Host.MelonLoader</AssemblyName>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <!-- Roslyn 4.14 aligns with MelonLoader's net6 resolver assemblies. -->
+    <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings>
   </PropertyGroup>
 
   <ItemGroup>
