@@ -6,6 +6,7 @@ using BepInEx.Logging;
 using HotRepl;
 using HotRepl.Evaluator;
 using HotRepl.Evaluator.MonoCSharp;
+using HotRepl.Evaluator.Roslyn;
 using HotRepl.Helpers.Unity;
 using HotRepl.Helpers;
 
@@ -33,9 +34,9 @@ internal sealed class BepInExHost : IReplHost
             .ToArray();
 
     private static readonly EvaluatorCapabilities[] _availableEvaluators =
-    {
-        MonoCSharpEvaluator.MonoCapabilities,
-    };
+        new[] { MonoCSharpEvaluator.MonoCapabilities }
+            .Concat(RoslynEvaluatorFactory.Capabilities)
+            .ToArray();
 
     public BepInExHost(ManualLogSource logger, ReplConfig? config = null)
     {
@@ -64,6 +65,8 @@ internal sealed class BepInExHost : IReplHost
     {
         if (evaluatorName == MonoCSharpEvaluator.MonoCapabilities.Name)
             return new MonoCSharpEvaluator(this);
+        if (evaluatorName == RoslynScriptEvaluator.ScriptCapabilities.Name)
+            return RoslynEvaluatorFactory.Create(evaluatorName, this);
 
         throw new NotSupportedException($"Evaluator '{evaluatorName}' is not available in this host.");
     }

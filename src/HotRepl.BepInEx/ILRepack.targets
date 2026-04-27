@@ -46,7 +46,7 @@
     <Message Text="ILRepack: merged into $(TargetName)$(TargetExt)" Importance="high" />
   </Target>
 
-  <!-- Clean up merged DLLs, keep only the final plugin + mcs.dll -->
+  <!-- Clean up merged DLLs, keep only the final plugin, mcs.dll, and Roslyn sidecars -->
   <Target Name="CleanupAfterMerge" AfterTargets="ILRepackMod"
           Condition="'$(SkipILRepack)' != 'true'">
     <ItemGroup>
@@ -55,11 +55,16 @@
       <KeepFiles Include="$(OutputPath)$(TargetName).deps.json" />
       <!-- mcs.dll must survive for runtime use -->
       <KeepFiles Include="$(OutputPath)mcs.dll" />
+      <!-- Roslyn remains side-by-side; merging/internalizing it breaks scripting dependencies. -->
+      <KeepFiles Include="$(OutputPath)HotRepl.Evaluator.Roslyn.dll" />
+      <KeepFiles Include="$(OutputPath)Microsoft.CodeAnalysis*.dll" />
+      <KeepFiles Include="$(OutputPath)Microsoft.CSharp.dll" />
+      <KeepFiles Include="$(OutputPath)System.*.dll" />
       <AllFiles Include="$(OutputPath)*.*" />
       <DeleteFiles Include="@(AllFiles)" Exclude="@(KeepFiles)" />
     </ItemGroup>
     <Delete Files="@(DeleteFiles)" />
-    <Message Text="Cleaned up \u2014 HotRepl.BepInEx.dll + mcs.dll ready" Importance="high" />
+    <Message Text="Cleaned up — HotRepl.BepInEx.dll + mcs.dll + Roslyn sidecars ready" Importance="high" />
   </Target>
 
 </Project>

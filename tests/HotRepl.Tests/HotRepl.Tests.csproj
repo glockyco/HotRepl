@@ -14,6 +14,7 @@
   <ItemGroup>
     <ProjectReference Include="../../src/HotRepl.Core/HotRepl.Core.csproj" />
     <ProjectReference Include="../../src/HotRepl.Evaluator.MonoCSharp/HotRepl.Evaluator.MonoCSharp.csproj" />
+    <ProjectReference Include="../../src/HotRepl.Evaluator.Roslyn/HotRepl.Evaluator.Roslyn.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="mcs">

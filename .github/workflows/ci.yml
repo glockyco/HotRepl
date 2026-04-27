@@ -19,15 +19,19 @@ jobs:
           dotnet-version: 10.x
 
       # HotRepl.BepInEx requires Unity assemblies that aren't available in CI.
-      # Build only Core and Tests.
+      # Build only projects that do not require Unity assemblies.
       - name: Restore
         run: |
           dotnet restore src/HotRepl.Core/HotRepl.Core.csproj
+          dotnet restore src/HotRepl.Evaluator.MonoCSharp/HotRepl.Evaluator.MonoCSharp.csproj
+          dotnet restore src/HotRepl.Evaluator.Roslyn/HotRepl.Evaluator.Roslyn.csproj
           dotnet restore tests/HotRepl.Tests/HotRepl.Tests.csproj
 
       - name: Build
         run: |
           dotnet build src/HotRepl.Core/HotRepl.Core.csproj --no-restore
+          dotnet build src/HotRepl.Evaluator.MonoCSharp/HotRepl.Evaluator.MonoCSharp.csproj --no-restore
+          dotnet build src/HotRepl.Evaluator.Roslyn/HotRepl.Evaluator.Roslyn.csproj --no-restore
           dotnet build tests/HotRepl.Tests/HotRepl.Tests.csproj --no-restore
 
       - name: Format check
