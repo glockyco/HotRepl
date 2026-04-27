@@ -8,10 +8,28 @@ from __future__ import annotations
 from typing import Required, TypedDict
 
 
-class Handshake(TypedDict):
-    type: str
+class EvaluatorMetadata(TypedDict, total=False):
+    name: str
+    languageVersion: str
+    supportsPersistentState: bool
+    supportsCompletion: bool
+    timeoutMode: str
+
+
+class HostMetadata(TypedDict, total=False):
+    name: str
+    version: str
+    runtime: str
+    platform: str
+
+
+class Handshake(TypedDict, total=False):
+    type: Required[str]
     version: str
     csharpVersion: str
+    evaluator: EvaluatorMetadata
+    host: HostMetadata
+    availableEvaluators: list[str]
     defaultUsings: list[str]
     helpers: list[str]
 

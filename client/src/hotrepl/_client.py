@@ -119,6 +119,12 @@ class Client:
         assert self._ws is not None, "call connect() first"
         await self._ws.send(json.dumps(payload))
 
+    async def select_evaluator(self, evaluator: str) -> dict[str, Any]:
+        """Select a server-side evaluator by advertised capability name."""
+        msg_id = self._next_id()
+        payload = {"type": "select_evaluator", "id": msg_id, "evaluator": evaluator}
+        return await self._request(payload, msg_id)
+
     async def complete(self, code: str, cursor_pos: int = -1) -> list[str]:
         """Request autocomplete suggestions for *code* at *cursor_pos*.
 
@@ -219,7 +225,7 @@ class Client:
                 continue
 
             if resp.get("id") == msg_id:
-                if resp.get("type") == "eval_error":
+                if resp.get("type") in {"eval_error", "select_evaluator_error"}:
                     raise EvalError(
                         message=resp.get("message", resp.get("error", "unknown")),
                         kind=resp.get("errorKind", "unknown"),

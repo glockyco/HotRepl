@@ -76,6 +76,12 @@ internal sealed class MessageRouter
                             connectionId));
                         break;
                     }
+                case MessageType.SelectEvaluator:
+                    {
+                        var msg = MessageSerializer.Deserialize<SelectEvaluatorMessage>(rawJson);
+                        _engine.EnqueueCommand(new SelectEvaluatorCmd(msg.Id, msg.Evaluator, connectionId));
+                        break;
+                    }
                 default:
                     _log($"[HotRepl] Unknown message type '{type}' — ignored.");
                     break;

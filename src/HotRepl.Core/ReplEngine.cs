@@ -55,6 +55,7 @@ public sealed class ReplEngine : IDisposable
     private Thread? _mainThread;
     private bool _evalInProgress;
     private string? _currentEvalId;
+    private CancellationTokenSource? _currentCancellation;
     private long _currentGeneration;
     private volatile bool _timedOut;
 
@@ -184,7 +185,12 @@ public sealed class ReplEngine : IDisposable
         lock (_abortLock)
         {
             if (_evalInProgress && _currentEvalId == id)
-                _mainThread?.Abort();
+            {
+                if (_evaluator?.Capabilities.TimeoutMode == TimeoutMode.HardAbort)
+                    _mainThread?.Abort();
+                else if (_evaluator?.Capabilities.TimeoutMode == TimeoutMode.Cooperative)
+                    _currentCancellation?.Cancel();
+            }
         }
     }
 
@@ -221,7 +227,7 @@ public sealed class ReplEngine : IDisposable
     {
         using (job)
         {
-            EvalOutcome outcome = RunGuarded(job.Id, job.Code, job.TimeoutMs);
+            EvalOutcome outcome = RunGuarded(job.Id, job.Code, job.TimeoutMs, job.Cancellation);
             RecordHistory(job.Code, outcome);
             SendEvalOutcome(job.Id, job.ConnectionId, outcome);
         }
@@ -234,9 +240,12 @@ public sealed class ReplEngine : IDisposable
     /// into either Timeout or Cancelled based on watchdog state.
     /// </summary>
     private EvalOutcome GuardedEvaluate(string id, string code, int timeoutMs)
-        => RunGuarded(id, code, timeoutMs);
+    {
+        using var cancellation = new CancellationTokenSource();
+        return RunGuarded(id, code, timeoutMs, cancellation);
+    }
 
-    private EvalOutcome RunGuarded(string id, string code, int timeoutMs)
+    private EvalOutcome RunGuarded(string id, string code, int timeoutMs, CancellationTokenSource cancellation)
     {
         long gen;
         lock (_abortLock)
@@ -244,6 +253,7 @@ public sealed class ReplEngine : IDisposable
             _evalInProgress = true;
             _currentEvalId = id;
             gen = ++_currentGeneration;
+            _currentCancellation = cancellation;
         }
         _timedOut = false;
 
@@ -259,12 +269,15 @@ public sealed class ReplEngine : IDisposable
                     if (_evalInProgress && _currentGeneration == gen)
                     {
                         _timedOut = true;
-                        _mainThread?.Abort();
+                        if (_evaluator!.Capabilities.TimeoutMode == TimeoutMode.HardAbort)
+                            _mainThread?.Abort();
+                        else if (_evaluator.Capabilities.TimeoutMode == TimeoutMode.Cooperative)
+                            cancellation.Cancel();
                     }
                 }
             }, null, timeoutMs, Timeout.Infinite);
 
-            var outcome = _evaluator!.Evaluate(code, CancellationToken.None);
+            var outcome = _evaluator!.Evaluate(code, cancellation.Token);
 
             // Evaluate() catches ThreadAbortException internally, calls ResetAbort(),
             // and returns Aborted as a sentinel. Resolve it here using _timedOut.
@@ -287,6 +300,7 @@ public sealed class ReplEngine : IDisposable
             {
                 _evalInProgress = false;
                 _currentEvalId = null;
+                _currentCancellation = null;
             }
         }
     }
@@ -308,6 +322,9 @@ public sealed class ReplEngine : IDisposable
                 break;
             case SubscribeCmd s:
                 HandleSubscribe(s);
+                break;
+            case SelectEvaluatorCmd s:
+                HandleSelectEvaluator(s);
                 break;
         }
     }
@@ -365,6 +382,62 @@ public sealed class ReplEngine : IDisposable
             Id = cmd.Id,
             Success = true,
         }));
+    }
+
+    private void HandleSelectEvaluator(SelectEvaluatorCmd cmd)
+    {
+        if (!_host.AvailableEvaluators.Any(e => e.Name == cmd.Evaluator))
+        {
+            _clients!.SendTo(cmd.ConnectionId, MessageSerializer.Serialize(new SelectEvaluatorErrorMessage
+            {
+                Id = cmd.Id,
+                ErrorKind = ErrorKind.Unsupported,
+                Message = $"Evaluator '{cmd.Evaluator}' is not available. Available: "
+                    + string.Join(", ", _host.AvailableEvaluators.Select(e => e.Name)),
+            }));
+            return;
+        }
+
+        foreach (var sub in GetAllSubscriptions())
+        {
+            _clients!.SendTo(sub.ConnectionId, MessageSerializer.Serialize(new SubscribeErrorMessage
+            {
+                Id = sub.Id,
+                Seq = sub.Seq + 1,
+                ErrorKind = ErrorKind.Cancelled,
+                Message = "Evaluator selection changed.",
+                Final = true,
+            }));
+        }
+        _subscriptions!.CancelAll();
+
+        while (_evalQueue.TryDequeue(out var job))
+        {
+            using (job)
+            {
+                _clients!.SendTo(job.ConnectionId, MessageSerializer.Serialize(new EvalErrorMessage
+                {
+                    Id = job.Id,
+                    ErrorKind = ErrorKind.Cancelled,
+                    Message = "Evaluator selection changed.",
+                }));
+            }
+        }
+
+        _evaluator?.Dispose();
+        _evaluator = CreateEvaluator(cmd.Evaluator);
+        _evaluatorReady = false;
+        InitializeEvaluator();
+        _evaluatorReady = true;
+
+        _clients!.SendTo(cmd.ConnectionId, MessageSerializer.Serialize(new SelectEvaluatorResultMessage
+        {
+            Id = cmd.Id,
+            Success = true,
+            Evaluator = _evaluator.Capabilities.Name,
+        }));
+
+        _host.LogInfo($"[HotRepl] Evaluator selected: {_evaluator.Capabilities.Name}.");
     }
 
     private void HandleHotReload()

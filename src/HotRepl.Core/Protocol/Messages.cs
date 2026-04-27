@@ -15,6 +15,7 @@ internal static class MessageType
     public const string Ping = "ping";
     public const string Complete = "complete";
     public const string Subscribe = "subscribe";
+    public const string SelectEvaluator = "select_evaluator";
 
     // Outbound
     public const string Handshake = "handshake";
@@ -26,6 +27,8 @@ internal static class MessageType
     public const string SubscribeResult = "subscribe_result";
     public const string SubscribeError = "subscribe_error";
     public const string AssemblyReload = "assembly_reload";
+    public const string SelectEvaluatorResult = "select_evaluator_result";
+    public const string SelectEvaluatorError = "select_evaluator_error";
 }
 
 /// <summary>Eval error kind discriminants.</summary>
@@ -35,6 +38,7 @@ internal static class ErrorKind
     public const string Runtime = "runtime";
     public const string Timeout = "timeout";
     public const string Cancelled = "cancelled";
+    public const string Unsupported = "unsupported";
 }
 
 // ── Inbound ───────────────────────────────────────────────────────────────────
@@ -84,6 +88,13 @@ internal sealed class SubscribeMessage
     [JsonProperty("timeoutMs")] public int TimeoutMs { get; set; }
 }
 
+internal sealed class SelectEvaluatorMessage
+{
+    [JsonProperty("type")] public string Type { get; init; } = MessageType.SelectEvaluator;
+    [JsonProperty("id")] public string Id { get; set; } = string.Empty;
+    [JsonProperty("evaluator")] public string Evaluator { get; set; } = string.Empty;
+}
+
 // ── Outbound ──────────────────────────────────────────────────────────────────
 
 internal sealed class HandshakeMessage
@@ -123,6 +134,22 @@ internal sealed class ResetResultMessage
     [JsonProperty("type")] public string Type { get; } = MessageType.ResetResult;
     [JsonProperty("id")] public string Id { get; set; } = string.Empty;
     [JsonProperty("success")] public bool Success { get; set; }
+}
+
+internal sealed class SelectEvaluatorResultMessage
+{
+    [JsonProperty("type")] public string Type { get; } = MessageType.SelectEvaluatorResult;
+    [JsonProperty("id")] public string Id { get; set; } = string.Empty;
+    [JsonProperty("success")] public bool Success { get; set; }
+    [JsonProperty("evaluator")] public string Evaluator { get; set; } = string.Empty;
+}
+
+internal sealed class SelectEvaluatorErrorMessage
+{
+    [JsonProperty("type")] public string Type { get; } = MessageType.SelectEvaluatorError;
+    [JsonProperty("id")] public string Id { get; set; } = string.Empty;
+    [JsonProperty("errorKind")] public string ErrorKind { get; set; } = string.Empty;
+    [JsonProperty("message")] public string Message { get; set; } = string.Empty;
 }
 
 internal sealed class PongMessage

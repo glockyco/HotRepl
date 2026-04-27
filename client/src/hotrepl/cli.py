@@ -80,6 +80,46 @@ async def _cmd_complete(args: argparse.Namespace) -> None:
             print(c)
 
 
+async def _cmd_info(args: argparse.Namespace) -> None:
+    async with Client(_get_url(args)) as client:
+        handshake = client.handshake or {}
+
+    if args.json:
+        print(json.dumps(handshake, indent=2))
+    else:
+        print(_format_info(handshake))
+
+
+def _format_info(handshake: dict[str, Any]) -> str:
+    evaluator = handshake.get("evaluator") or {}
+    host = handshake.get("host") or {}
+    available = handshake.get("availableEvaluators") or []
+    language = evaluator.get(
+        "languageVersion", handshake.get("csharpVersion", "unknown")
+    )
+    return "\n".join(
+        [
+            f"host: {host.get('name', 'unknown')} {host.get('version', '')}".rstrip(),
+            f"runtime: {host.get('runtime', 'unknown')}",
+            f"platform: {host.get('platform', 'unknown')}",
+            f"evaluator: {evaluator.get('name', 'unknown')}",
+            f"language: {language}",
+            f"timeout: {evaluator.get('timeoutMode', 'unknown')}",
+            "available evaluators: " + ", ".join(available),
+        ]
+    )
+
+
+async def _cmd_select_evaluator(args: argparse.Namespace) -> None:
+    async with Client(_get_url(args)) as client:
+        result = await client.select_evaluator(args.evaluator)
+
+    if args.json:
+        print(json.dumps(result, indent=2))
+    else:
+        print(f"selected: {result.get('evaluator')}")
+
+
 async def _cmd_watch(args: argparse.Namespace) -> None:
     async with Client(_get_url(args)) as client:
         gen = client.subscribe(
@@ -158,6 +198,15 @@ def _build_parser() -> argparse.ArgumentParser:
     p_complete.add_argument("--cursor", type=int, default=-1, help="Cursor position")
     p_complete.add_argument("--json", action="store_true", help="Output raw JSON")
 
+    # info
+    p_info = sub.add_parser("info", help="Show server host and evaluator metadata")
+    p_info.add_argument("--json", action="store_true", help="Output raw JSON")
+
+    # select-evaluator
+    p_select = sub.add_parser("select-evaluator", help="Select server evaluator")
+    p_select.add_argument("evaluator", help="Evaluator name from handshake.availableEvaluators")
+    p_select.add_argument("--json", action="store_true", help="Output raw JSON")
+
     # watch
     p_watch = sub.add_parser("watch", help="Subscribe to repeated evaluation")
     p_watch.add_argument("code", help="C# code to evaluate")
@@ -185,6 +234,8 @@ def main() -> None:
         "reset": _cmd_reset,
         "complete": _cmd_complete,
         "watch": _cmd_watch,
+        "info": _cmd_info,
+        "select-evaluator": _cmd_select_evaluator,
     }
 
     if args.command == "test":
