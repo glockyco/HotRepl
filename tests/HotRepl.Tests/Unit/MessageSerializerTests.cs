@@ -1,5 +1,6 @@
 using System;
 using HotRepl.Protocol;
+using HotRepl.Evaluator;
 using Newtonsoft.Json;
 using Xunit;
 
@@ -99,6 +100,46 @@ public class MessageSerializerTests
         Assert.Equal("7.3", back.CsharpVersion);
         Assert.Equal(new[] { "System", "System.Linq" }, back.DefaultUsings);
         Assert.Equal(new[] { "dump" }, back.Helpers);
+    }
+
+    [Fact]
+    public void RoundTrip_HandshakeMessage_IncludesEvaluatorAndHostMetadata()
+    {
+        var msg = new HandshakeMessage
+        {
+            Version = "1.0.0",
+            CsharpVersion = "7.x",
+            DefaultUsings = new[] { "System", "System.Linq" },
+            Helpers = new[] { "String[] Help()" },
+            Evaluator = new EvaluatorCapabilities
+            {
+                Name = "Mono.CSharp",
+                LanguageVersion = "7.x",
+                SupportsPersistentState = true,
+                SupportsCompletion = true,
+                TimeoutMode = TimeoutMode.HardAbort,
+            },
+            Host = new HostInfo
+            {
+                Name = "BepInEx",
+                Version = "5.x",
+                Runtime = ".NET Framework/Mono",
+                Platform = "Unity Mono",
+            },
+            AvailableEvaluators = new[] { "Mono.CSharp" },
+        };
+
+        var json = MessageSerializer.Serialize(msg);
+        var back = MessageSerializer.Deserialize<HandshakeMessage>(json);
+
+        Assert.Contains("\"evaluator\"", json);
+        Assert.Contains("\"timeoutMode\":\"HardAbort\"", json);
+        Assert.Contains("\"host\"", json);
+        Assert.Contains("\"availableEvaluators\"", json);
+        Assert.Equal("Mono.CSharp", back.Evaluator!.Name);
+        Assert.Equal(TimeoutMode.HardAbort, back.Evaluator.TimeoutMode);
+        Assert.Equal("BepInEx", back.Host!.Name);
+        Assert.Equal(new[] { "Mono.CSharp" }, back.AvailableEvaluators);
     }
 
     [Fact]

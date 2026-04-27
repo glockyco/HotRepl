@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using BepInEx.Logging;
 using HotRepl;
 using HotRepl.BepInEx.Helpers;
+using HotRepl.Evaluator;
 using HotRepl.Helpers;
 
 namespace HotRepl.BepInEx;
@@ -25,7 +27,14 @@ internal sealed class BepInExHost : IReplHost
         new[] { typeof(UnityHelpers).Assembly };
 
     private static readonly IReadOnlyList<string> _additionalUsings =
-        new[] { "HotRepl.BepInEx.Helpers" };
+        MonoCSharpEvaluator.DefaultUsings
+            .Concat(new[] { "HotRepl.BepInEx.Helpers" })
+            .ToArray();
+
+    private static readonly EvaluatorCapabilities[] _availableEvaluators =
+    {
+        MonoCSharpEvaluator.MonoCapabilities,
+    };
 
     public BepInExHost(ManualLogSource logger, ReplConfig? config = null)
     {
@@ -36,6 +45,27 @@ internal sealed class BepInExHost : IReplHost
     // ── IReplHost ─────────────────────────────────────────────────────────────
 
     public ReplConfig Config { get; }
+
+    public HostInfo HostInfo { get; } = new()
+    {
+        Name = "BepInEx",
+        Version = "5.x",
+        Runtime = ".NET Framework/Mono",
+        Platform = "Unity Mono",
+    };
+
+    public IReadOnlyList<EvaluatorCapabilities> AvailableEvaluators => _availableEvaluators;
+
+    public string DefaultEvaluatorName =>
+        Config.DefaultEvaluatorName ?? MonoCSharpEvaluator.MonoCapabilities.Name;
+
+    public ICodeEvaluator CreateEvaluator(string evaluatorName)
+    {
+        if (evaluatorName == MonoCSharpEvaluator.MonoCapabilities.Name)
+            return new MonoCSharpEvaluator(this);
+
+        throw new NotSupportedException($"Evaluator '{evaluatorName}' is not available in this host.");
+    }
 
     public void LogInfo(string message) => _logger.LogInfo(message);
     public void LogDebug(string message) => _logger.LogDebug(message);

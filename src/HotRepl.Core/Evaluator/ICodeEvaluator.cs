@@ -1,14 +1,18 @@
 using System.Reflection;
+using System.Threading;
 
 namespace HotRepl.Evaluator;
 
 /// <summary>
-/// Compiles and executes C# code using Mono's embedded compiler.
-/// All methods MUST be called from the main thread (the thread that calls Tick()).
+/// Compiles and executes C# code at runtime.
+/// All methods MUST be called from the main thread that drives <see cref="ReplEngine.Tick"/>.
 /// </summary>
-internal interface ICodeEvaluator : System.IDisposable
+public interface ICodeEvaluator : System.IDisposable
 {
     bool IsInitialized { get; }
+
+    /// <summary>Capabilities advertised by this evaluator to the engine and clients.</summary>
+    EvaluatorCapabilities Capabilities { get; }
 
     /// <summary>
     /// True when a ScriptEngine hot-reload assembly was detected since the last
@@ -32,12 +36,10 @@ internal interface ICodeEvaluator : System.IDisposable
     /// <summary>
     /// Compiles and executes <paramref name="code"/>.
     /// Returns an EvalOutcome for compile errors, runtime exceptions, and void/value results.
-    /// MAY throw <see cref="System.Threading.ThreadAbortException"/> when the watchdog
-    /// or a cancel request aborts the thread — the engine is responsible for catching it,
-    /// calling Thread.ResetAbort(), and constructing the appropriate Timeout/Cancelled outcome.
+    /// Cooperative evaluators observe <paramref name="cancellationToken"/> where possible.
     /// All other exceptions are folded into the returned outcome.
     /// </summary>
-    EvalOutcome Evaluate(string code);
+    EvalOutcome Evaluate(string code, CancellationToken cancellationToken);
 
     /// <summary>
     /// Returns autocomplete candidates. Never throws; returns empty on any failure.

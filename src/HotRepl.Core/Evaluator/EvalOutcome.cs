@@ -4,7 +4,7 @@ namespace HotRepl.Evaluator;
 /// The result of one evaluation. Always returned, never thrown.
 /// ThreadAbortException is caught inside Evaluate() and converted to Aborted().
 /// </summary>
-internal sealed class EvalOutcome
+public sealed class EvalOutcome
 {
     public bool Success { get; private init; }
     public bool HasValue { get; private init; }

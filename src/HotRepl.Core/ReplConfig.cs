@@ -10,6 +10,11 @@ public sealed class ReplConfig
     public int Port { get; set; } = 18590;
 
     /// <summary>
+    /// Optional evaluator name override. When null, the host chooses its safe default.
+    /// </summary>
+    public string? DefaultEvaluatorName { get; set; }
+
+    /// <summary>
     /// Wall-clock budget (ms) per evaluation before the watchdog aborts the thread.
     /// Default: 10 000 ms.
     /// </summary>

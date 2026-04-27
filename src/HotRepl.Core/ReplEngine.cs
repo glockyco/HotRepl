@@ -77,7 +77,7 @@ public sealed class ReplEngine : IDisposable
         _history = new HistoryTracker();
         _serializer = new JsonResultSerializer();
         _subscriptions = new SubscriptionManager(_host.Config);
-        _evaluator = new MonoCSharpEvaluator(_host);
+        _evaluator = CreateEvaluator(_host.DefaultEvaluatorName);
 
         _wsServer = new ReplWebSocketServer(msg => _host.LogInfo(msg));
         _clients = new ClientRegistry(_wsServer, msg => _host.LogInfo(msg));
@@ -130,13 +130,16 @@ public sealed class ReplEngine : IDisposable
         {
             if (_cancelledIds.TryRemove(job.Id, out _))
             {
-                // Cancelled before it ever ran.
-                _clients!.SendTo(job.ConnectionId, MessageSerializer.Serialize(new EvalErrorMessage
+                using (job)
                 {
-                    Id = job.Id,
-                    ErrorKind = ErrorKind.Cancelled,
-                    Message = "Evaluation cancelled.",
-                }));
+                    // Cancelled before it ever ran.
+                    _clients!.SendTo(job.ConnectionId, MessageSerializer.Serialize(new EvalErrorMessage
+                    {
+                        Id = job.Id,
+                        ErrorKind = ErrorKind.Cancelled,
+                        Message = "Evaluation cancelled.",
+                    }));
+                }
                 continue; // try next in queue — but only process one non-cancelled eval
             }
             ExecuteEval(job);
@@ -187,6 +190,16 @@ public sealed class ReplEngine : IDisposable
 
     internal void EnqueueCommand(IEngineCommand cmd) => _commandQueue.Enqueue(cmd);
 
+    private ICodeEvaluator CreateEvaluator(string evaluatorName)
+    {
+        var available = _host.AvailableEvaluators.Select(c => c.Name).ToArray();
+        if (!available.Contains(evaluatorName, StringComparer.Ordinal))
+            throw new NotSupportedException(
+                $"Evaluator '{evaluatorName}' is not available. Available: {string.Join(", ", available)}");
+
+        return _host.CreateEvaluator(evaluatorName);
+    }
+
     // ── Private: evaluator initialization ────────────────────────────────────
 
     private void InitializeEvaluator()
@@ -206,9 +219,12 @@ public sealed class ReplEngine : IDisposable
 
     private void ExecuteEval(EvalJob job)
     {
-        EvalOutcome outcome = RunGuarded(job.Id, job.Code, job.TimeoutMs);
-        RecordHistory(job.Code, outcome);
-        SendEvalOutcome(job.Id, job.ConnectionId, outcome);
+        using (job)
+        {
+            EvalOutcome outcome = RunGuarded(job.Id, job.Code, job.TimeoutMs);
+            RecordHistory(job.Code, outcome);
+            SendEvalOutcome(job.Id, job.ConnectionId, outcome);
+        }
     }
 
     /// <summary>
@@ -248,7 +264,7 @@ public sealed class ReplEngine : IDisposable
                 }
             }, null, timeoutMs, Timeout.Infinite);
 
-            var outcome = _evaluator!.Evaluate(code);
+            var outcome = _evaluator!.Evaluate(code, CancellationToken.None);
 
             // Evaluate() catches ThreadAbortException internally, calls ResetAbort(),
             // and returns Aborted as a sentinel. Resolve it here using _timedOut.
@@ -301,14 +317,16 @@ public sealed class ReplEngine : IDisposable
         // Drain and cancel all pending evals.
         while (_evalQueue.TryDequeue(out var job))
         {
-            _clients!.SendTo(job.ConnectionId, MessageSerializer.Serialize(new EvalErrorMessage
+            using (job)
             {
-                Id = job.Id,
-                ErrorKind = ErrorKind.Cancelled,
-                Message = "Reset in progress.",
-            }));
+                _clients!.SendTo(job.ConnectionId, MessageSerializer.Serialize(new EvalErrorMessage
+                {
+                    Id = job.Id,
+                    ErrorKind = ErrorKind.Cancelled,
+                    Message = "Reset in progress.",
+                }));
+            }
         }
-
         // Cancel all subscriptions with a final error.
         foreach (var sub in GetAllSubscriptions())
         {
@@ -474,13 +492,16 @@ public sealed class ReplEngine : IDisposable
 
         // Handshake can be sent immediately — its content is entirely statically
         // knowable and does not require the evaluator to be initialized.
-        var usings = MonoCSharpEvaluator.DefaultUsings.Concat(_host.AdditionalUsings).ToArray();
+        var usings = _host.AdditionalUsings.ToArray();
         var helpers = HelperInjector.AllHelperSignatures(_host);
 
         _clients.Send(MessageSerializer.Serialize(new HandshakeMessage
         {
             Version = "1.0.0",
-            CsharpVersion = "7.x",
+            Evaluator = _evaluator?.Capabilities,
+            Host = _host.HostInfo,
+            AvailableEvaluators = _host.AvailableEvaluators.Select(e => e.Name).ToArray(),
+            CsharpVersion = _evaluator?.Capabilities.LanguageVersion ?? "unknown",
             DefaultUsings = usings,
             Helpers = helpers,
         }));

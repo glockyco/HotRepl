@@ -23,6 +23,15 @@ internal sealed class MonoCSharpEvaluator : ICodeEvaluator, IDisposable
 
     // Default namespaces opened in every evaluator session.
     // Exposed internally so ReplEngine can include them in the handshake defaultUsings[].
+    internal static readonly EvaluatorCapabilities MonoCapabilities = new()
+    {
+        Name = "Mono.CSharp",
+        LanguageVersion = "7.x",
+        SupportsPersistentState = true,
+        SupportsCompletion = true,
+        TimeoutMode = TimeoutMode.HardAbort,
+    };
+
     internal static readonly string[] DefaultUsings =
     {
         "System",
@@ -59,6 +68,7 @@ internal sealed class MonoCSharpEvaluator : ICodeEvaluator, IDisposable
     }
 
     public bool IsInitialized => _isInitialized;
+    public EvaluatorCapabilities Capabilities => MonoCapabilities;
     public bool PendingHotReload => _pendingHotReloadAssembly != null;
     public string? PendingHotReloadAssembly => _pendingHotReloadAssembly;
 
@@ -95,8 +105,9 @@ internal sealed class MonoCSharpEvaluator : ICodeEvaluator, IDisposable
     /// results including abort. ThreadAbortException IS caught here — ResetAbort()
     /// is called immediately and the Aborted sentinel is returned for RunGuarded to resolve.
     /// </summary>
-    public EvalOutcome Evaluate(string code)
+    public EvalOutcome Evaluate(string code, CancellationToken cancellationToken)
     {
+        _ = cancellationToken;
         _errors!.Clear();
         var sw = Stopwatch.StartNew();
 

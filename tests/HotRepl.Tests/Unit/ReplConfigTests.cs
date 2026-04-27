@@ -13,6 +13,7 @@ public class ReplConfigTests
         Assert.Equal(18590, config.Port);
         Assert.Equal(10_000, config.DefaultTimeoutMs);
         Assert.Equal(100_000, config.MaxResultLength);
+        Assert.Null(config.DefaultEvaluatorName);
         Assert.Equal(100, config.MaxEnumerableElements);
     }
 
@@ -24,12 +25,14 @@ public class ReplConfigTests
             Port = 9999,
             DefaultTimeoutMs = 5000,
             MaxResultLength = 200,
-            MaxEnumerableElements = 10
+            MaxEnumerableElements = 10,
+            DefaultEvaluatorName = "Roslyn.Script",
         };
 
         Assert.Equal(9999, config.Port);
         Assert.Equal(5000, config.DefaultTimeoutMs);
         Assert.Equal(200, config.MaxResultLength);
         Assert.Equal(10, config.MaxEnumerableElements);
+        Assert.Equal("Roslyn.Script", config.DefaultEvaluatorName);
     }
 }
