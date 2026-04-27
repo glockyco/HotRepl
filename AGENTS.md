@@ -31,6 +31,13 @@ dotnet format src/HotRepl.Core/                        # auto-fix formatting
 
 CI path: build Core + format check. Run both before claiming a task complete.
 
+### MelonLoader host
+
+`src/HotRepl.Host.MelonLoader` is not built in CI because it requires game-local
+MelonLoader and IL2CPP assemblies. On this workstation, pass `MelonLoaderPath` and
+`Il2CppAssembliesPath` from the target game's install. Do not hard-code Ancient
+Kingdoms paths in HotRepl source files.
+
 ### Python smoke tests (requires a running game with HotRepl loaded)
 
 ```bash

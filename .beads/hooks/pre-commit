@@ -29,9 +29,15 @@ set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 PROJECT="$REPO_ROOT/src/HotRepl.Core/HotRepl.Core.csproj"
+MONO_EVALUATOR="$REPO_ROOT/src/HotRepl.Evaluator.MonoCSharp/HotRepl.Evaluator.MonoCSharp.csproj"
+ROSLYN_EVALUATOR="$REPO_ROOT/src/HotRepl.Evaluator.Roslyn/HotRepl.Evaluator.Roslyn.csproj"
+TESTS="$REPO_ROOT/tests/HotRepl.Tests/HotRepl.Tests.csproj"
 
 echo "[pre-commit] Building..."
-dotnet build "$REPO_ROOT/HotRepl.slnx" --nologo -clp:ErrorsOnly -v quiet
+dotnet build "$PROJECT" --nologo -clp:ErrorsOnly -v quiet
+dotnet build "$MONO_EVALUATOR" --nologo -clp:ErrorsOnly -v quiet
+dotnet build "$ROSLYN_EVALUATOR" --nologo -clp:ErrorsOnly -v quiet
+dotnet build "$TESTS" --nologo -clp:ErrorsOnly -v quiet
 
 echo "[pre-commit] Checking format..."
 dotnet format "$PROJECT" --verify-no-changes --no-restore --verbosity quiet

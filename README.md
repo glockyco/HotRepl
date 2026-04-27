@@ -81,11 +81,15 @@ options (all properties have safe defaults and XML doc comments).
 
 ## Building
 
+### Common
+
 ```bash
 dotnet build src/HotRepl.Core/        # Core only; no Unity DLLs needed
 dotnet build src/HotRepl.BepInEx/     # Requires Unity DLLs in lib/
 dotnet test tests/HotRepl.Tests/      # Unit tests; no game required
 ```
+
+### BepInEx / Mono
 
 Output: `src/<Project>/bin/Debug/netstandard2.1/`. Deploy to BepInEx:
 
@@ -94,6 +98,21 @@ GAME_DIR="/path/to/game"
 cp -f src/HotRepl.BepInEx/bin/Debug/netstandard2.1/HotRepl.BepInEx.dll "$GAME_DIR/BepInEx/plugins/"
 cp -f lib/mcs.dll "$GAME_DIR/BepInEx/plugins/"
 ```
+
+### MelonLoader / IL2CPP
+
+Build with game-provided paths:
+
+```bash
+dotnet build src/HotRepl.Host.MelonLoader/HotRepl.Host.MelonLoader.csproj \
+  -p:MelonLoaderPath="/path/to/Game/MelonLoader" \
+  -p:Il2CppAssembliesPath="/path/to/Game/MelonLoader/Il2CppAssemblies"
+```
+
+Deploy the host, Core, Roslyn evaluator, Unity helpers, Fleck, Newtonsoft.Json,
+and Roslyn dependency DLLs side-by-side in the game's `Mods/` directory unless a
+specific game documents a `UserLibs/` dependency layout. The MelonLoader host uses
+Roslyn.Script by default and reports `timeoutMode: "Cooperative"` in the handshake.
 
 ## Known Limitations
 
