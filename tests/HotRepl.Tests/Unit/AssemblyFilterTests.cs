@@ -1,4 +1,4 @@
-using HotRepl.Evaluator;
+using HotRepl.Evaluator.MonoCSharp;
 using Xunit;
 
 namespace HotRepl.Tests.Unit;

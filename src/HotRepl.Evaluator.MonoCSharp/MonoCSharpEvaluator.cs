@@ -5,9 +5,10 @@ using System.IO;
 using System.Reflection;
 using System.Text;
 using System.Threading;
+using HotRepl.Evaluator;
 using Mono.CSharp;
 
-namespace HotRepl.Evaluator;
+namespace HotRepl.Evaluator.MonoCSharp;
 
 /// <summary>
 /// Wraps Mono.CSharp.Evaluator to compile and execute C# 7.x code at runtime.
@@ -16,14 +17,14 @@ namespace HotRepl.Evaluator;
 /// Evaluate() catches ThreadAbortException internally when the engine's watchdog fires,
 /// calls ResetAbort(), and returns an Aborted sentinel for RunGuarded to resolve.
 /// </summary>
-internal sealed class MonoCSharpEvaluator : ICodeEvaluator, IDisposable
+public sealed class MonoCSharpEvaluator : ICodeEvaluator, IDisposable
 {
     // Assemblies we never want to reference: mcs autocomplete artifacts and
     // stdlib duplicates that the Mono evaluator already loads implicitly.
 
     // Default namespaces opened in every evaluator session.
     // Exposed internally so ReplEngine can include them in the handshake defaultUsings[].
-    internal static readonly EvaluatorCapabilities MonoCapabilities = new()
+    public static readonly EvaluatorCapabilities MonoCapabilities = new()
     {
         Name = "Mono.CSharp",
         LanguageVersion = "7.x",
@@ -32,7 +33,7 @@ internal sealed class MonoCSharpEvaluator : ICodeEvaluator, IDisposable
         TimeoutMode = TimeoutMode.HardAbort,
     };
 
-    internal static readonly string[] DefaultUsings =
+    public static readonly string[] DefaultUsings =
     {
         "System",
         "System.Collections",

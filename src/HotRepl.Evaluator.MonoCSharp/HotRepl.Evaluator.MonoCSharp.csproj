@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <AnalysisMode>Recommended</AnalysisMode>
+    <RootNamespace>HotRepl.Evaluator.MonoCSharp</RootNamespace>
+    <AssemblyName>HotRepl.Evaluator.MonoCSharp</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../HotRepl.Core/HotRepl.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="mcs">
+      <HintPath>../../lib/mcs.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+</Project>

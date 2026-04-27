@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Text.RegularExpressions;
 
-namespace HotRepl.Evaluator;
+namespace HotRepl.Evaluator.MonoCSharp;
 
 /// <summary>
 /// Determines which assemblies should NOT be referenced in the Mono evaluator session.
@@ -18,7 +18,7 @@ namespace HotRepl.Evaluator;
 /// AppDomain, only the newest (highest ticks) should be referenced. Older
 /// versions are filtered out so Mono.CSharp resolves types from the live code.
 /// </summary>
-internal static class AssemblyFilter
+public static class AssemblyFilter
 {
     // Case-insensitive — assembly names can arrive in any casing depending on loader.
     internal static readonly HashSet<string> FilteredNames = new(StringComparer.OrdinalIgnoreCase)
@@ -53,13 +53,13 @@ internal static class AssemblyFilter
     private const long MinPlausibleTicks = 630000000000000000L; // ~year 2000
 
     /// <summary>Returns true when the named assembly should be skipped during referencing.</summary>
-    internal static bool IsFiltered(string name) => FilteredNames.Contains(name);
+    public static bool IsFiltered(string name) => FilteredNames.Contains(name);
 
     /// <summary>
     /// Parse a ScriptEngine-style assembly name into its base name and ticks.
     /// Returns false if the name doesn't match the pattern.
     /// </summary>
-    internal static bool TryParseScriptEngineName(string name, out string baseName, out long ticks)
+    public static bool TryParseScriptEngineName(string name, out string baseName, out long ticks)
     {
         var match = ScriptEnginePattern.Match(name);
         if (match.Success && long.TryParse(match.Groups[2].Value, out ticks) && ticks > MinPlausibleTicks)
@@ -77,7 +77,7 @@ internal static class AssemblyFilter
     /// already loaded in the AppDomain. Returns true if a newer version exists
     /// (meaning this assembly should NOT be referenced).
     /// </summary>
-    internal static bool IsSuperseded(Assembly candidate, Assembly[] allAssemblies)
+    public static bool IsSuperseded(Assembly candidate, Assembly[] allAssemblies)
     {
         var candidateName = candidate.GetName().Name;
         if (string.IsNullOrEmpty(candidateName))

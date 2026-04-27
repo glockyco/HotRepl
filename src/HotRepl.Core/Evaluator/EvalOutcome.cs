@@ -44,5 +44,5 @@ public sealed class EvalOutcome
     /// or a cancel request, then replaces this with Timeout() or Cancelled().
     /// Never sent to the client directly.
     /// </summary>
-    internal static readonly EvalOutcome Aborted = new() { Success = false, ErrorKind = "aborted" };
+    public static readonly EvalOutcome Aborted = new() { Success = false, ErrorKind = "aborted" };
 }

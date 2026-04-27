@@ -6,6 +6,7 @@ using BepInEx.Logging;
 using HotRepl;
 using HotRepl.BepInEx.Helpers;
 using HotRepl.Evaluator;
+using HotRepl.Evaluator.MonoCSharp;
 using HotRepl.Helpers;
 
 namespace HotRepl.BepInEx;

@@ -24,6 +24,7 @@
   <!-- Project reference to Core -->
   <ItemGroup>
     <ProjectReference Include="../HotRepl.Core/HotRepl.Core.csproj" />
+    <ProjectReference Include="../HotRepl.Evaluator.MonoCSharp/HotRepl.Evaluator.MonoCSharp.csproj" />
   </ItemGroup>
 
   <!-- Unity assembly references (not committed, copied from game) -->

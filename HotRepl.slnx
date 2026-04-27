@@ -2,6 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/HotRepl.BepInEx/HotRepl.BepInEx.csproj" />
     <Project Path="src/HotRepl.Core/HotRepl.Core.csproj" />
+    <Project Path="src/HotRepl.Evaluator.MonoCSharp/HotRepl.Evaluator.MonoCSharp.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/HotRepl.Tests/HotRepl.Tests.csproj" />
