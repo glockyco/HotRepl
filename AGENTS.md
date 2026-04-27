@@ -1,8 +1,9 @@
 # Agent Instructions
 
-HotRepl: runtime C# REPL over WebSocket for Mono-based Unity games. This file is for
-agents working **on** this repo. For agents using HotRepl to inspect a running game,
-see the skill at `.claude/skills/hotrepl/SKILL.md`.
+HotRepl: runtime C# REPL over WebSocket for Unity games through BepInEx/Mono
+or MelonLoader/IL2CPP. This file is for agents working **on** this repo. For
+agents using HotRepl to inspect a running game, see the skill at
+`.claude/skills/hotrepl/SKILL.md`.
 
 ## Issue Tracking
 
@@ -90,9 +91,10 @@ Do not break these without understanding all consequences:
 - **`Thread.Abort` and tight loops**: Mono does not inject safepoints at loop
   back-edges. A `while(true){}` eval may not abort on timeout. This is a Mono
   runtime limitation — document it, do not work around it in HotRepl.
-- **Type memory leak**: class/struct/enum definitions loaded via eval cannot be
-  unloaded from the AppDomain. `reset` recreates the evaluator but does not free
-  memory. This is inherent to Mono's JIT — document it, do not paper over it.
+- **Type memory leak**: class/struct/enum definitions loaded via persistent eval
+  sessions may not be reclaimed until process exit. `reset` recreates the evaluator
+  state but is not a full assembly unload boundary; use `Roslyn.Isolated` for
+  stateless .NET 6 audit snippets.
 - **Single client**: only one WebSocket connection is active at a time. A new
   connection replaces the prior session and cancels all subscriptions.
 

@@ -1,7 +1,8 @@
 # HotRepl
 
-Runtime C# REPL over WebSocket for Mono-based games. Accepts C# code, compiles and
-executes it in the game process on the main thread, returns structured JSON.
+Runtime C# REPL over WebSocket for Unity games through BepInEx/Mono or
+MelonLoader/IL2CPP. Accepts C# code, compiles and executes it in the game
+process on the main thread, returns structured JSON.
 Primary audience: coding agents. License: MIT.
 
 ## Connect
@@ -126,9 +127,10 @@ dotnet build src/HotRepl.Host.MelonLoader/HotRepl.Host.MelonLoader.csproj \
 ```
 
 Deploy the host, Core, Roslyn evaluator, Unity helpers, Fleck, Newtonsoft.Json,
-and Roslyn dependency DLLs side-by-side in the game's `Mods/` directory unless a
-specific game documents a `UserLibs/` dependency layout. The MelonLoader host uses
-Roslyn.Script by default and reports `timeoutMode: "Cooperative"` in the handshake.
+and Roslyn DLLs side-by-side in the game's `Mods/` directory. Do not deploy
+`System.*` framework sidecars unless a game-specific deploy guide has validated
+that resolver layout. The MelonLoader host uses Roslyn.Script by default and reports
+`timeoutMode: "Cooperative"` in the handshake.
 
 After deploying to an IL2CPP game, verify:
 

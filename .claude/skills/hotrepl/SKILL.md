@@ -79,7 +79,7 @@ Error response:
 {"type": "eval_error", "id": "1", "errorKind": "compile", "message": "error CS0103: The name 'x' does not exist in the current context"}
 ```
 
-`errorKind`: `compile` | `runtime` | `timeout` | `cancelled`
+`errorKind`: `compile` | `runtime` | `timeout` | `cancelled` | `unsupported`
 
 `id` is caller-assigned and echoed back. Use unique ids per request.
 
@@ -122,10 +122,11 @@ UnityEngine.Object.FindObjectsOfType<MonoBehaviour>()
     .ToArray()
 ```
 
-### Read the full scene hierarchy (BepInEx adapter only)
+### Read the full scene hierarchy
 
 ```csharp
 UnityHelpers.SceneGraph()
+// Available when the host injects Unity helpers.
 ```
 
 ### Eval history
