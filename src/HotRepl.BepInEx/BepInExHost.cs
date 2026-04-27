@@ -4,9 +4,9 @@ using System.Linq;
 using System.Reflection;
 using BepInEx.Logging;
 using HotRepl;
-using HotRepl.BepInEx.Helpers;
 using HotRepl.Evaluator;
 using HotRepl.Evaluator.MonoCSharp;
+using HotRepl.Helpers.Unity;
 using HotRepl.Helpers;
 
 namespace HotRepl.BepInEx;
@@ -29,7 +29,7 @@ internal sealed class BepInExHost : IReplHost
 
     private static readonly IReadOnlyList<string> _additionalUsings =
         MonoCSharpEvaluator.DefaultUsings
-            .Concat(new[] { "HotRepl.BepInEx.Helpers" })
+            .Concat(new[] { "HotRepl.Helpers.Unity" })
             .ToArray();
 
     private static readonly EvaluatorCapabilities[] _availableEvaluators =

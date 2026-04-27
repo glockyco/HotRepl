@@ -33,7 +33,7 @@ internal static class HelperInjector
         evaluator.ReferenceAssembly(typeof(Repl).Assembly);
         evaluator.RunInternal("using HotRepl.Helpers;");
 
-        // Host-provided extras (e.g. HotRepl.BepInEx containing UnityHelpers).
+        // Host-provided extras (e.g. HotRepl.Helpers.Unity containing UnityHelpers).
         foreach (var asm in host.AdditionalAssemblies)
             evaluator.ReferenceAssembly(asm);
         foreach (var ns in host.AdditionalUsings)

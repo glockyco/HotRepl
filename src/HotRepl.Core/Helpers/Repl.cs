@@ -9,7 +9,7 @@ namespace HotRepl.Helpers;
 /// <summary>
 /// Statically injected helper class available in every REPL session as <c>Repl.*</c>.
 /// Platform-agnostic (no BepInEx or UnityEngine references at compile time).
-/// Unity-specific helpers (Screenshot, SceneGraph) are provided by HotRepl.BepInEx.
+/// Unity-specific helpers are provided by HotRepl.Helpers.Unity.
 ///
 /// Lifecycle: the engine calls Initialize() once after constructing the evaluator
 /// and again after every Reset(). All public methods are safe to call from eval code.

@@ -4,7 +4,7 @@ using System.IO;
 using System.Reflection;
 using UnityEngine;
 
-namespace HotRepl.BepInEx.Helpers;
+namespace HotRepl.Helpers.Unity;
 
 /// <summary>
 /// Unity-specific helper functions available in every REPL session as <c>UnityHelpers.*</c>.
@@ -29,7 +29,7 @@ public static class UnityHelpers
     /// Provide the MonoBehaviour host for coroutine-based screenshot capture.
     /// Called once from ReplPlugin.Awake().
     /// </summary>
-    internal static void Initialize(MonoBehaviour host)
+    public static void Initialize(MonoBehaviour host)
     {
         _coroutineHost = host;
     }

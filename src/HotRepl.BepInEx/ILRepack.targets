@@ -21,6 +21,7 @@
       <!-- Merge Core, evaluator assemblies, and NuGet deps into the plugin DLL -->
       <MergeAssemblies Include="$(OutputPath)HotRepl.Core.dll" />
       <MergeAssemblies Include="$(OutputPath)HotRepl.Evaluator.MonoCSharp.dll" />
+      <MergeAssemblies Include="$(OutputPath)HotRepl.Helpers.Unity.dll" />
       <MergeAssemblies Include="$(OutputPath)Fleck.dll" />
       <MergeAssemblies Include="$(OutputPath)Newtonsoft.Json.dll" />
       <!-- NOTE: Mono.CSharp.dll is NOT merged — it must ship alongside as a separate DLL.
