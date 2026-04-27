@@ -6,6 +6,7 @@
     <Project Path="src/HotRepl.Evaluator.MonoCSharp/HotRepl.Evaluator.MonoCSharp.csproj" />
     <Project Path="src/HotRepl.Evaluator.Roslyn/HotRepl.Evaluator.Roslyn.csproj" />
     <Project Path="src/HotRepl.Helpers.Unity/HotRepl.Helpers.Unity.csproj" />
+    <Project Path="src/HotRepl.Helpers.Il2Cpp/HotRepl.Helpers.Il2Cpp.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/HotRepl.Tests/HotRepl.Tests.csproj" />

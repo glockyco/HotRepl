@@ -14,6 +14,7 @@
     <ProjectReference Include="../HotRepl.Core/HotRepl.Core.csproj" />
     <ProjectReference Include="../HotRepl.Evaluator.Roslyn/HotRepl.Evaluator.Roslyn.csproj" />
     <ProjectReference Include="../HotRepl.Helpers.Unity/HotRepl.Helpers.Unity.csproj" />
+    <ProjectReference Include="../HotRepl.Helpers.Il2Cpp/HotRepl.Helpers.Il2Cpp.csproj" />
   </ItemGroup>
 
   <ItemGroup>

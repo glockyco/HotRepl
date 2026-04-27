@@ -114,6 +114,19 @@ and Roslyn dependency DLLs side-by-side in the game's `Mods/` directory unless a
 specific game documents a `UserLibs/` dependency layout. The MelonLoader host uses
 Roslyn.Script by default and reports `timeoutMode: "Cooperative"` in the handshake.
 
+After deploying to an IL2CPP game, verify:
+
+```bash
+hotrepl info
+hotrepl eval '1 + 1'
+hotrepl eval 'UnityEngine.Application.version'
+hotrepl eval 'Il2CppHelpers.DescribeType("Il2Cpp.Monster")'    # use a type present in the target game
+hotrepl eval 'Il2CppHelpers.FindObjects("Il2Cpp.Monster").Length'
+```
+
+Use a game-local wrapper type for the last two commands; HotRepl itself remains
+game-agnostic.
+
 ## Known Limitations
 
 | Limitation | Details |
