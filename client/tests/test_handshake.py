@@ -37,3 +37,22 @@ async def test_handshake_has_helpers(client: Client) -> None:
     assert client.handshake is not None
     helpers = client.handshake.get("helpers")
     assert isinstance(helpers, list)
+
+
+async def test_handshake_metadata_when_present(client: Client) -> None:
+    assert client.handshake is not None
+    evaluator = client.handshake.get("evaluator")
+    if evaluator is not None:
+        assert isinstance(evaluator.get("name"), str)
+        assert isinstance(evaluator.get("languageVersion"), str)
+        assert evaluator.get("timeoutMode") in {"HardAbort", "Cooperative", "None"}
+
+    host = client.handshake.get("host")
+    if host is not None:
+        assert isinstance(host.get("name"), str)
+        assert isinstance(host.get("runtime"), str)
+
+    available = client.handshake.get("availableEvaluators")
+    if available is not None:
+        assert isinstance(available, list)
+        assert all(isinstance(name, str) for name in available)

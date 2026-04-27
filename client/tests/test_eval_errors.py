@@ -1,4 +1,4 @@
-"""Tests for eval error categorization (compilation vs runtime)."""
+"""Tests for eval error categorization (compile vs runtime)."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ pytestmark = pytest.mark.asyncio
 async def test_compilation_error(client: Client) -> None:
     with pytest.raises(EvalError) as exc_info:
         await client.eval("int x = ;")
-    assert exc_info.value.kind == "compilation"
+    assert exc_info.value.kind == "compile"
 
 
 async def test_runtime_error(client: Client) -> None:
@@ -32,7 +32,7 @@ async def test_runtime_error_has_stack_trace(client: Client) -> None:
 async def test_undefined_variable_is_compilation_error(client: Client) -> None:
     with pytest.raises(EvalError) as exc_info:
         await client.eval("nonexistentVariable")
-    assert exc_info.value.kind == "compilation"
+    assert exc_info.value.kind == "compile"
 
 
 async def test_division_by_zero(client: Client) -> None:

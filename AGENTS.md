@@ -68,11 +68,18 @@ Do not break these without understanding all consequences:
   issued this frame pre-empt queued jobs.
 - **`IReplHost` is the sole platform boundary**: Core must never import BepInEx,
   UnityEngine, or any game-specific type. All game coupling flows through `IReplHost`.
-- **C# 7.x in evaluated code**: Mono.CSharp evaluates C# 7. The project itself
-  targets `netstandard2.1` and can use C# 8+ in host code, but evaluated user code
-  is limited to C# 7. Do not attempt to raise this; it is a compiler version pin.
+- **Evaluator timeout is capability-driven**: `TimeoutMode.HardAbort` may abort the
+  main thread; `TimeoutMode.Cooperative` cancels a token and cannot preempt every
+  runtime loop. Do not claim all evaluators have hard timeouts.
+- **Core has no compiler stack**: Mono.CSharp and Roslyn live in evaluator projects.
+  Core must not reference `mcs.dll`, Roslyn packages, UnityEngine, BepInEx,
+  MelonLoader, or Il2CppInterop.
+- **C# 7.x in Mono.CSharp evaluated code**: Mono.CSharp evaluates C# 7.
+  Host projects can target newer frameworks/languages, but evaluated user code
+  is limited to C# 7 under Mono.CSharp. Do not attempt to raise this without
+  replacing the evaluator; it is a compiler version pin.
 - **`mcs.dll`**: do not update without running the full smoke test suite. The
-  compiler version determines what features users can evaluate.
+  compiler version determines what features Mono.CSharp users can evaluate.
 
 ## Domain Constraints Agents Often Get Wrong
 

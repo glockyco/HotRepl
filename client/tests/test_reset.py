@@ -20,7 +20,7 @@ async def test_reset_clears_state(client: Client) -> None:
     await client.reset()
     with pytest.raises(EvalError) as exc_info:
         await client.eval("resetTarget")
-    assert exc_info.value.kind == "compilation"
+    assert exc_info.value.kind == "compile"
 
 
 async def test_reset_response_format(client: Client) -> None:
