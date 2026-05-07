@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-from dataclasses import asdict, is_dataclass
 import json
 import os
 import sys
+from dataclasses import asdict, is_dataclass
 from typing import Any
 
 from hotrepl._client import DEFAULT_URL, Client, ControlCommandError, EvalError
@@ -110,7 +110,12 @@ async def _cmd_control(args: argparse.Namespace) -> None:
             else:
                 raise RuntimeError(f"Unknown control command: {args.control_command}")
         except ControlCommandError as exc:
-            _print_json({"error": asdict(exc.error), "diagnostics": [asdict(d) for d in exc.diagnostics]})
+            _print_json(
+                {
+                    "error": asdict(exc.error),
+                    "diagnostics": [asdict(d) for d in exc.diagnostics],
+                }
+            )
             sys.exit(1)
 
 

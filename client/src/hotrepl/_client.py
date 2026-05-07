@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from typing import Self
 
 import websockets
+
 from hotrepl._types import (
     ArtifactRef,
     AuthResult,

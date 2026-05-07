@@ -4,10 +4,9 @@ These serve as documentation and type-checking, not runtime validation.
 """
 
 from __future__ import annotations
-from dataclasses import dataclass
-from typing import Any
 
-from typing import Required, TypedDict
+from dataclasses import dataclass
+from typing import Any, Required, TypedDict
 
 
 class EvaluatorMetadata(TypedDict, total=False):
