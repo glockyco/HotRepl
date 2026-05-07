@@ -19,14 +19,19 @@ namespace HotRepl.Server;
 internal sealed class ClientRegistry
 {
     private readonly ConcurrentDictionary<Guid, IWebSocketConnection> _clients = new();
-    private readonly ReplWebSocketServer _server;
+    private readonly Action<IWebSocketConnection, string> _send;
     private readonly Action<string> _log;
 
     private volatile IWebSocketConnection? _current;
 
     public ClientRegistry(ReplWebSocketServer server, Action<string> log)
+        : this((socket, json) => server.Send(socket, json), log)
     {
-        _server = server;
+    }
+
+    internal ClientRegistry(Action<IWebSocketConnection, string> send, Action<string> log)
+    {
+        _send = send;
         _log = log;
     }
 
@@ -67,7 +72,7 @@ internal sealed class ClientRegistry
         var client = _current;
         if (client == null)
             return;
-        _server.Send(client, json);
+        _send(client, json);
     }
 
     /// <summary>
@@ -77,8 +82,22 @@ internal sealed class ClientRegistry
     public void SendTo(Guid connectionId, string json)
     {
         if (_clients.TryGetValue(connectionId, out var socket))
-            _server.Send(socket, json);
+            _send(socket, json);
         else
             Send(json); // best-effort delivery to current client
+    }
+
+    /// <summary>
+    /// Sends a control-plane response only to its originating connection.
+    /// Returns false when the connection no longer exists; never falls back to
+    /// the replacement client because that would leak another controller's result.
+    /// </summary>
+    public bool SendControlTo(Guid connectionId, string json)
+    {
+        if (!_clients.TryGetValue(connectionId, out var socket))
+            return false;
+
+        _send(socket, json);
+        return true;
     }
 }

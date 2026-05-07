@@ -93,7 +93,7 @@ public sealed class ReplEngine : IDisposable
         _wsServer.ClientDisconnected += _clients.OnDisconnected;
         _wsServer.MessageReceived += _router.HandleMessage;
 
-        _wsServer.Start(_host.Config.Port);
+        _wsServer.Start(_host.Config.Port, _host.Config.BindHost);
         _host.LogInfo($"[HotRepl] Engine started on port {_host.Config.Port}.");
     }
 
@@ -332,10 +332,10 @@ public sealed class ReplEngine : IDisposable
                 HandleSelectEvaluator(s);
                 break;
             case CommandDescribeCmd c:
-                _clients!.SendTo(c.ConnectionId, MessageSerializer.Serialize(_controlRouter!.Describe(c.Id)));
+                _clients!.SendControlTo(c.ConnectionId, MessageSerializer.Serialize(_controlRouter!.Describe(c.Id)));
                 break;
             case CommandCallCmd c:
-                _clients!.SendTo(c.ConnectionId, MessageSerializer.Serialize(_controlRouter!.Execute(c.Message)));
+                _clients!.SendControlTo(c.ConnectionId, MessageSerializer.Serialize(_controlRouter!.Execute(c.Message)));
                 break;
             case ControlAuthCmd c:
                 HandleControlAuth(c);
@@ -349,7 +349,7 @@ public sealed class ReplEngine : IDisposable
     private void HandleControlAuth(ControlAuthCmd cmd)
     {
         var result = _controlSessions!.Authenticate(cmd.ConnectionId, cmd.Token);
-        _clients!.SendTo(cmd.ConnectionId, MessageSerializer.Serialize(new ControlAuthResultMessage
+        _clients!.SendControlTo(cmd.ConnectionId, MessageSerializer.Serialize(new ControlAuthResultMessage
         {
             Id = cmd.Id,
             Ok = result.Ok,
@@ -361,7 +361,7 @@ public sealed class ReplEngine : IDisposable
     private void HandleLeaseAcquire(LeaseAcquireCmd cmd)
     {
         var result = _controlSessions!.AcquireLease(cmd.SessionId, cmd.ClientName);
-        _clients!.SendTo(cmd.ConnectionId, MessageSerializer.Serialize(new LeaseAcquireResultMessage
+        _clients!.SendControlTo(cmd.ConnectionId, MessageSerializer.Serialize(new LeaseAcquireResultMessage
         {
             Id = cmd.Id,
             Ok = result.Ok,

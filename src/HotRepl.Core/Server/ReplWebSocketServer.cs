@@ -24,9 +24,11 @@ internal sealed class ReplWebSocketServer : IDisposable
 
     public ReplWebSocketServer(Action<string> log) => _log = log;
 
-    public void Start(int port)
+    public void Start(int port) => Start(port, "127.0.0.1");
+
+    public void Start(int port, string bindHost)
     {
-        var location = $"ws://0.0.0.0:{port}";
+        var location = BuildLocation(port, bindHost);
 
         // Redirect Fleck's internal logger through our host logger
         // instead of letting it hit Console.WriteLine (which BepInEx intercepts).
@@ -42,6 +44,12 @@ internal sealed class ReplWebSocketServer : IDisposable
         _log($"[HotRepl] Calling Fleck Start()...");
         _server.Start(ConfigureSocket);
         _log($"[HotRepl] Fleck Start() returned. Server listening on {location}");
+    }
+
+    internal static string BuildLocation(int port, string? bindHost)
+    {
+        var host = string.IsNullOrWhiteSpace(bindHost) ? "127.0.0.1" : bindHost;
+        return $"ws://{host}:{port}";
     }
 
     /// <summary>
