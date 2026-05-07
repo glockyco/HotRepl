@@ -207,7 +207,7 @@ Add optional `ControlPlaneInfo` to `client/src/hotrepl/_types.py` and parse it i
 
 ```bash
 dotnet test tests/HotRepl.Tests/ --nologo -v q --filter MessageSerializerTests
-cd client && uv run pytest client/tests/test_control_handshake.py -q
+cd client && uv run pytest tests/test_control_handshake.py -q
 ```
 
 Expected: both pass.
@@ -611,7 +611,7 @@ async def cancel_job(self, job_id: str) -> JobCancelResult
 
 ```bash
 cd client
-uv run pytest client/tests/test_control_commands.py client/tests/test_control_jobs.py client/tests/test_control_errors.py -q
+uv run pytest tests/test_control_commands.py tests/test_control_jobs.py tests/test_control_errors.py -q
 ```
 
 Expected: pass.
@@ -650,7 +650,7 @@ CLI outputs JSON to stdout for machine use. Human formatting can come later; do 
 
 ```bash
 cd client
-uv run pytest client/tests/test_control_commands.py -q
+uv run pytest tests/test_control_commands.py -q
 ```
 
 Expected: pass.
@@ -723,7 +723,7 @@ Expected: exit 0 for all.
 
 ```bash
 cd client
-uv run pytest client/tests -q
+uv run pytest tests -q
 ```
 
 Expected: exit 0.
