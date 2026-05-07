@@ -5,18 +5,6 @@ or MelonLoader/IL2CPP. This file is for agents working **on** this repo. For
 agents using HotRepl to inspect a running game, see the skill at
 `.claude/skills/hotrepl/SKILL.md`.
 
-## Issue Tracking
-
-This repo uses **bd** (beads).
-
-```bash
-bd ready                     # list available work
-bd show <id>                 # view issue details
-bd update <id> --claim       # claim work atomically before starting
-bd close <id>                # mark complete
-```
-
-Always claim before starting work. One issue at a time.
 
 ## Build & Test
 
