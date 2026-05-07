@@ -577,6 +577,24 @@ public sealed class ReplEngine : IDisposable
             CsharpVersion = _evaluator?.Capabilities.LanguageVersion ?? "unknown",
             DefaultUsings = usings,
             Helpers = helpers,
+            ControlPlane = _host.Config.ControlPlaneEnabled
+                ? new ControlPlaneHandshake
+                {
+                    Supported = true,
+                    ProtocolVersion = 1,
+                    AuthRequired = _host.Config.RequireControlAuth,
+                    LeaseRequired = true,
+                    ArtifactRefsSupported = true,
+                    JobEventsSupported = true,
+                    Limits = new ControlPlaneLimits
+                    {
+                        MaxMessageBytes = _host.Config.MaxControlMessageBytes,
+                        MaxInFlightCommands = 1,
+                        MaxQueuedCommands = _host.Config.MaxQueuedControlCommands,
+                        MaxJobEventBuffer = _host.Config.MaxJobEventBuffer,
+                    },
+                }
+                : null,
         }));
     }
 

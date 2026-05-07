@@ -23,6 +23,23 @@ class HostMetadata(TypedDict, total=False):
     platform: str
 
 
+class ControlPlaneLimits(TypedDict, total=False):
+    maxMessageBytes: int
+    maxInFlightCommands: int
+    maxQueuedCommands: int
+    maxJobEventBuffer: int
+
+
+class ControlPlaneMetadata(TypedDict, total=False):
+    supported: bool
+    protocolVersion: int
+    authRequired: bool
+    leaseRequired: bool
+    artifactRefsSupported: bool
+    jobEventsSupported: bool
+    limits: ControlPlaneLimits
+
+
 class Handshake(TypedDict, total=False):
     type: Required[str]
     version: str
@@ -32,6 +49,7 @@ class Handshake(TypedDict, total=False):
     availableEvaluators: list[str]
     defaultUsings: list[str]
     helpers: list[str]
+    controlPlane: ControlPlaneMetadata
 
 
 class EvalResult(TypedDict, total=False):

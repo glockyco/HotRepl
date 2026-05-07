@@ -172,6 +172,26 @@ internal sealed class HandshakeMessage
     [JsonProperty("evaluator")] public EvaluatorCapabilities? Evaluator { get; set; }
     [JsonProperty("host")] public HostInfo? Host { get; set; }
     [JsonProperty("availableEvaluators")] public string[] AvailableEvaluators { get; set; } = Array.Empty<string>();
+    [JsonProperty("controlPlane")] public ControlPlaneHandshake? ControlPlane { get; set; }
+}
+
+internal sealed class ControlPlaneHandshake
+{
+    [JsonProperty("supported")] public bool Supported { get; set; }
+    [JsonProperty("protocolVersion")] public int ProtocolVersion { get; set; }
+    [JsonProperty("authRequired")] public bool AuthRequired { get; set; }
+    [JsonProperty("leaseRequired")] public bool LeaseRequired { get; set; }
+    [JsonProperty("artifactRefsSupported")] public bool ArtifactRefsSupported { get; set; }
+    [JsonProperty("jobEventsSupported")] public bool JobEventsSupported { get; set; }
+    [JsonProperty("limits")] public ControlPlaneLimits? Limits { get; set; }
+}
+
+internal sealed class ControlPlaneLimits
+{
+    [JsonProperty("maxMessageBytes")] public int MaxMessageBytes { get; set; }
+    [JsonProperty("maxInFlightCommands")] public int MaxInFlightCommands { get; set; }
+    [JsonProperty("maxQueuedCommands")] public int MaxQueuedCommands { get; set; }
+    [JsonProperty("maxJobEventBuffer")] public int MaxJobEventBuffer { get; set; }
 }
 
 internal sealed class EvalResultMessage

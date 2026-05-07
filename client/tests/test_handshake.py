@@ -56,3 +56,23 @@ async def test_handshake_metadata_when_present(client: Client) -> None:
     if available is not None:
         assert isinstance(available, list)
         assert all(isinstance(name, str) for name in available)
+
+
+async def test_handshake_control_plane_metadata_when_present(client: Client) -> None:
+    assert client.handshake is not None
+    control_plane = client.handshake.get("controlPlane")
+    if control_plane is None:
+        return
+
+    assert control_plane.get("supported") is True
+    assert isinstance(control_plane.get("protocolVersion"), int)
+    assert isinstance(control_plane.get("authRequired"), bool)
+    assert isinstance(control_plane.get("leaseRequired"), bool)
+    assert isinstance(control_plane.get("artifactRefsSupported"), bool)
+    assert isinstance(control_plane.get("jobEventsSupported"), bool)
+    limits = control_plane.get("limits")
+    assert isinstance(limits, dict)
+    assert isinstance(limits.get("maxMessageBytes"), int)
+    assert isinstance(limits.get("maxInFlightCommands"), int)
+    assert isinstance(limits.get("maxQueuedCommands"), int)
+    assert isinstance(limits.get("maxJobEventBuffer"), int)

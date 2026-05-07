@@ -143,6 +143,44 @@ public class MessageSerializerTests
     }
 
     [Fact]
+    public void RoundTrip_HandshakeMessage_IncludesControlPlaneMetadata()
+    {
+        var msg = new HandshakeMessage
+        {
+            Version = "1.0.0",
+            ControlPlane = new ControlPlaneHandshake
+            {
+                Supported = true,
+                ProtocolVersion = 1,
+                AuthRequired = true,
+                LeaseRequired = true,
+                ArtifactRefsSupported = true,
+                JobEventsSupported = true,
+                Limits = new ControlPlaneLimits
+                {
+                    MaxMessageBytes = 1024,
+                    MaxInFlightCommands = 1,
+                    MaxQueuedCommands = 32,
+                    MaxJobEventBuffer = 1000,
+                },
+            },
+        };
+
+        var json = MessageSerializer.Serialize(msg);
+        var back = MessageSerializer.Deserialize<HandshakeMessage>(json);
+
+        Assert.Contains("\"controlPlane\"", json);
+        Assert.True(back.ControlPlane!.Supported);
+        Assert.Equal(1, back.ControlPlane.ProtocolVersion);
+        Assert.True(back.ControlPlane.AuthRequired);
+        Assert.True(back.ControlPlane.LeaseRequired);
+        Assert.True(back.ControlPlane.ArtifactRefsSupported);
+        Assert.True(back.ControlPlane.JobEventsSupported);
+        Assert.Equal(1024, back.ControlPlane.Limits!.MaxMessageBytes);
+        Assert.Equal(32, back.ControlPlane.Limits.MaxQueuedCommands);
+    }
+
+    [Fact]
     public void RoundTrip_EvalResultMessage()
     {
         var msg = new EvalResultMessage

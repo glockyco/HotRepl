@@ -31,4 +31,22 @@ public sealed class ReplConfig
     /// Default: 100.
     /// </summary>
     public int MaxEnumerableElements { get; set; } = 100;
+
+    /// <summary>Enable the typed command/job control-plane protocol. Default: true.</summary>
+    public bool ControlPlaneEnabled { get; set; } = true;
+
+    /// <summary>WebSocket bind host. Default: loopback only.</summary>
+    public string BindHost { get; set; } = "127.0.0.1";
+
+    /// <summary>Whether control-plane auth is required. Default: false until auth is configured.</summary>
+    public bool RequireControlAuth { get; set; }
+
+    /// <summary>Maximum inbound control-plane message size in bytes. Default: 1 MiB.</summary>
+    public int MaxControlMessageBytes { get; set; } = 1024 * 1024;
+
+    /// <summary>Maximum number of queued control commands before overload rejection. Default: 32.</summary>
+    public int MaxQueuedControlCommands { get; set; } = 32;
+
+    /// <summary>Maximum buffered event count per control-plane job. Default: 1000.</summary>
+    public int MaxJobEventBuffer { get; set; } = 1000;
 }
