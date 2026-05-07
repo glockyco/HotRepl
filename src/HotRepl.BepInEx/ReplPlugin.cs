@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using BepInEx;
+using BepInEx.Configuration;
 using HotRepl.Helpers.Unity;
 
 namespace HotRepl.BepInEx;
@@ -24,18 +25,41 @@ public sealed class ReplPlugin : BaseUnityPlugin
     {
         try
         {
-            var host = new BepInExHost(Logger);
+            var config = LoadConfig();
+            var host = new BepInExHost(Logger, config);
             _engine = new ReplEngine(host);
             UnityHelpers.Initialize(this);
             _engine.Start();
 
-            Logger.LogInfo($"{PluginInfo.Name} v{PluginInfo.Version} loaded \u2014 REPL on port {host.Config.Port}.");
+            Logger.LogInfo($"{PluginInfo.Name} v{PluginInfo.Version} loaded — REPL on {host.Config.BindHost}:{host.Config.Port}.");
         }
         catch (Exception ex)
         {
             Logger.LogError($"{PluginInfo.Name} failed to start: {ex}");
             _engine = null;
         }
+    }
+
+    private ReplConfig LoadConfig()
+    {
+        var port = Config.Bind("Server", "Port", 18590, "WebSocket listen port.");
+        var bindHost = Config.Bind("Server", "BindHost", "127.0.0.1", "WebSocket bind host. Use 127.0.0.1 for loopback-only, or explicitly set 0.0.0.0 for host-reachable automation.");
+        var requireAuth = Config.Bind("Control", "RequireAuth", false, "Require control-plane authentication.");
+        var authToken = Config.Bind("Control", "AuthToken", string.Empty, "Token required for control-plane authentication. Set this when BindHost is not loopback.");
+
+        var config = new ReplConfig
+        {
+            Port = port.Value,
+            BindHost = bindHost.Value,
+            RequireControlAuth = requireAuth.Value,
+            ControlAuthToken = string.IsNullOrWhiteSpace(authToken.Value) ? null : authToken.Value,
+        };
+
+        ReplConfigExposurePolicy.ApplyControlAuthToken(config);
+        foreach (var warning in ReplConfigExposurePolicy.Validate(config).Warnings)
+            Logger.LogWarning(warning);
+
+        return config;
     }
 
     private void Update()
