@@ -57,7 +57,7 @@ internal sealed class BepInExHost : IReplHost
         Platform = "Unity Mono",
     };
 
-    public IControlCommandRegistry ControlCommands => EmptyControlCommandRegistry.Instance;
+    public IControlCommandRegistry ControlCommands => GlobalControlCommandRegistry.Instance;
 
     public IReadOnlyList<EvaluatorCapabilities> AvailableEvaluators => _availableEvaluators;
 

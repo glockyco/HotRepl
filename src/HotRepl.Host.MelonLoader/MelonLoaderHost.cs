@@ -43,7 +43,7 @@ internal sealed class MelonLoaderHost : IReplHost
         Platform = "Unity IL2CPP",
     };
 
-    public IControlCommandRegistry ControlCommands => EmptyControlCommandRegistry.Instance;
+    public IControlCommandRegistry ControlCommands => GlobalControlCommandRegistry.Instance;
 
     public IReadOnlyList<EvaluatorCapabilities> AvailableEvaluators => RoslynEvaluatorFactory.Capabilities;
 

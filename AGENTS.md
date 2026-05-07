@@ -72,6 +72,9 @@ Do not break these without understanding all consequences:
 - **Control plane remains game-agnostic**: core may define typed command, job,
   lease, and artifact envelopes, but game-specific export behavior belongs in host
   command handlers.
+- **Global control registry stays game-agnostic**: the registry stores
+  `IControlCommandHandler` instances only. Do not add game-specific types,
+  command names, or export policy to HotRepl.
 - **Control handlers execute through the main-thread tick path**: Fleck threads
   enqueue only. Do not execute control handlers directly from WebSocket callbacks.
 - **Mutating control commands require a lease**: descriptors with `MutatesState`

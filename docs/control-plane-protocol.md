@@ -35,6 +35,8 @@ Leases are in-memory and do not survive process restart.
 
 Hosts expose descriptors with `name`, `version`, `kind` (`sync` or `job`), `mutatesState`, `argsSchema`, and `resultSchema`. Use `command_describe` to retrieve descriptors.
 
+BepInEx and MelonLoader host adapters expose `GlobalControlCommandRegistry.Instance`. Game-specific plugins register handlers with that registry during plugin initialization and dispose their registrations during plugin shutdown.
+
 ## Synchronous command flow
 
 `command_call` for a `sync` descriptor executes on the engine tick path and returns either:
