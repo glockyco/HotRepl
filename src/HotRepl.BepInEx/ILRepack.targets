@@ -18,8 +18,9 @@
           Condition="'$(SkipILRepack)' != 'true'">
     <ItemGroup>
       <MergeAssemblies Include="$(OutputPath)$(TargetName)$(TargetExt)" />
-      <!-- Merge Core, evaluator assemblies, and NuGet deps into the plugin DLL -->
-      <MergeAssemblies Include="$(OutputPath)HotRepl.Core.dll" />
+      <!-- Merge evaluator/helper assemblies and NuGet deps into the plugin DLL.
+           HotRepl.Core must remain side-by-side so separate game plugins share
+           the same GlobalControlCommandRegistry.Instance assembly identity. -->
       <MergeAssemblies Include="$(OutputPath)HotRepl.Evaluator.MonoCSharp.dll" />
       <MergeAssemblies Include="$(OutputPath)HotRepl.Helpers.Unity.dll" />
       <MergeAssemblies Include="$(OutputPath)Fleck.dll" />
@@ -53,6 +54,7 @@
       <KeepFiles Include="$(OutputPath)$(TargetName).dll" />
       <KeepFiles Include="$(OutputPath)$(TargetName).pdb" />
       <KeepFiles Include="$(OutputPath)$(TargetName).deps.json" />
+      <KeepFiles Include="$(OutputPath)HotRepl.Core.dll" />
       <!-- mcs.dll must survive for runtime use -->
       <KeepFiles Include="$(OutputPath)mcs.dll" />
       <!-- Roslyn remains side-by-side; merging/internalizing it breaks scripting dependencies. -->
@@ -64,7 +66,7 @@
       <DeleteFiles Include="@(AllFiles)" Exclude="@(KeepFiles)" />
     </ItemGroup>
     <Delete Files="@(DeleteFiles)" />
-    <Message Text="Cleaned up — HotRepl.BepInEx.dll + mcs.dll + Roslyn sidecars ready" Importance="high" />
+    <Message Text="Cleaned up — HotRepl.BepInEx.dll + HotRepl.Core.dll + mcs.dll + Roslyn sidecars ready" Importance="high" />
   </Target>
 
 </Project>

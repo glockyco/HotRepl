@@ -75,6 +75,7 @@ Do not break these without understanding all consequences:
 - **Global control registry stays game-agnostic**: the registry stores
   `IControlCommandHandler` instances only. Do not add game-specific types,
   command names, or export policy to HotRepl.
+- **BepInEx ships `HotRepl.Core.dll` side-by-side**: do not ILRepack/internalize Core into `HotRepl.BepInEx.dll`. Separate game plugins compiled against Core must share the exact same assembly identity for `GlobalControlCommandRegistry.Instance`.
 - **Control handlers execute through the main-thread tick path**: Fleck threads
   enqueue only. Do not execute control handlers directly from WebSocket callbacks.
 - **Mutating control commands require a lease**: descriptors with `MutatesState`

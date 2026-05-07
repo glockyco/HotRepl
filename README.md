@@ -113,12 +113,15 @@ dotnet test tests/HotRepl.Tests/      # Unit tests; no game required
 
 ### BepInEx / Mono
 
-Output: `src/<Project>/bin/Debug/netstandard2.1/`. Deploy to BepInEx:
+Output: `src/<Project>/bin/Debug/netstandard2.1/`. Deploy the host, Core control
+contracts, and Mono.CSharp runtime side-by-side to BepInEx:
 
 ```bash
 GAME_DIR="/path/to/game"
-cp -f src/HotRepl.BepInEx/bin/Debug/netstandard2.1/HotRepl.BepInEx.dll "$GAME_DIR/BepInEx/plugins/"
-cp -f lib/mcs.dll "$GAME_DIR/BepInEx/plugins/"
+HOTREPL_OUT="src/HotRepl.BepInEx/bin/Debug/netstandard2.1"
+cp -f "$HOTREPL_OUT/HotRepl.BepInEx.dll" "$GAME_DIR/BepInEx/plugins/"
+cp -f "$HOTREPL_OUT/HotRepl.Core.dll" "$GAME_DIR/BepInEx/plugins/"
+cp -f "$HOTREPL_OUT/mcs.dll" "$GAME_DIR/BepInEx/plugins/"
 ```
 
 ### MelonLoader / IL2CPP
