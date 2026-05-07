@@ -78,7 +78,7 @@ New/modified tests:
 - Modify: `src/HotRepl.Core/Protocol/Messages.cs`
 - Test: `tests/HotRepl.Tests/Unit/ControlMessageSerializerTests.cs`
 
-- [ ] **Step 1: Write serializer tests for new message types**
+- [x] **Step 1: Write serializer tests for new message types**
 
 Add tests covering these message names exactly:
 
@@ -111,7 +111,7 @@ dotnet test tests/HotRepl.Tests/ --nologo -v q --filter ControlMessageSerializer
 
 Expected: fail because DTOs and serializer mappings do not exist.
 
-- [ ] **Step 2: Add DTO records and message type constants**
+- [x] **Step 2: Add DTO records and message type constants**
 
 Add records in `Messages.cs` matching the spec. Required fields:
 
@@ -139,11 +139,11 @@ public static class MessageTypes
 
 Use `Newtonsoft.Json.Linq.JObject` for command args/results so HotRepl core stays schema-neutral.
 
-- [ ] **Step 3: Map new messages in `MessageSerializer`**
+- [x] **Step 3: Map new messages in `MessageSerializer`**
 
 Route inbound messages by `type` to their DTO classes. Unknown messages should preserve existing behavior for old clients.
 
-- [ ] **Step 4: Verify tests pass**
+- [x] **Step 4: Verify tests pass**
 
 Run:
 
@@ -153,7 +153,7 @@ dotnet test tests/HotRepl.Tests/ --nologo -v q --filter ControlMessageSerializer
 
 Expected: pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/HotRepl.Core/Protocol/Messages.cs src/HotRepl.Core/Protocol/MessageSerializer.cs tests/HotRepl.Tests/Unit/ControlMessageSerializerTests.cs
@@ -170,13 +170,13 @@ git commit -m "feat(protocol): add control-plane message contracts"
 - Test: `tests/HotRepl.Tests/Unit/MessageSerializerTests.cs`
 - Test: `client/tests/test_control_handshake.py`
 
-- [ ] **Step 1: Add failing handshake tests**
+- [x] **Step 1: Add failing handshake tests**
 
 C# test should assert serialized handshake includes optional `controlPlane` object when enabled.
 
 Python test should assert `Client.connect()` exposes `handshake.control_plane.supported` without breaking existing handshake fields.
 
-- [ ] **Step 2: Add config properties**
+- [x] **Step 2: Add config properties**
 
 Add to `ReplConfig`:
 
@@ -191,19 +191,19 @@ public int MaxJobEventBuffer { get; set; } = 1000;
 
 Keep existing port behavior unchanged except for the bind host default when server startup is updated in a later task.
 
-- [ ] **Step 3: Extend handshake DTO**
+- [x] **Step 3: Extend handshake DTO**
 
 Add `ControlPlaneHandshake? ControlPlane` with fields from the spec.
 
-- [ ] **Step 4: Populate handshake in `ReplEngine`**
+- [x] **Step 4: Populate handshake in `ReplEngine`**
 
 When `ControlPlaneEnabled` is true, include protocol version `1`, artifact/job support flags, auth mode, and limits.
 
-- [ ] **Step 5: Update Python types**
+- [x] **Step 5: Update Python types**
 
 Add optional `ControlPlaneInfo` to `client/src/hotrepl/_types.py` and parse it in `_client.py` handshake logic.
 
-- [ ] **Step 6: Run tests**
+- [x] **Step 6: Run tests**
 
 ```bash
 dotnet test tests/HotRepl.Tests/ --nologo -v q --filter MessageSerializerTests
@@ -212,7 +212,7 @@ cd client && uv run pytest tests/test_control_handshake.py -q
 
 Expected: both pass.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/HotRepl.Core/Protocol/Messages.cs src/HotRepl.Core/ReplConfig.cs src/HotRepl.Core/ReplEngine.cs tests/HotRepl.Tests/Unit/MessageSerializerTests.cs client/src/hotrepl/_types.py client/src/hotrepl/_client.py client/tests/test_control_handshake.py
@@ -237,7 +237,7 @@ git commit -m "feat(protocol): advertise control-plane capabilities"
 - Modify: `src/HotRepl.Core/IReplHost.cs`
 - Test: `tests/HotRepl.Tests/Unit/ControlCommandRegistryTests.cs`
 
-- [ ] **Step 1: Write failing registry tests**
+- [x] **Step 1: Write failing registry tests**
 
 Tests:
 
@@ -245,7 +245,7 @@ Tests:
 2. Descriptor requires non-empty command name and positive version.
 3. Host without explicit registry returns the empty registry.
 
-- [ ] **Step 2: Add control abstractions**
+- [x] **Step 2: Add control abstractions**
 
 Define:
 
@@ -284,7 +284,7 @@ public sealed record ControlCommandResult(
 
 Place `ArtifactRef` in `Control/Artifacts/ArtifactRef.cs` but reference it from `ControlCommandResult`.
 
-- [ ] **Step 3: Extend host boundary**
+- [x] **Step 3: Extend host boundary**
 
 Add to `IReplHost`:
 
@@ -294,7 +294,7 @@ IControlCommandRegistry ControlCommands { get; }
 
 Existing hosts should return `EmptyControlCommandRegistry.Instance`.
 
-- [ ] **Step 4: Run registry tests**
+- [x] **Step 4: Run registry tests**
 
 ```bash
 dotnet test tests/HotRepl.Tests/ --nologo -v q --filter ControlCommandRegistryTests
@@ -302,7 +302,7 @@ dotnet test tests/HotRepl.Tests/ --nologo -v q --filter ControlCommandRegistryTe
 
 Expected: pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/HotRepl.Core/Control src/HotRepl.Core/IReplHost.cs src/HotRepl.BepInEx src/HotRepl.Host.MelonLoader tests/HotRepl.Tests/Unit/ControlCommandRegistryTests.cs
@@ -318,7 +318,7 @@ git commit -m "feat(control): add command registry abstractions"
 - Modify: `src/HotRepl.Core/ReplEngine.cs`
 - Test: `tests/HotRepl.Tests/Unit/ControlRoutingTests.cs`
 
-- [ ] **Step 1: Write failing routing tests**
+- [x] **Step 1: Write failing routing tests**
 
 Tests:
 
@@ -327,15 +327,15 @@ Tests:
 3. Known synchronous command executes on engine tick and returns `command_result`.
 4. Handler exception returns `command_error` with `kind = internal` and `retryable = false`.
 
-- [ ] **Step 2: Add `ControlCommandRouter`**
+- [x] **Step 2: Add `ControlCommandRouter`**
 
 The router validates command name, looks up handler, and converts handler output/errors into protocol DTOs. It must not execute handlers from socket threads.
 
-- [ ] **Step 3: Wire router through `MessageRouter` and `ReplEngine`**
+- [x] **Step 3: Wire router through `MessageRouter` and `ReplEngine`**
 
 Inbound control messages enqueue engine commands. Preserve existing tick order: cancel drain, command queue, at most one eval, subscriptions. Control command execution should live in the command queue portion.
 
-- [ ] **Step 4: Run routing tests**
+- [x] **Step 4: Run routing tests**
 
 ```bash
 dotnet test tests/HotRepl.Tests/ --nologo -v q --filter ControlRoutingTests
@@ -343,7 +343,7 @@ dotnet test tests/HotRepl.Tests/ --nologo -v q --filter ControlRoutingTests
 
 Expected: pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/HotRepl.Core/Control/ControlCommandRouter.cs src/HotRepl.Core/Server/MessageRouter.cs src/HotRepl.Core/ReplEngine.cs tests/HotRepl.Tests/Unit/ControlRoutingTests.cs
@@ -363,7 +363,7 @@ git commit -m "feat(control): execute typed synchronous commands"
 - Modify: `src/HotRepl.Core/Server/MessageRouter.cs`
 - Test: `tests/HotRepl.Tests/Unit/ControlSessionManagerTests.cs`
 
-- [ ] **Step 1: Write failing session tests**
+- [x] **Step 1: Write failing session tests**
 
 Tests:
 
@@ -373,7 +373,7 @@ Tests:
 4. Second lease acquisition fails with `lease_conflict` while first lease is active.
 5. Mutating command without lease fails with `lease_required`.
 
-- [ ] **Step 2: Implement `ControlSessionManager`**
+- [x] **Step 2: Implement `ControlSessionManager`**
 
 Track:
 
@@ -388,7 +388,7 @@ lastSeenAt
 
 Do not persist leases across process restart in the first version.
 
-- [ ] **Step 3: Add config**
+- [x] **Step 3: Add config**
 
 Add:
 
@@ -397,11 +397,11 @@ public string? ControlAuthToken { get; set; }
 public bool RequireControlLease { get; set; } = true;
 ```
 
-- [ ] **Step 4: Gate mutating commands**
+- [x] **Step 4: Gate mutating commands**
 
 If command descriptor `MutatesState` is true, require valid lease. Read-only commands may run after auth without lease.
 
-- [ ] **Step 5: Run tests**
+- [x] **Step 5: Run tests**
 
 ```bash
 dotnet test tests/HotRepl.Tests/ --nologo -v q --filter ControlSessionManagerTests
@@ -409,7 +409,7 @@ dotnet test tests/HotRepl.Tests/ --nologo -v q --filter ControlSessionManagerTes
 
 Expected: pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/HotRepl.Core/Control/ControlSessionManager.cs src/HotRepl.Core/ReplConfig.cs src/HotRepl.Core/Server/MessageRouter.cs tests/HotRepl.Tests/Unit/ControlSessionManagerTests.cs
@@ -424,7 +424,7 @@ git commit -m "feat(control): require authenticated command leases"
 - Modify: `src/HotRepl.Core/Server/ClientRegistry.cs`
 - Test: `tests/HotRepl.Tests/Unit/ControlSessionManagerTests.cs`
 
-- [ ] **Step 1: Add failing tests**
+- [x] **Step 1: Add failing tests**
 
 Tests:
 
@@ -432,15 +432,15 @@ Tests:
 2. Explicit bind host `0.0.0.0` is honored only when configured.
 3. Addressed control responses to a disconnected client are dropped or recorded as undeliverable; they must not be sent to the replacement client.
 
-- [ ] **Step 2: Implement bind host config in server startup**
+- [x] **Step 2: Implement bind host config in server startup**
 
 Use `ReplConfig.BindHost` when constructing the Fleck URL.
 
-- [ ] **Step 3: Split eval fallback from control response delivery**
+- [x] **Step 3: Split eval fallback from control response delivery**
 
 Keep existing behavior for old eval responses only if required for compatibility. Control responses must require the original connection/session.
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 ```bash
 dotnet test tests/HotRepl.Tests/ --nologo -v q --filter ControlSessionManagerTests
@@ -448,7 +448,7 @@ dotnet test tests/HotRepl.Tests/ --nologo -v q --filter ControlSessionManagerTes
 
 Expected: pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/HotRepl.Core/Server/ReplWebSocketServer.cs src/HotRepl.Core/Server/ClientRegistry.cs tests/HotRepl.Tests/Unit/ControlSessionManagerTests.cs
@@ -468,7 +468,7 @@ git commit -m "fix(server): secure control-plane session ownership"
 - Create: `src/HotRepl.Core/Control/Jobs/ControlJobManager.cs`
 - Test: `tests/HotRepl.Tests/Unit/ControlJobManagerTests.cs`
 
-- [ ] **Step 1: Write failing job tests**
+- [x] **Step 1: Write failing job tests**
 
 Tests:
 
@@ -479,7 +479,7 @@ Tests:
 5. Event buffer returns events after requested sequence.
 6. Event buffer caps at `MaxJobEventBuffer`.
 
-- [ ] **Step 2: Implement job models**
+- [x] **Step 2: Implement job models**
 
 States are exact strings on the wire:
 
@@ -494,11 +494,11 @@ cancelled
 
 Internally use enum if desired, but protocol output must use these strings.
 
-- [ ] **Step 3: Implement cooperative cancellation**
+- [x] **Step 3: Implement cooperative cancellation**
 
 Each job owns a `CancellationTokenSource`. `job_cancel` cancels the token and returns `job_cancel_result` immediately with whether cancellation was accepted.
 
-- [ ] **Step 4: Run job tests**
+- [x] **Step 4: Run job tests**
 
 ```bash
 dotnet test tests/HotRepl.Tests/ --nologo -v q --filter ControlJobManagerTests
@@ -506,7 +506,7 @@ dotnet test tests/HotRepl.Tests/ --nologo -v q --filter ControlJobManagerTests
 
 Expected: pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/HotRepl.Core/Control/Jobs tests/HotRepl.Tests/Unit/ControlJobManagerTests.cs
@@ -522,7 +522,7 @@ git commit -m "feat(control): add cooperative job lifecycle"
 - Modify: `src/HotRepl.Core/Server/MessageRouter.cs`
 - Test: `tests/HotRepl.Tests/Unit/ControlRoutingTests.cs`
 
-- [ ] **Step 1: Add failing routing tests**
+- [x] **Step 1: Add failing routing tests**
 
 Tests:
 
@@ -532,15 +532,15 @@ Tests:
 4. `job_result` after completion returns artifacts and result.
 5. `job_cancel` returns acknowledgement.
 
-- [ ] **Step 2: Route job command handlers through `ControlJobManager`**
+- [x] **Step 2: Route job command handlers through `ControlJobManager`**
 
 Descriptors with `Kind = Job` must not block `command_call` until completion.
 
-- [ ] **Step 3: Add artifact refs to result DTOs**
+- [x] **Step 3: Add artifact refs to result DTOs**
 
 Ensure `ArtifactRef` serializes with `logicalName`, `uri`, `path`, `contentType`, `byteSize`, `sha256`, and `finalized`.
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 ```bash
 dotnet test tests/HotRepl.Tests/ --nologo -v q --filter ControlRoutingTests
@@ -548,7 +548,7 @@ dotnet test tests/HotRepl.Tests/ --nologo -v q --filter ControlRoutingTests
 
 Expected: pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/HotRepl.Core/Control src/HotRepl.Core/ReplEngine.cs src/HotRepl.Core/Server/MessageRouter.cs tests/HotRepl.Tests/Unit/ControlRoutingTests.cs
@@ -569,7 +569,7 @@ git commit -m "feat(control): expose job status results and artifacts"
 - Test: `client/tests/test_control_jobs.py`
 - Test: `client/tests/test_control_errors.py`
 
-- [ ] **Step 1: Write failing Python tests with fake WebSocket server fixtures**
+- [x] **Step 1: Write failing Python tests with fake WebSocket server fixtures**
 
 Tests cover:
 
@@ -579,7 +579,7 @@ Tests cover:
 4. `start_job()` returns `jobId` from `command_accepted`.
 5. `job_status()`, `job_result()`, and `cancel_job()` parse their responses.
 
-- [ ] **Step 2: Add Python dataclasses/types**
+- [x] **Step 2: Add Python dataclasses/types**
 
 Types:
 
@@ -592,7 +592,7 @@ CommandAccepted
 JobStatus
 ```
 
-- [ ] **Step 3: Implement client methods**
+- [x] **Step 3: Implement client methods**
 
 Methods:
 
@@ -607,7 +607,7 @@ async def job_result(self, job_id: str) -> CommandResult
 async def cancel_job(self, job_id: str) -> JobCancelResult
 ```
 
-- [ ] **Step 4: Run Python tests**
+- [x] **Step 4: Run Python tests**
 
 ```bash
 cd client
@@ -616,7 +616,7 @@ uv run pytest tests/test_control_commands.py tests/test_control_jobs.py tests/te
 
 Expected: pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add client/src/hotrepl/_types.py client/src/hotrepl/_client.py client/tests/test_control_commands.py client/tests/test_control_jobs.py client/tests/test_control_errors.py
@@ -630,7 +630,7 @@ git commit -m "feat(client): add control-plane API"
 - Modify: `client/src/hotrepl/cli.py`
 - Test: `client/tests/test_control_commands.py`
 
-- [ ] **Step 1: Write failing CLI tests**
+- [x] **Step 1: Write failing CLI tests**
 
 Tests cover argument parsing for:
 
@@ -642,11 +642,11 @@ hotrepl control job-result job-123
 hotrepl control cancel job-123
 ```
 
-- [ ] **Step 2: Implement CLI commands**
+- [x] **Step 2: Implement CLI commands**
 
 CLI outputs JSON to stdout for machine use. Human formatting can come later; do not add non-JSON decoration to control command output.
 
-- [ ] **Step 3: Run tests**
+- [x] **Step 3: Run tests**
 
 ```bash
 cd client
@@ -655,7 +655,7 @@ uv run pytest tests/test_control_commands.py -q
 
 Expected: pass.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add client/src/hotrepl/cli.py client/tests/test_control_commands.py
@@ -674,7 +674,7 @@ git commit -m "feat(cli): expose control-plane commands"
 - Modify: `AGENTS.md`
 - Create: `docs/control-plane-protocol.md`
 
-- [ ] **Step 1: Add protocol documentation**
+- [x] **Step 1: Add protocol documentation**
 
 Document:
 
@@ -688,7 +688,7 @@ Document:
 - error kinds;
 - compatibility with eval.
 
-- [ ] **Step 2: Update `AGENTS.md`**
+- [x] **Step 2: Update `AGENTS.md`**
 
 Add invariants:
 
@@ -698,7 +698,7 @@ Add invariants:
 - Control responses must not be delivered to replacement clients.
 - Artifacts are metadata references, not bulk payloads.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add README.md AGENTS.md docs/control-plane-protocol.md
@@ -709,7 +709,7 @@ git commit -m "docs(control): describe control-plane protocol"
 
 **Files:** all touched files.
 
-- [ ] **Step 1: Run C# gates**
+- [x] **Step 1: Run C# gates**
 
 ```bash
 dotnet build src/HotRepl.Core/ --nologo -v q
@@ -719,7 +719,7 @@ dotnet format src/HotRepl.Core/ --verify-no-changes
 
 Expected: exit 0 for all.
 
-- [ ] **Step 2: Run Python client tests**
+- [x] **Step 2: Run Python client tests**
 
 ```bash
 cd client
@@ -728,7 +728,7 @@ uv run pytest tests -q
 
 Expected: exit 0.
 
-- [ ] **Step 3: Commit any test/doc fixes**
+- [x] **Step 3: Commit any test/doc fixes**
 
 Only commit if Step 1 or Step 2 required fixes.
 
