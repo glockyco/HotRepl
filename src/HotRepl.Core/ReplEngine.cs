@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using Fleck;
+using HotRepl.Control;
 using HotRepl.Evaluator;
 using HotRepl.Helpers;
 using HotRepl.Protocol;
@@ -41,6 +42,7 @@ public sealed class ReplEngine : IDisposable
     private SubscriptionManager? _subscriptions;
     private IResultSerializer? _serializer;
     private HistoryTracker? _history;
+    private ControlCommandRouter? _controlRouter;
 
     // ── Queues — written by Fleck threads, drained by Tick() ──────────────────
     private readonly ConcurrentQueue<EvalJob> _evalQueue = new();
@@ -83,6 +85,7 @@ public sealed class ReplEngine : IDisposable
         _wsServer = new ReplWebSocketServer(msg => _host.LogInfo(msg));
         _clients = new ClientRegistry(_wsServer, msg => _host.LogInfo(msg));
         _router = new MessageRouter(this, msg => _host.LogInfo(msg));
+        _controlRouter = new ControlCommandRouter(_host.ControlCommands);
 
         _wsServer.ClientConnected += OnClientConnected;
         _wsServer.ClientDisconnected += _clients.OnDisconnected;
@@ -325,6 +328,12 @@ public sealed class ReplEngine : IDisposable
                 break;
             case SelectEvaluatorCmd s:
                 HandleSelectEvaluator(s);
+                break;
+            case CommandDescribeCmd c:
+                _clients!.SendTo(c.ConnectionId, MessageSerializer.Serialize(_controlRouter!.Describe(c.Id)));
+                break;
+            case CommandCallCmd c:
+                _clients!.SendTo(c.ConnectionId, MessageSerializer.Serialize(_controlRouter!.Execute(c.Message)));
                 break;
         }
     }
@@ -696,4 +705,19 @@ internal sealed class SubscribeCmd : IEngineCommand
     public Guid ConnectionId { get; }
     public SubscribeCmd(string id, string code, int intervalFrames, bool onChange, int limit, int timeoutMs, Guid connectionId)
     { Id = id; Code = code; IntervalFrames = intervalFrames; OnChange = onChange; Limit = limit; TimeoutMs = timeoutMs; ConnectionId = connectionId; }
+}
+
+internal sealed class CommandDescribeCmd : IEngineCommand
+{
+    public string Id { get; }
+    public Guid ConnectionId { get; }
+    public CommandDescribeCmd(string id, Guid connectionId) { Id = id; ConnectionId = connectionId; }
+}
+
+internal sealed class CommandCallCmd : IEngineCommand
+{
+    public string Id => Message.Id;
+    public Guid ConnectionId { get; }
+    public CommandCallMessage Message { get; }
+    public CommandCallCmd(CommandCallMessage message, Guid connectionId) { Message = message; ConnectionId = connectionId; }
 }
