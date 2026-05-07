@@ -1,0 +1,39 @@
+# Typos config. Catches misspellings in source, comments, identifiers, and
+# documentation. Tuned for this repo's vocabulary.
+
+[default]
+# Identifiers from external SDKs that can otherwise look like typos.
+extend-ignore-identifiers-re = [
+  "Il2Cpp.*",
+  "MelonLoader.*",
+  "BepInEx.*",
+  "MonoMod.*",
+  "HarmonyLib.*",
+]
+
+[default.extend-words]
+# Domain terms that look like typos to typos but are intentional.
+mut = "mut" # Rust/C# 'mut' keyword and 'mut'-prefixed names
+hsa = "hsa" # 3-letter codes / short names
+HSA = "HSA"
+ser = "ser" # serialization shorthand
+nd = "nd" # ordinal-suffix anchor (e.g., "2nd")
+WAN = "WAN"
+LAN = "LAN"
+
+[files]
+extend-exclude = [
+  "lib/",
+  "**/uv.lock",
+  "**/*.lock.json",
+  "**/package-lock.json",
+  ".mypy_cache/",
+  "**/.mypy_cache/",
+  "**/.ruff_cache/",
+  "**/.pytest_cache/",
+  "**/__pycache__/",
+  "**/bin/",
+  "**/obj/",
+  "**/.venv/",
+  ".venv/",
+]

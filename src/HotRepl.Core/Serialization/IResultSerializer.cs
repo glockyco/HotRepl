@@ -9,7 +9,7 @@ internal interface IResultSerializer
     /// <summary>
     /// Serializes <paramref name="value"/> to a JSON string.
     /// MUST NOT throw — returns a JSON error object on serialization failure.
-    /// Enumerables are capped at <see cref="ReplConfig.MaxEnumerableElements"/>.
+    /// IEnumerable values are capped at <see cref="ReplConfig.MaxEnumerableElements"/>.
     /// </summary>
     string Serialize(object? value, ReplConfig config);
 

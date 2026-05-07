@@ -7,7 +7,7 @@ namespace HotRepl.Serialization;
 
 /// <summary>
 /// Converts arbitrary runtime values to JSON strings using Newtonsoft.Json.
-/// Caps IEnumerables to prevent unbounded output. Truncates the final string
+/// Caps IEnumerable values to prevent unbounded output. Truncates the final string
 /// to MaxResultLength and appends a diagnostic marker.
 /// Never throws — serialization failures are returned as a JSON error object.
 /// </summary>
@@ -20,7 +20,7 @@ internal sealed class JsonResultSerializer : IResultSerializer
 
         try
         {
-            // Cap top-level enumerables before handing off to Json.NET.
+            // Cap top-level IEnumerable values before handing off to Json.NET.
             // We only cap the top level here; deep nesting is bounded by MaxDepth.
             value = CapEnumerable(value, config.MaxEnumerableElements);
 
