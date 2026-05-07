@@ -36,13 +36,18 @@ sending evals. It lists evaluator/host metadata, opened namespaces, and availabl
 }
 ```
 
-No authentication. Single client per server — a new connection replaces the previous
-session and cancels all active subscriptions.
+Eval REPL access remains single-client per server — a new connection replaces the previous
+session and cancels all active subscriptions. The typed control plane adds optional
+auth and exclusive leases for automation clients.
 
 ## Protocol
 
 All messages are UTF-8 JSON with a `type` discriminant; `id` is caller-assigned and
 echoed verbatim. See [`src/HotRepl.Core/Protocol/Messages.cs`](src/HotRepl.Core/Protocol/Messages.cs) for the full schema.
+
+The additive control plane supports typed commands, cooperative jobs, artifact
+references, auth, and exclusive controller leases while preserving the eval
+protocol. See [`docs/control-plane-protocol.md`](docs/control-plane-protocol.md).
 
 Notable behaviors:
 - `final: true` on a `subscribe_result` or `subscribe_error` means the subscription
@@ -140,6 +145,8 @@ hotrepl eval '1 + 1'
 hotrepl eval 'UnityEngine.Application.version'
 hotrepl eval 'Il2CppHelpers.DescribeType("Il2Cpp.Monster")'    # use a type present in the target game
 hotrepl eval 'Il2CppHelpers.FindObjects("Il2Cpp.Monster").Length'
+hotrepl control describe
+hotrepl control call archive.preflight '{}'
 ```
 
 Use a game-local wrapper type for the last two commands; HotRepl itself remains

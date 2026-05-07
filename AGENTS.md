@@ -69,6 +69,18 @@ Do not break these without understanding all consequences:
   issued this frame pre-empt queued jobs.
 - **`IReplHost` is the sole platform boundary**: Core must never import BepInEx,
   UnityEngine, or any game-specific type. All game coupling flows through `IReplHost`.
+- **Control plane remains game-agnostic**: core may define typed command, job,
+  lease, and artifact envelopes, but game-specific export behavior belongs in host
+  command handlers.
+- **Control handlers execute through the main-thread tick path**: Fleck threads
+  enqueue only. Do not execute control handlers directly from WebSocket callbacks.
+- **Mutating control commands require a lease**: descriptors with `MutatesState`
+  must reject calls without a valid exclusive control lease.
+- **Control response ownership is strict**: addressed control responses must be
+  delivered only to the originating connection and must not fall back to a
+  replacement client.
+- **Artifacts are references, not bulk payloads**: return metadata (`uri`, `path`,
+  `sha256`, `byteSize`, `finalized`) and let external orchestrators verify files.
 - **Evaluator timeout is capability-driven**: `TimeoutMode.HardAbort` may abort the
   main thread; `TimeoutMode.Cooperative` cancels a token and cannot preempt every
   runtime loop. Do not claim all evaluators have hard timeouts.
