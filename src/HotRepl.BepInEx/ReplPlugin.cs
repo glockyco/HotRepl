@@ -3,6 +3,7 @@ using System.Threading;
 using BepInEx;
 using BepInEx.Configuration;
 using HotRepl.Helpers.Unity;
+using UnityEngine;
 
 namespace HotRepl.BepInEx;
 
@@ -25,6 +26,8 @@ public sealed class ReplPlugin : BaseUnityPlugin
     {
         try
         {
+            gameObject.hideFlags = HideFlags.HideAndDontSave;
+
             var config = LoadConfig();
             var host = new BepInExHost(Logger, config);
             _engine = new ReplEngine(host);

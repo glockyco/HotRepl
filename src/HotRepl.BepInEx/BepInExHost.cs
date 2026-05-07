@@ -8,8 +8,8 @@ using HotRepl.Control;
 using HotRepl.Evaluator;
 using HotRepl.Evaluator.MonoCSharp;
 using HotRepl.Evaluator.Roslyn;
-using HotRepl.Helpers.Unity;
 using HotRepl.Helpers;
+using HotRepl.Helpers.Unity;
 
 namespace HotRepl.BepInEx;
 

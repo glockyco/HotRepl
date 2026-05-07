@@ -1,6 +1,6 @@
 using System;
-using HotRepl.Protocol;
 using HotRepl.Evaluator;
+using HotRepl.Protocol;
 using Newtonsoft.Json;
 using Xunit;
 

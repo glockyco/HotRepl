@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Fleck;
-using HotRepl.Server;
 using HotRepl.Control;
 using HotRepl.Protocol;
+using HotRepl.Server;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
