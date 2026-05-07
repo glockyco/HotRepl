@@ -11,10 +11,12 @@ namespace HotRepl.Control;
 internal sealed class ControlCommandRouter
 {
     private readonly IControlCommandRegistry _registry;
+    private readonly ControlSessionManager? _sessions;
 
-    public ControlCommandRouter(IControlCommandRegistry registry)
+    public ControlCommandRouter(IControlCommandRegistry registry, ControlSessionManager? sessions = null)
     {
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
+        _sessions = sessions;
     }
 
     public CommandDescribeResultMessage Describe(string id)
@@ -36,6 +38,11 @@ internal sealed class ControlCommandRouter
         if (handler.Descriptor.Kind != ControlCommandKind.Synchronous)
         {
             return CommandError(message.Id, "unsupported_operation", "jobCommandRequiresJobProtocol", $"Command '{message.Name}' is not synchronous.", retryable: false);
+        }
+
+        if (handler.Descriptor.MutatesState && _sessions is { } sessions && !sessions.IsLeaseValid(message.LeaseId))
+        {
+            return CommandError(message.Id, "lease_required", "missingOrInvalidLease", "A valid control lease is required for this command.", retryable: true);
         }
 
         try

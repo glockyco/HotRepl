@@ -41,6 +41,12 @@ public sealed class ReplConfig
     /// <summary>Whether control-plane auth is required. Default: false until auth is configured.</summary>
     public bool RequireControlAuth { get; set; }
 
+    /// <summary>Optional token required for control-plane authentication.</summary>
+    public string? ControlAuthToken { get; set; }
+
+    /// <summary>Whether mutating control commands require an exclusive lease. Default: true.</summary>
+    public bool RequireControlLease { get; set; } = true;
+
     /// <summary>Maximum inbound control-plane message size in bytes. Default: 1 MiB.</summary>
     public int MaxControlMessageBytes { get; set; } = 1024 * 1024;
 

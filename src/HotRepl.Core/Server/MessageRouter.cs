@@ -82,6 +82,18 @@ internal sealed class MessageRouter
                         _engine.EnqueueCommand(new SelectEvaluatorCmd(msg.Id, msg.Evaluator, connectionId));
                         break;
                     }
+                case MessageType.ControlAuth:
+                    {
+                        var msg = MessageSerializer.Deserialize<ControlAuthMessage>(rawJson);
+                        _engine.EnqueueCommand(new ControlAuthCmd(msg.Id, msg.Token, connectionId));
+                        break;
+                    }
+                case MessageType.LeaseAcquire:
+                    {
+                        var msg = MessageSerializer.Deserialize<LeaseAcquireMessage>(rawJson);
+                        _engine.EnqueueCommand(new LeaseAcquireCmd(msg.Id, msg.SessionId, msg.ClientName, connectionId));
+                        break;
+                    }
                 case MessageType.CommandDescribe:
                     {
                         var msg = MessageSerializer.Deserialize<CommandDescribeMessage>(rawJson);

@@ -43,6 +43,7 @@ public sealed class ReplEngine : IDisposable
     private IResultSerializer? _serializer;
     private HistoryTracker? _history;
     private ControlCommandRouter? _controlRouter;
+    private ControlSessionManager? _controlSessions;
 
     // ── Queues — written by Fleck threads, drained by Tick() ──────────────────
     private readonly ConcurrentQueue<EvalJob> _evalQueue = new();
@@ -85,7 +86,8 @@ public sealed class ReplEngine : IDisposable
         _wsServer = new ReplWebSocketServer(msg => _host.LogInfo(msg));
         _clients = new ClientRegistry(_wsServer, msg => _host.LogInfo(msg));
         _router = new MessageRouter(this, msg => _host.LogInfo(msg));
-        _controlRouter = new ControlCommandRouter(_host.ControlCommands);
+        _controlSessions = new ControlSessionManager(_host.Config);
+        _controlRouter = new ControlCommandRouter(_host.ControlCommands, _controlSessions);
 
         _wsServer.ClientConnected += OnClientConnected;
         _wsServer.ClientDisconnected += _clients.OnDisconnected;
@@ -335,8 +337,47 @@ public sealed class ReplEngine : IDisposable
             case CommandCallCmd c:
                 _clients!.SendTo(c.ConnectionId, MessageSerializer.Serialize(_controlRouter!.Execute(c.Message)));
                 break;
+            case ControlAuthCmd c:
+                HandleControlAuth(c);
+                break;
+            case LeaseAcquireCmd c:
+                HandleLeaseAcquire(c);
+                break;
         }
     }
+
+    private void HandleControlAuth(ControlAuthCmd cmd)
+    {
+        var result = _controlSessions!.Authenticate(cmd.ConnectionId, cmd.Token);
+        _clients!.SendTo(cmd.ConnectionId, MessageSerializer.Serialize(new ControlAuthResultMessage
+        {
+            Id = cmd.Id,
+            Ok = result.Ok,
+            SessionId = result.SessionId,
+            Error = result.Error == null ? null : ToControlErrorMessage(result.Error),
+        }));
+    }
+
+    private void HandleLeaseAcquire(LeaseAcquireCmd cmd)
+    {
+        var result = _controlSessions!.AcquireLease(cmd.SessionId, cmd.ClientName);
+        _clients!.SendTo(cmd.ConnectionId, MessageSerializer.Serialize(new LeaseAcquireResultMessage
+        {
+            Id = cmd.Id,
+            Ok = result.Ok,
+            LeaseId = result.LeaseId,
+            Error = result.Error == null ? null : ToControlErrorMessage(result.Error),
+        }));
+    }
+
+    private static ControlErrorMessage ToControlErrorMessage(ControlCommandError error) => new()
+    {
+        Kind = error.Kind,
+        Code = error.Code,
+        Message = error.Message,
+        Retryable = error.Retryable,
+        Details = error.Details,
+    };
 
     private void HandleReset(ResetCmd cmd)
     {
@@ -720,4 +761,22 @@ internal sealed class CommandCallCmd : IEngineCommand
     public Guid ConnectionId { get; }
     public CommandCallMessage Message { get; }
     public CommandCallCmd(CommandCallMessage message, Guid connectionId) { Message = message; ConnectionId = connectionId; }
+}
+
+internal sealed class ControlAuthCmd : IEngineCommand
+{
+    public string Id { get; }
+    public string? Token { get; }
+    public Guid ConnectionId { get; }
+    public ControlAuthCmd(string id, string? token, Guid connectionId) { Id = id; Token = token; ConnectionId = connectionId; }
+}
+
+internal sealed class LeaseAcquireCmd : IEngineCommand
+{
+    public string Id { get; }
+    public string SessionId { get; }
+    public string ClientName { get; }
+    public Guid ConnectionId { get; }
+    public LeaseAcquireCmd(string id, string sessionId, string clientName, Guid connectionId)
+    { Id = id; SessionId = sessionId; ClientName = clientName; ConnectionId = connectionId; }
 }
