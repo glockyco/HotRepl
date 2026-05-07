@@ -57,6 +57,8 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
     reason = f"No HotRepl server at {HOTREPL_URL}"
     skip_marker = pytest.mark.skip(reason=reason)
     for item in items:
+        if item.get_closest_marker("no_hotrepl_server"):
+            continue
         item.add_marker(skip_marker)
 
 

@@ -26,6 +26,9 @@ packages = ["src/hotrepl"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+markers = [
+    "no_hotrepl_server: test uses an in-process fake HotRepl server",
+]
 
 [tool.mypy]
 python_version = "3.11"

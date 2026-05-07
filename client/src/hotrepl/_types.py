@@ -4,6 +4,8 @@ These serve as documentation and type-checking, not runtime validation.
 """
 
 from __future__ import annotations
+from dataclasses import dataclass
+from typing import Any
 
 from typing import Required, TypedDict
 
@@ -106,3 +108,74 @@ class SubscribeErrorResult(TypedDict, total=False):
     errorKind: str
     message: str
     final: bool
+
+
+@dataclass(frozen=True)
+class ControlError:
+    kind: str
+    code: str
+    message: str
+    retryable: bool
+    details: dict[str, Any] | None = None
+
+
+@dataclass(frozen=True)
+class AuthResult:
+    ok: bool
+    session_id: str | None
+    error: ControlError | None = None
+
+
+@dataclass(frozen=True)
+class LeaseResult:
+    ok: bool
+    lease_id: str | None
+    error: ControlError | None = None
+
+
+@dataclass(frozen=True)
+class ControlCommandDescriptor:
+    name: str
+    version: int
+    kind: str
+    mutates_state: bool
+    args_schema: dict[str, Any]
+    result_schema: dict[str, Any]
+
+
+@dataclass(frozen=True)
+class ArtifactRef:
+    logical_name: str
+    uri: str
+    path: str | None
+    content_type: str
+    byte_size: int
+    sha256: str
+    finalized: bool
+
+
+@dataclass(frozen=True)
+class CommandResult:
+    status: str
+    result: dict[str, Any]
+    artifacts: list[ArtifactRef]
+    diagnostics: list[ControlError]
+
+
+@dataclass(frozen=True)
+class CommandAccepted:
+    job_id: str
+    state: str
+
+
+@dataclass(frozen=True)
+class JobStatus:
+    job_id: str
+    state: str
+    progress: dict[str, Any] | None = None
+
+
+@dataclass(frozen=True)
+class JobCancelResult:
+    accepted: bool
+    state: str
