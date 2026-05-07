@@ -1,0 +1,25 @@
+# Repo-root Python tool configuration.
+#
+# This file holds tool-only config (ruff, pyright). It deliberately has no
+# [project] section: package metadata for the hotrepl Python client lives
+# in client/pyproject.toml.
+#
+# Locating tool config at the root means `ruff check` and `pyright` invoked
+# from anywhere walk the whole tree (client/ and scripts/) under a single
+# policy, matching the local-equals-CI invariant.
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+extend-exclude = [
+  ".venv",
+  "client/.venv",
+  "**/.mypy_cache",
+  "**/.ruff_cache",
+  "**/.pytest_cache",
+  "**/__pycache__",
+]
+
+[tool.ruff.lint]
+# Minimal current set; expanded in the next commit.
+select = ["E", "W", "F", "I", "UP", "B"]
