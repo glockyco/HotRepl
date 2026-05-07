@@ -21,14 +21,16 @@ namespace HotRepl;
 ///
 /// Threading model:
 ///   Fleck threads  → EnqueueEval / CancelEval / EnqueueCommand (non-blocking)
-///   Main thread    → Start / Tick / Dispose
+///   Main thread    → Start / Tick / Dispose; executes evals, subscriptions,
+///                    control commands, and control jobs
 ///   Watchdog timer → may call Thread.Abort on the main thread
 ///
 /// Tick() drain order (invariant):
 ///   1. Process cancel requests — populate _cancelledIds, abort if matching eval running
-///   2. Drain command queue — reset, ping, complete, subscribe
-///   3. Execute at most one eval
-///   4. Tick subscriptions
+///   2. Drain command queue — reset, ping, complete, subscribe, control
+///   3. Start at most one accepted control job
+///   4. Execute at most one eval
+///   5. Tick subscriptions
 /// </summary>
 public sealed class ReplEngine : IDisposable
 {

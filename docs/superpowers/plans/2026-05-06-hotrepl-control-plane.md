@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use skill://superpowers:subagent-driven-development (recommended) or skill://superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a game-agnostic HotRepl control plane for typed commands, cooperative jobs, artifacts, safe local ownership, and reliable automation while preserving the existing eval REPL.
+**Goal:** HotRepl provides a game-agnostic control plane for typed commands, cooperative jobs, artifacts, safe local ownership, and reliable automation alongside the eval REPL.
 
-**Architecture:** Keep the current eval protocol unchanged and add an additive control-plane protocol. Core owns protocol DTOs, command registry abstractions, lease/auth/session ownership, job lifecycle, and artifact metadata. Game hosts optionally register compiled command handlers; clients use typed control APIs instead of sending ad hoc eval strings for automation.
+**Architecture:** Core owns protocol DTOs, command registry abstractions, lease/auth/session ownership, job lifecycle, and artifact metadata. Game hosts optionally register compiled command handlers; clients use typed control APIs instead of sending ad hoc eval strings for automation.
 
-**Tech Stack:** C# `netstandard2.1`, Newtonsoft.Json, Fleck WebSocket server, existing HotRepl Python client/CLI, xUnit C# tests, pytest client tests.
+**Tech Stack:** C# `netstandard2.1`, Newtonsoft.Json, Fleck WebSocket server, HotRepl Python client/CLI, xUnit C# tests, pytest client tests.
 
 ---
 
@@ -14,10 +14,10 @@
 
 - Spec: `docs/superpowers/specs/2026-05-06-hotrepl-control-plane-design.md`
 - Repo guidance: `AGENTS.md`
-- Existing protocol: `src/HotRepl.Core/Protocol/Messages.cs`
-- Existing routing: `src/HotRepl.Core/Server/MessageRouter.cs`
-- Existing engine: `src/HotRepl.Core/ReplEngine.cs`
-- Existing client: `client/src/hotrepl/_client.py`, `client/src/hotrepl/_types.py`, `client/src/hotrepl/cli.py`
+- Protocol implementation: `src/HotRepl.Core/Protocol/Messages.cs`
+- Routing implementation: `src/HotRepl.Core/Server/MessageRouter.cs`
+- Engine implementation: `src/HotRepl.Core/ReplEngine.cs`
+- Client implementation: `client/src/hotrepl/_client.py`, `client/src/hotrepl/_types.py`, `client/src/hotrepl/cli.py`
 
 ## File structure
 
@@ -101,7 +101,7 @@ job_cancel_result
 job_event
 ```
 
-Each test should assert round-trip serialization preserves `type`, `id`, and the command/job-specific fields.
+Each test asserts round-trip serialization preserves `type`, `id`, and the command/job-specific fields.
 
 Run:
 
@@ -141,7 +141,7 @@ Use `Newtonsoft.Json.Linq.JObject` for command args/results so HotRepl core stay
 
 - [x] **Step 3: Map new messages in `MessageSerializer`**
 
-Route inbound messages by `type` to their DTO classes. Unknown messages should preserve existing behavior for old clients.
+Route inbound messages by `type` to their DTO classes. Unknown messages keep compatibility behavior for clients that use other message types.
 
 - [x] **Step 4: Verify tests pass**
 
@@ -172,9 +172,9 @@ git commit -m "feat(protocol): add control-plane message contracts"
 
 - [x] **Step 1: Add failing handshake tests**
 
-C# test should assert serialized handshake includes optional `controlPlane` object when enabled.
+C# test asserts serialized handshake includes optional `controlPlane` object when enabled.
 
-Python test should assert `Client.connect()` exposes `handshake.control_plane.supported` without breaking existing handshake fields.
+Python test asserts `Client.connect()` exposes `handshake.control_plane.supported` without breaking handshake fields.
 
 - [x] **Step 2: Add config properties**
 
@@ -189,7 +189,7 @@ public int MaxQueuedControlCommands { get; set; } = 32;
 public int MaxJobEventBuffer { get; set; } = 1000;
 ```
 
-Keep existing port behavior unchanged except for the bind host default when server startup is updated in a later task.
+Keep port behavior stable while server startup uses the configured bind host.
 
 - [x] **Step 3: Extend handshake DTO**
 
@@ -292,7 +292,7 @@ Add to `IReplHost`:
 IControlCommandRegistry ControlCommands { get; }
 ```
 
-Existing hosts should return `EmptyControlCommandRegistry.Instance`.
+Host adapters return `EmptyControlCommandRegistry.Instance` unless they register commands.
 
 - [x] **Step 4: Run registry tests**
 
@@ -333,7 +333,7 @@ The router validates command name, looks up handler, and converts handler output
 
 - [x] **Step 3: Wire router through `MessageRouter` and `ReplEngine`**
 
-Inbound control messages enqueue engine commands. Preserve existing tick order: cancel drain, command queue, at most one eval, subscriptions. Control command execution should live in the command queue portion.
+Inbound control messages enqueue engine commands. Tick order is: cancel drain, command queue, accepted control job start, at most one eval, subscriptions. Control command execution lives in the command queue portion.
 
 - [x] **Step 4: Run routing tests**
 
@@ -386,7 +386,7 @@ createdAt
 lastSeenAt
 ```
 
-Do not persist leases across process restart in the first version.
+Leases are in-memory and do not persist across process restart.
 
 - [x] **Step 3: Add config**
 
@@ -438,7 +438,7 @@ Use `ReplConfig.BindHost` when constructing the Fleck URL.
 
 - [x] **Step 3: Split eval fallback from control response delivery**
 
-Keep existing behavior for old eval responses only if required for compatibility. Control responses must require the original connection/session.
+Eval responses use REPL compatibility delivery when needed. Control responses require the original connection/session.
 
 - [x] **Step 4: Run tests**
 
@@ -527,7 +527,7 @@ git commit -m "feat(control): add cooperative job lifecycle"
 Tests:
 
 1. Job command returns `command_accepted`.
-2. `job_status` returns current state.
+2. `job_status` returns state.
 3. `job_result` before terminal state returns `conflict` or `busy`.
 4. `job_result` after completion returns artifacts and result.
 5. `job_cancel` returns acknowledgement.
@@ -644,7 +644,7 @@ hotrepl control cancel job-123
 
 - [x] **Step 2: Implement CLI commands**
 
-CLI outputs JSON to stdout for machine use. Human formatting can come later; do not add non-JSON decoration to control command output.
+CLI outputs JSON to stdout for machine use. Do not add non-JSON decoration to control command output.
 
 - [x] **Step 3: Run tests**
 
@@ -742,23 +742,23 @@ Expected final state: no uncommitted changes.
 
 ---
 
-## Follow-up plan after this lands
+## Ardenfall integration scope
 
-After HotRepl control-plane support is merged, Ardenfall Archives gets a separate implementation plan for:
+Ardenfall Archives integration is a separate implementation plan:
 
-1. registering Ardenfall export commands in a compiled BepInEx mod;
-2. replacing F8-only monolith with a shared `ExtractionService`;
-3. adding a controller CLI that deploys, launches, connects, exports, validates, and runs the pipeline;
-4. tightening snapshot manifest validation in the pipeline.
+1. register Ardenfall export commands in a compiled BepInEx mod;
+2. replace the F8-only monolith with a shared `ExtractionService`;
+3. add a controller CLI that deploys, launches, connects, exports, validates, and runs the pipeline;
+4. tighten snapshot manifest validation in the pipeline.
 
-Do not start Ardenfall command implementation before the HotRepl control-plane protocol and Python client are available.
+Ardenfall command implementation depends on the HotRepl control-plane protocol and Python client.
 
 ## Self-review
 
 - Spec coverage: command registry, auth/lease, jobs, artifact refs, client API, CLI, docs, and gates are covered.
-- Placeholder scan: no `TBD`/`TODO` placeholders remain; later work is explicitly scoped as follow-up after this plan.
+- Placeholder scan: no `TBD`/`TODO` placeholders remain; Ardenfall integration is scoped separately.
 - Type consistency: protocol names match the design spec; command/job/error/artifact names are consistent across C# and Python tasks.
-- Scope: this plan intentionally covers HotRepl only. Ardenfall integration is blocked on this plan and will be planned separately.
+- Scope: this plan intentionally covers HotRepl only. Ardenfall integration is scoped separately.
 
 ## Execution handoff
 

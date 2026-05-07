@@ -45,9 +45,9 @@ auth and exclusive leases for automation clients.
 All messages are UTF-8 JSON with a `type` discriminant; `id` is caller-assigned and
 echoed verbatim. See [`src/HotRepl.Core/Protocol/Messages.cs`](src/HotRepl.Core/Protocol/Messages.cs) for the full schema.
 
-The additive control plane supports typed commands, cooperative jobs, artifact
-references, auth, and exclusive controller leases while preserving the eval
-protocol. See [`docs/control-plane-protocol.md`](docs/control-plane-protocol.md).
+HotRepl also exposes a control plane for typed commands, cooperative jobs,
+artifact references, auth, and exclusive controller leases. See
+[`docs/control-plane-protocol.md`](docs/control-plane-protocol.md).
 
 Notable behaviors:
 - `final: true` on a `subscribe_result` or `subscribe_error` means the subscription
@@ -157,6 +157,6 @@ game-agnostic.
 | Limitation | Details |
 |---|---|
 | Timeout mode depends on evaluator | Mono.CSharp reports `HardAbort`; Roslyn reports `Cooperative`, so a runaway runtime loop can still require restarting the game |
-| Completion depends on evaluator | Mono.CSharp supports completion; Roslyn evaluators currently report `supportsCompletion: false` |
+| Completion depends on evaluator | Mono.CSharp supports completion; Roslyn evaluators report `supportsCompletion: false` |
 | Type memory leak | Persistent evaluator sessions can emit assemblies that are not reclaimed until process exit; use `Roslyn.Isolated` for stateless audit snippets on .NET 6 hosts |
 | Single client | A new WebSocket connection replaces the prior session; old subscriptions are cancelled |

@@ -8,9 +8,9 @@ namespace HotRepl.Server;
 /// Tracks connected WebSocket clients and enforces the single-client model:
 /// when a second client connects, the previous one is closed.
 ///
-/// Send() targets the current client regardless of connection ID, which means
-/// responses always go to whoever is currently connected. If a client disconnects
-/// between submitting an eval and receiving the result the send is silently dropped.
+/// Send() targets the active client. SendTo() targets a connection and falls
+/// back to the active client for REPL compatibility. SendControlTo() targets only
+/// the originating connection and drops the response when that connection is gone.
 ///
 /// All methods are called from Fleck's thread pool (Add/Remove) or from the main
 /// thread (Send). ConcurrentDictionary makes cross-thread reads safe; the volatile
@@ -77,7 +77,8 @@ internal sealed class ClientRegistry
 
     /// <summary>
     /// Sends to a specific connection by ID. Falls back to Send() if the ID is
-    /// no longer present (client disconnected and reconnected between enqueue and send).
+    /// no longer present. Use only for REPL-compatible responses; control-plane
+    /// responses use SendControlTo().
     /// </summary>
     public void SendTo(Guid connectionId, string json)
     {

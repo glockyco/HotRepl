@@ -2,26 +2,25 @@
 
 ## Status
 
-Approved direction: improve HotRepl first, then build Ardenfall export automation on top of the improved game-agnostic control plane.
+HotRepl provides a game-agnostic control plane for typed automation. Ardenfall export automation builds on that control plane.
 
 ## Problem
 
-HotRepl is currently a runtime C# REPL over WebSocket. It is useful for inspection and debugging, but routine automation currently has to drive it through `eval` messages containing code strings. That is not a reliable export substrate:
+HotRepl is a runtime C# REPL and typed control plane over WebSocket. The eval REPL is useful for inspection and debugging; routine automation uses typed control messages rather than `eval` messages containing code strings. Control messages provide a reliable export substrate:
+- results are structured objects rather than display strings;
+- cancellation is acknowledged as a job state transition;
+- the server binds to loopback by default and supports authentication;
+- control responses belong to the originating connection;
+- long-running work is modeled as durable in-memory jobs;
+- artifacts use protocol metadata references.
 
-- results are display-oriented and may be stringified, capped, or truncated;
-- cancellation is not acknowledged as a state transition;
-- the server binds broadly by default and has no authentication;
-- single-client replacement can make command ownership ambiguous;
-- long-running work is modeled as one eval rather than a durable job;
-- artifacts have no first-class protocol representation.
-
-Ancient Kingdoms demonstrates the failure mode we want to avoid: deployment and launch are externally automated, but export order and game navigation are hardcoded in mods, while completion is inferred from logs and recent files. Ardenfall Archives should instead use HotRepl as a trustworthy local control plane with typed commands, jobs, progress, artifacts, and explicit validation.
+Ancient Kingdoms demonstrates the failure mode this design avoids: deployment and launch are externally automated, but export order and game navigation are hardcoded in mods, while completion is inferred from logs and recent files. Ardenfall Archives uses HotRepl as a trustworthy local control plane with typed commands, jobs, progress, artifacts, and explicit validation.
 
 ## Goals
 
 1. Keep HotRepl game-agnostic.
-2. Preserve the existing REPL/eval workflow for diagnostics.
-3. Add a first-class automation surface for typed commands and cooperative jobs.
+2. Keep the REPL/eval workflow available for diagnostics.
+3. Provide a first-class automation surface for typed commands and cooperative jobs.
 4. Make controller ownership, cancellation, progress, errors, and artifacts machine-verifiable.
 5. Default to local secure operation: loopback bind, authentication support, explicit remote opt-in.
 6. Support resumable external orchestration for game exports without moving bulk data through WebSocket payloads.
@@ -43,7 +42,7 @@ HotRepl WebSocket server
   └─ Control surface: command registry, command calls, jobs, artifacts, lease/auth
 ```
 
-The control surface is additive. Existing clients continue to work. New clients discover support through the handshake and use typed command messages instead of code-string eval for automation.
+HotRepl exposes both surfaces through the same WebSocket connection. Clients discover control-plane support through the handshake and use typed command messages instead of code-string eval for automation.
 
 Game integrations register command handlers through a game-agnostic interface exposed by HotRepl host adapters. Command handlers execute on the host's main-thread tick path, following the same invariant as eval: Fleck/socket threads enqueue work only; host/main thread executes game-facing logic.
 
@@ -51,7 +50,7 @@ Game integrations register command handlers through a game-agnostic interface ex
 
 ### Handshake additions
 
-The existing handshake should gain optional fields:
+The handshake includes optional control-plane fields:
 
 ```json
 {
@@ -72,11 +71,11 @@ The existing handshake should gain optional fields:
 }
 ```
 
-Older clients ignore this field. New clients must refuse automation if it is missing or incompatible.
+Clients that do not use the control plane ignore this field. Automation clients require compatible control-plane metadata.
 
 ### Authentication and lease
 
-HotRepl should bind to `127.0.0.1` by default. Non-loopback bind requires explicit configuration.
+HotRepl binds to `127.0.0.1` by default. Non-loopback bind requires explicit configuration.
 
 A control client obtains an exclusive lease before sending control commands:
 
@@ -88,7 +87,7 @@ A control client obtains an exclusive lease before sending control commands:
 { "type": "lease_acquire_result", "id": "lease-1", "ok": true, "leaseId": "..." }
 ```
 
-Only the lease holder may call mutating commands or control jobs. Read-only commands may later be allowed for observer clients, but the first version should keep ownership simple.
+Only the lease holder may call mutating commands or control jobs. Read-only commands can run without a lease when the command descriptor does not mutate state.
 
 ### Command registry
 
@@ -217,7 +216,7 @@ Jobs emit correlated lifecycle/progress events:
 }
 ```
 
-The server should buffer a bounded number of events per job so reconnecting clients can request events after a known sequence number.
+The server buffers a bounded number of events per job so reconnecting clients can request events after a known sequence number.
 
 ### Artifact references
 
@@ -235,7 +234,7 @@ Command and job results may include artifacts:
 }
 ```
 
-The first implementation only needs local file references. Download/stream APIs can come after command/job semantics are stable.
+The protocol uses local file references for artifacts. Download/stream APIs are outside the control-plane command/job contract.
 
 ## Error model
 
@@ -270,7 +269,7 @@ Every error includes:
 
 ## Command handler API
 
-HotRepl core should define game-agnostic abstractions similar to:
+HotRepl core defines game-agnostic abstractions:
 
 ```csharp
 public interface IControlCommandRegistry
@@ -287,13 +286,13 @@ public interface IControlCommandHandler
 }
 ```
 
-Host adapters provide an optional registry through `IReplHost`, or through a new adjacent interface if keeping `IReplHost` smaller is cleaner.
+Host adapters provide a command registry through `IReplHost.ControlCommands`.
 
-Command handlers must not execute on Fleck threads. They are scheduled through the existing main-thread tick discipline.
+Command handlers do not execute on Fleck threads. They are scheduled through the main-thread tick discipline.
 
 ## Client API
 
-The Python client should expose control-plane methods:
+The Python client exposes control-plane methods:
 
 ```python
 async with hotrepl.connect(url, token=token) as client:
@@ -305,7 +304,7 @@ async with hotrepl.connect(url, token=token) as client:
     result = await client.job_result(job.id)
 ```
 
-The CLI should expose generic control operations:
+The CLI exposes generic control operations:
 
 ```sh
 hotrepl control describe
@@ -314,19 +313,19 @@ hotrepl control job-status <job-id>
 hotrepl control cancel <job-id>
 ```
 
-Game-specific CLIs, such as `ardenfall-export`, should use the Python client library rather than shelling out to `hotrepl eval`.
+Game-specific CLIs, such as `ardenfall-export`, use the Python client library rather than shelling out to `hotrepl eval`.
 
-## Backward compatibility
+## Compatibility
 
-- Keep all existing message types and CLI commands.
-- Add handshake fields; do not require old clients to understand them.
+- Eval, reset, completion, subscription, evaluator selection, and CLI diagnostic commands remain available.
+- Handshake control-plane fields are optional for clients that do not use automation.
 - Raw eval remains available by default for local trusted workflows.
-- Control-plane auth/lease applies to control messages first. A later hardening pass may role-gate eval.
-- Existing BepInEx/MelonLoader hosts can start with no registered commands; they simply advertise no control registry.
+- Control-plane auth/lease applies to control messages.
+- BepInEx/MelonLoader hosts can advertise an empty command registry.
 
 ## Ardenfall target workflow enabled by this design
 
-Ardenfall Archives will register compiled commands:
+Ardenfall Archives registers compiled commands:
 
 ```text
 archive.info
@@ -340,7 +339,7 @@ run.discard
 game.quit
 ```
 
-The external orchestrator will:
+The external orchestrator:
 
 1. deploy HotRepl and Ardenfall export mod;
 2. launch Ardenfall;
@@ -357,15 +356,15 @@ The external orchestrator will:
 ## Design choices and justification
 
 - **Typed control protocol instead of eval wrappers:** avoids ad hoc C# strings, result truncation, persistent evaluator state, and weak command discovery.
-- **Jobs from the start:** export and screenshot operations are naturally long-running; adding jobs later would force protocol churn.
+- **Jobs:** export and screenshot operations are naturally long-running and use explicit job states.
 - **Artifacts by reference:** exported data belongs on disk with hashes and counts, not in display-oriented WebSocket result payloads.
 - **Exclusive lease:** prevents two controllers from mutating game/export state concurrently.
 - **Loopback/auth defaults:** HotRepl controls a live game process and can run arbitrary code; safe defaults matter.
-- **Additive migration:** existing diagnostics workflows keep working while automation moves to the control surface.
+- **Dual-surface protocol:** diagnostics use the eval REPL; automation uses the typed control surface.
 
 ## Risks and mitigations
 
-- **More protocol surface:** keep the first version small: auth, lease, describe, call, job, artifact refs.
-- **Command authors must cooperate with cancellation:** document handler requirements and add tests with cancellable fake handlers.
-- **Reconnect semantics can become complex:** first version may require reconnect + `job_status`; full controller reattach can follow once ownership rules are proven.
+- **Protocol surface:** the control plane keeps the protocol small: auth, lease, describe, call, job, artifact refs.
+- **Command authors must cooperate with cancellation:** handler requirements are documented and covered by cancellable fake-handler tests.
+- **Reconnect semantics:** clients use reconnect plus `job_status`; controller reattach requires a valid lease and job id.
 - **Remote debugging becomes less convenient:** allow explicit non-local bind/auth config, but never default to it.

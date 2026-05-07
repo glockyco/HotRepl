@@ -1,6 +1,6 @@
 # HotRepl Control Plane Protocol
 
-The control plane is an additive protocol beside the existing eval REPL. It is game-agnostic: HotRepl core defines transport, command/job envelopes, leases, and artifact metadata; game mods register command handlers through `IReplHost.ControlCommands`.
+HotRepl exposes two WebSocket surfaces: the eval REPL for diagnostics and the control plane for typed automation. The control plane is game-agnostic: HotRepl core defines transport, command/job envelopes, leases, and artifact metadata; game mods register command handlers through `IReplHost.ControlCommands`.
 
 ## Handshake
 
@@ -44,9 +44,9 @@ Hosts expose descriptors with `name`, `version`, `kind` (`sync` or `job`), `muta
 
 ## Job command flow
 
-`command_call` for a `job` descriptor returns `command_accepted` immediately with `jobId` and initial `state: "accepted"`. Use:
+`command_call` for a `job` descriptor returns `command_accepted` immediately with `jobId` and `state: "accepted"`. Use:
 
-- `job_status` → `job_status_result` with current `state` and optional `progress`;
+- `job_status` → `job_status_result` with `state` and optional `progress`;
 - `job_result` → `job_result` after terminal completion, or `command_error` with `busy` while non-terminal;
 - `job_cancel` → `job_cancel_result` with cancellation acknowledgement.
 
@@ -78,6 +78,6 @@ Consumers must independently verify artifact existence, hashes, schemas, and cou
 
 Known control error kinds include `invalid_request`, `auth_failed`, `lease_required`, `lease_conflict`, `unknown_command`, `unsupported_operation`, `precondition_failed`, `conflict`, `busy`, `timeout`, `cancelled`, `validation_failed`, `artifact_missing`, and `internal`.
 
-## Compatibility with eval
+## Eval and control response delivery
 
-The existing eval protocol is unchanged. Eval responses may still use compatibility delivery behavior. Control responses are delivered only to the originating connection and are dropped if that connection is gone, preventing a replacement client from receiving another controller's results.
+Eval messages use the REPL message types documented in `src/HotRepl.Core/Protocol/Messages.cs`. Eval responses use compatibility delivery through the active client. Control responses are delivered only to the originating connection and are dropped if that connection is gone, preventing a replacement client from receiving another controller's results.
