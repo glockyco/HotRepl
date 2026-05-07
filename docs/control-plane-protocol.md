@@ -1,6 +1,9 @@
 # HotRepl Control Plane Protocol
 
-HotRepl exposes two WebSocket surfaces: the eval REPL for diagnostics and the control plane for typed automation. The control plane is game-agnostic: HotRepl core defines transport, command/job envelopes, leases, and artifact metadata; game mods register command handlers through `IReplHost.ControlCommands`.
+HotRepl exposes two WebSocket surfaces: the eval REPL for diagnostics and the control plane for
+typed automation. The control plane is game-agnostic: HotRepl core defines transport, command/job
+envelopes, leases, and artifact metadata; game mods register command handlers through
+`IReplHost.ControlCommands`.
 
 ## Handshake
 
@@ -27,15 +30,19 @@ When enabled, the `handshake` message includes `controlPlane`:
 1. Send `control_auth` with optional `token`.
 2. Receive `control_auth_result` with `ok`, `sessionId`, or structured `error`.
 3. Send `lease_acquire` with `sessionId` and `clientName` before mutating commands.
-4. Include returned `leaseId` on mutating `command_call`, `job_status`, `job_result`, and `job_cancel` requests.
+4. Include returned `leaseId` on mutating `command_call`, `job_status`, `job_result`, and
+   `job_cancel` requests.
 
 Leases are in-memory and do not survive process restart.
 
 ## Command registry
 
-Hosts expose descriptors with `name`, `version`, `kind` (`sync` or `job`), `mutatesState`, `argsSchema`, and `resultSchema`. Use `command_describe` to retrieve descriptors.
+Hosts expose descriptors with `name`, `version`, `kind` (`sync` or `job`), `mutatesState`,
+`argsSchema`, and `resultSchema`. Use `command_describe` to retrieve descriptors.
 
-BepInEx and MelonLoader host adapters expose `GlobalControlCommandRegistry.Instance`. Game-specific plugins register handlers with that registry during plugin initialization and dispose their registrations during plugin shutdown.
+BepInEx and MelonLoader host adapters expose `GlobalControlCommandRegistry.Instance`. Game-specific
+plugins register handlers with that registry during plugin initialization and dispose their
+registrations during plugin shutdown.
 
 ## Synchronous command flow
 
@@ -46,17 +53,21 @@ BepInEx and MelonLoader host adapters expose `GlobalControlCommandRegistry.Insta
 
 ## Job command flow
 
-`command_call` for a `job` descriptor returns `command_accepted` immediately with `jobId` and `state: "accepted"`. Use:
+`command_call` for a `job` descriptor returns `command_accepted` immediately with `jobId` and
+`state: "accepted"`. Use:
 
 - `job_status` → `job_status_result` with `state` and optional `progress`;
-- `job_result` → `job_result` after terminal completion, or `command_error` with `busy` while non-terminal;
+- `job_result` → `job_result` after terminal completion, or `command_error` with `busy` while
+  non-terminal;
 - `job_cancel` → `job_cancel_result` with cancellation acknowledgement.
 
 States are: `accepted`, `running`, `completed`, `failed`, `cancelling`, `cancelled`.
 
 ## Cancellation semantics
 
-Cancellation is cooperative. `job_cancel` requests cancellation and returns immediately. A handler that observes its cancellation token transitions through `cancelling` to `cancelled`; a handler that completes first may still produce `completed`.
+Cancellation is cooperative. `job_cancel` requests cancellation and returns immediately. A handler
+that observes its cancellation token transitions through `cancelling` to `cancelled`; a handler that
+completes first may still produce `completed`.
 
 ## Artifact references
 
@@ -78,8 +89,13 @@ Consumers must independently verify artifact existence, hashes, schemas, and cou
 
 ## Error kinds
 
-Known control error kinds include `invalid_request`, `auth_failed`, `lease_required`, `lease_conflict`, `unknown_command`, `unsupported_operation`, `precondition_failed`, `conflict`, `busy`, `timeout`, `cancelled`, `validation_failed`, `artifact_missing`, and `internal`.
+Known control error kinds include `invalid_request`, `auth_failed`, `lease_required`,
+`lease_conflict`, `unknown_command`, `unsupported_operation`, `precondition_failed`, `conflict`,
+`busy`, `timeout`, `cancelled`, `validation_failed`, `artifact_missing`, and `internal`.
 
 ## Eval and control response delivery
 
-Eval messages use the REPL message types documented in `src/HotRepl.Core/Protocol/Messages.cs`. Eval responses use compatibility delivery through the active client. Control responses are delivered only to the originating connection and are dropped if that connection is gone, preventing a replacement client from receiving another controller's results.
+Eval messages use the REPL message types documented in `src/HotRepl.Core/Protocol/Messages.cs`. Eval
+responses use compatibility delivery through the active client. Control responses are delivered only
+to the originating connection and are dropped if that connection is gone, preventing a replacement
+client from receiving another controller's results.

@@ -1,12 +1,18 @@
 # HotRepl Control Plane Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use skill://superpowers:subagent-driven-development (recommended) or skill://superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use skill://superpowers:subagent-driven-development
+> (recommended) or skill://superpowers:executing-plans to implement this plan task-by-task. Steps
+> use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** HotRepl provides a game-agnostic control plane for typed commands, cooperative jobs, artifacts, safe local ownership, and reliable automation alongside the eval REPL.
+**Goal:** HotRepl provides a game-agnostic control plane for typed commands, cooperative jobs,
+artifacts, safe local ownership, and reliable automation alongside the eval REPL.
 
-**Architecture:** Core owns protocol DTOs, command registry abstractions, lease/auth/session ownership, job lifecycle, and artifact metadata. Game hosts optionally register compiled command handlers; clients use typed control APIs instead of sending ad hoc eval strings for automation.
+**Architecture:** Core owns protocol DTOs, command registry abstractions, lease/auth/session
+ownership, job lifecycle, and artifact metadata. Game hosts optionally register compiled command
+handlers; clients use typed control APIs instead of sending ad hoc eval strings for automation.
 
-**Tech Stack:** C# `netstandard2.1`, Newtonsoft.Json, Fleck WebSocket server, HotRepl Python client/CLI, xUnit C# tests, pytest client tests.
+**Tech Stack:** C# `netstandard2.1`, Newtonsoft.Json, Fleck WebSocket server, HotRepl Python
+client/CLI, xUnit C# tests, pytest client tests.
 
 ---
 
@@ -17,7 +23,8 @@
 - Protocol implementation: `src/HotRepl.Core/Protocol/Messages.cs`
 - Routing implementation: `src/HotRepl.Core/Server/MessageRouter.cs`
 - Engine implementation: `src/HotRepl.Core/ReplEngine.cs`
-- Client implementation: `client/src/hotrepl/_client.py`, `client/src/hotrepl/_types.py`, `client/src/hotrepl/cli.py`
+- Client implementation: `client/src/hotrepl/_client.py`, `client/src/hotrepl/_types.py`,
+  `client/src/hotrepl/cli.py`
 
 ## File structure
 
@@ -29,7 +36,8 @@ New C# files:
 - `src/HotRepl.Core/Control/ControlCommandContext.cs` — execution context passed to handlers.
 - `src/HotRepl.Core/Control/IControlCommandHandler.cs` — game-agnostic handler interface.
 - `src/HotRepl.Core/Control/IControlCommandRegistry.cs` — registry interface exposed by hosts.
-- `src/HotRepl.Core/Control/EmptyControlCommandRegistry.cs` — default registry when no host commands exist.
+- `src/HotRepl.Core/Control/EmptyControlCommandRegistry.cs` — default registry when no host commands
+  exist.
 - `src/HotRepl.Core/Control/ControlSessionManager.cs` — auth + exclusive lease ownership.
 - `src/HotRepl.Core/Control/ControlCommandRouter.cs` — validates and enqueues command calls.
 - `src/HotRepl.Core/Control/Jobs/ControlJob.cs` — durable in-memory job state.
@@ -46,13 +54,16 @@ Modified C# files:
 - `src/HotRepl.Core/Protocol/MessageSerializer.cs` — message type mapping.
 - `src/HotRepl.Core/Server/MessageRouter.cs` — route control messages.
 - `src/HotRepl.Core/Server/ReplWebSocketServer.cs` — loopback default and auth/lease wiring.
-- `src/HotRepl.Core/Server/ClientRegistry.cs` — no fallback-to-current-client for addressed control responses.
-- `src/HotRepl.Core/ReplEngine.cs` — main-thread execution for control commands/jobs and handshake capabilities.
+- `src/HotRepl.Core/Server/ClientRegistry.cs` — no fallback-to-current-client for addressed control
+  responses.
+- `src/HotRepl.Core/ReplEngine.cs` — main-thread execution for control commands/jobs and handshake
+  capabilities.
 
 Modified Python files:
 
 - `client/src/hotrepl/_types.py` — control-plane dataclasses/types.
-- `client/src/hotrepl/_client.py` — `auth`, `acquire_lease`, `describe_commands`, `call`, `start_job`, `job_status`, `job_result`, `cancel_job`.
+- `client/src/hotrepl/_client.py` — `auth`, `acquire_lease`, `describe_commands`, `call`,
+  `start_job`, `job_status`, `job_result`, `cancel_job`.
 - `client/src/hotrepl/cli.py` — `hotrepl control ...` subcommands.
 
 New/modified tests:
@@ -101,7 +112,8 @@ job_cancel_result
 job_event
 ```
 
-Each test asserts round-trip serialization preserves `type`, `id`, and the command/job-specific fields.
+Each test asserts round-trip serialization preserves `type`, `id`, and the command/job-specific
+fields.
 
 Run:
 
@@ -141,7 +153,8 @@ Use `Newtonsoft.Json.Linq.JObject` for command args/results so HotRepl core stay
 
 - [x] **Step 3: Map new messages in `MessageSerializer`**
 
-Route inbound messages by `type` to their DTO classes. Unknown messages keep compatibility behavior for clients that use other message types.
+Route inbound messages by `type` to their DTO classes. Unknown messages keep compatibility behavior
+for clients that use other message types.
 
 - [x] **Step 4: Verify tests pass**
 
@@ -174,7 +187,8 @@ git commit -m "feat(protocol): add control-plane message contracts"
 
 C# test asserts serialized handshake includes optional `controlPlane` object when enabled.
 
-Python test asserts `Client.connect()` exposes `handshake.control_plane.supported` without breaking handshake fields.
+Python test asserts `Client.connect()` exposes `handshake.control_plane.supported` without breaking
+handshake fields.
 
 - [x] **Step 2: Add config properties**
 
@@ -197,11 +211,13 @@ Add `ControlPlaneHandshake? ControlPlane` with fields from the spec.
 
 - [x] **Step 4: Populate handshake in `ReplEngine`**
 
-When `ControlPlaneEnabled` is true, include protocol version `1`, artifact/job support flags, auth mode, and limits.
+When `ControlPlaneEnabled` is true, include protocol version `1`, artifact/job support flags, auth
+mode, and limits.
 
 - [x] **Step 5: Update Python types**
 
-Add optional `ControlPlaneInfo` to `client/src/hotrepl/_types.py` and parse it in `_client.py` handshake logic.
+Add optional `ControlPlaneInfo` to `client/src/hotrepl/_types.py` and parse it in `_client.py`
+handshake logic.
 
 - [x] **Step 6: Run tests**
 
@@ -282,7 +298,8 @@ public sealed record ControlCommandResult(
     IReadOnlyList<ControlCommandError> Diagnostics);
 ```
 
-Place `ArtifactRef` in `Control/Artifacts/ArtifactRef.cs` but reference it from `ControlCommandResult`.
+Place `ArtifactRef` in `Control/Artifacts/ArtifactRef.cs` but reference it from
+`ControlCommandResult`.
 
 - [x] **Step 3: Extend host boundary**
 
@@ -329,11 +346,14 @@ Tests:
 
 - [x] **Step 2: Add `ControlCommandRouter`**
 
-The router validates command name, looks up handler, and converts handler output/errors into protocol DTOs. It must not execute handlers from socket threads.
+The router validates command name, looks up handler, and converts handler output/errors into
+protocol DTOs. It must not execute handlers from socket threads.
 
 - [x] **Step 3: Wire router through `MessageRouter` and `ReplEngine`**
 
-Inbound control messages enqueue engine commands. Tick order is: cancel drain, command queue, accepted control job start, at most one eval, subscriptions. Control command execution lives in the command queue portion.
+Inbound control messages enqueue engine commands. Tick order is: cancel drain, command queue,
+accepted control job start, at most one eval, subscriptions. Control command execution lives in the
+command queue portion.
 
 - [x] **Step 4: Run routing tests**
 
@@ -399,7 +419,8 @@ public bool RequireControlLease { get; set; } = true;
 
 - [x] **Step 4: Gate mutating commands**
 
-If command descriptor `MutatesState` is true, require valid lease. Read-only commands may run after auth without lease.
+If command descriptor `MutatesState` is true, require valid lease. Read-only commands may run after
+auth without lease.
 
 - [x] **Step 5: Run tests**
 
@@ -430,7 +451,8 @@ Tests:
 
 1. Default server URL uses `127.0.0.1`.
 2. Explicit bind host `0.0.0.0` is honored only when configured.
-3. Addressed control responses to a disconnected client are dropped or recorded as undeliverable; they must not be sent to the replacement client.
+3. Addressed control responses to a disconnected client are dropped or recorded as undeliverable;
+   they must not be sent to the replacement client.
 
 - [x] **Step 2: Implement bind host config in server startup**
 
@@ -438,7 +460,8 @@ Use `ReplConfig.BindHost` when constructing the Fleck URL.
 
 - [x] **Step 3: Split eval fallback from control response delivery**
 
-Eval responses use REPL compatibility delivery when needed. Control responses require the original connection/session.
+Eval responses use REPL compatibility delivery when needed. Control responses require the original
+connection/session.
 
 - [x] **Step 4: Run tests**
 
@@ -496,7 +519,8 @@ Internally use enum if desired, but protocol output must use these strings.
 
 - [x] **Step 3: Implement cooperative cancellation**
 
-Each job owns a `CancellationTokenSource`. `job_cancel` cancels the token and returns `job_cancel_result` immediately with whether cancellation was accepted.
+Each job owns a `CancellationTokenSource`. `job_cancel` cancels the token and returns
+`job_cancel_result` immediately with whether cancellation was accepted.
 
 - [x] **Step 4: Run job tests**
 
@@ -538,7 +562,8 @@ Descriptors with `Kind = Job` must not block `command_call` until completion.
 
 - [x] **Step 3: Add artifact refs to result DTOs**
 
-Ensure `ArtifactRef` serializes with `logicalName`, `uri`, `path`, `contentType`, `byteSize`, `sha256`, and `finalized`.
+Ensure `ArtifactRef` serializes with `logicalName`, `uri`, `path`, `contentType`, `byteSize`,
+`sha256`, and `finalized`.
 
 - [x] **Step 4: Run tests**
 
@@ -644,7 +669,8 @@ hotrepl control cancel job-123
 
 - [x] **Step 2: Implement CLI commands**
 
-CLI outputs JSON to stdout for machine use. Do not add non-JSON decoration to control command output.
+CLI outputs JSON to stdout for machine use. Do not add non-JSON decoration to control command
+output.
 
 - [x] **Step 3: Run tests**
 
@@ -755,15 +781,20 @@ Ardenfall command implementation depends on the HotRepl control-plane protocol a
 
 ## Self-review
 
-- Spec coverage: command registry, auth/lease, jobs, artifact refs, client API, CLI, docs, and gates are covered.
+- Spec coverage: command registry, auth/lease, jobs, artifact refs, client API, CLI, docs, and gates
+  are covered.
 - Placeholder scan: no `TBD`/`TODO` placeholders remain; Ardenfall integration is scoped separately.
-- Type consistency: protocol names match the design spec; command/job/error/artifact names are consistent across C# and Python tasks.
+- Type consistency: protocol names match the design spec; command/job/error/artifact names are
+  consistent across C# and Python tasks.
 - Scope: this plan intentionally covers HotRepl only. Ardenfall integration is scoped separately.
 
 ## Execution handoff
 
-Plan complete and saved to `docs/superpowers/plans/2026-05-06-hotrepl-control-plane.md`. Two execution options:
+Plan complete and saved to `docs/superpowers/plans/2026-05-06-hotrepl-control-plane.md`. Two
+execution options:
 
-**1. Subagent-Driven (recommended)** — dispatch a fresh subagent per task, review between tasks, fast iteration.
+**1. Subagent-Driven (recommended)** — dispatch a fresh subagent per task, review between tasks,
+fast iteration.
 
-**2. Inline Execution** — execute tasks in this session using executing-plans, batch execution with checkpoints.
+**2. Inline Execution** — execute tasks in this session using executing-plans, batch execution with
+checkpoints.
