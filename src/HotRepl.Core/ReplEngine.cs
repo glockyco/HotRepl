@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading;
 using Fleck;
 using HotRepl.Control;
+using HotRepl.Control.Jobs;
 using HotRepl.Evaluator;
 using HotRepl.Helpers;
 using HotRepl.Protocol;
@@ -44,10 +45,12 @@ public sealed class ReplEngine : IDisposable
     private HistoryTracker? _history;
     private ControlCommandRouter? _controlRouter;
     private ControlSessionManager? _controlSessions;
+    private ControlJobManager? _controlJobs;
 
     // ── Queues — written by Fleck threads, drained by Tick() ──────────────────
     private readonly ConcurrentQueue<EvalJob> _evalQueue = new();
     private readonly ConcurrentQueue<IEngineCommand> _commandQueue = new();
+    private readonly ConcurrentQueue<string> _jobRunQueue = new();
 
     // Cancel: populated by Fleck threads via CancelEval(); checked by Tick().
     // ConcurrentDictionary used as a concurrent set (value is ignored).
@@ -87,7 +90,8 @@ public sealed class ReplEngine : IDisposable
         _clients = new ClientRegistry(_wsServer, msg => _host.LogInfo(msg));
         _router = new MessageRouter(this, msg => _host.LogInfo(msg));
         _controlSessions = new ControlSessionManager(_host.Config);
-        _controlRouter = new ControlCommandRouter(_host.ControlCommands, _controlSessions);
+        _controlJobs = new ControlJobManager(_host.Config.MaxJobEventBuffer);
+        _controlRouter = new ControlCommandRouter(_host.ControlCommands, _controlSessions, _controlJobs);
 
         _wsServer.ClientConnected += OnClientConnected;
         _wsServer.ClientDisconnected += _clients.OnDisconnected;
@@ -124,6 +128,9 @@ public sealed class ReplEngine : IDisposable
         // 2. Command drain.
         while (_commandQueue.TryDequeue(out var cmd))
             HandleCommand(cmd);
+
+        if (_jobRunQueue.TryDequeue(out var jobId))
+            _ = _controlRouter!.RunJobAsync(jobId).AsTask();
 
         // 2b. Auto-reset on hot reload. ScriptEngine assembly loads set the
         //     flag during OnAssemblyLoad. Reset here so subsequent evals
@@ -335,13 +342,27 @@ public sealed class ReplEngine : IDisposable
                 _clients!.SendControlTo(c.ConnectionId, MessageSerializer.Serialize(_controlRouter!.Describe(c.Id)));
                 break;
             case CommandCallCmd c:
-                _clients!.SendControlTo(c.ConnectionId, MessageSerializer.Serialize(_controlRouter!.Execute(c.Message)));
-                break;
+                {
+                    var response = _controlRouter!.Execute(c.Message);
+                    _clients!.SendControlTo(c.ConnectionId, MessageSerializer.Serialize(response));
+                    if (response is CommandAcceptedMessage accepted)
+                        _jobRunQueue.Enqueue(accepted.JobId);
+                    break;
+                }
             case ControlAuthCmd c:
                 HandleControlAuth(c);
                 break;
             case LeaseAcquireCmd c:
                 HandleLeaseAcquire(c);
+                break;
+            case JobStatusCmd c:
+                _clients!.SendControlTo(c.ConnectionId, MessageSerializer.Serialize(_controlRouter!.GetJobStatus(c.Message)));
+                break;
+            case JobResultCmd c:
+                _clients!.SendControlTo(c.ConnectionId, MessageSerializer.Serialize(_controlRouter!.GetJobResult(c.Message)));
+                break;
+            case JobCancelCmd c:
+                _clients!.SendControlTo(c.ConnectionId, MessageSerializer.Serialize(_controlRouter!.CancelJob(c.Message)));
                 break;
         }
     }
@@ -779,4 +800,28 @@ internal sealed class LeaseAcquireCmd : IEngineCommand
     public Guid ConnectionId { get; }
     public LeaseAcquireCmd(string id, string sessionId, string clientName, Guid connectionId)
     { Id = id; SessionId = sessionId; ClientName = clientName; ConnectionId = connectionId; }
+}
+
+internal sealed class JobStatusCmd : IEngineCommand
+{
+    public string Id => Message.Id;
+    public Guid ConnectionId { get; }
+    public JobStatusMessage Message { get; }
+    public JobStatusCmd(JobStatusMessage message, Guid connectionId) { Message = message; ConnectionId = connectionId; }
+}
+
+internal sealed class JobResultCmd : IEngineCommand
+{
+    public string Id => Message.Id;
+    public Guid ConnectionId { get; }
+    public JobResultRequestMessage Message { get; }
+    public JobResultCmd(JobResultRequestMessage message, Guid connectionId) { Message = message; ConnectionId = connectionId; }
+}
+
+internal sealed class JobCancelCmd : IEngineCommand
+{
+    public string Id => Message.Id;
+    public Guid ConnectionId { get; }
+    public JobCancelMessage Message { get; }
+    public JobCancelCmd(JobCancelMessage message, Guid connectionId) { Message = message; ConnectionId = connectionId; }
 }

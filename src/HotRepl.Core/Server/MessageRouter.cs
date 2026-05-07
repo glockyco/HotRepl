@@ -106,6 +106,24 @@ internal sealed class MessageRouter
                         _engine.EnqueueCommand(new CommandCallCmd(msg, connectionId));
                         break;
                     }
+                case MessageType.JobStatus:
+                    {
+                        var msg = MessageSerializer.Deserialize<JobStatusMessage>(rawJson);
+                        _engine.EnqueueCommand(new JobStatusCmd(msg, connectionId));
+                        break;
+                    }
+                case MessageType.JobResult:
+                    {
+                        var msg = MessageSerializer.Deserialize<JobResultRequestMessage>(rawJson);
+                        _engine.EnqueueCommand(new JobResultCmd(msg, connectionId));
+                        break;
+                    }
+                case MessageType.JobCancel:
+                    {
+                        var msg = MessageSerializer.Deserialize<JobCancelMessage>(rawJson);
+                        _engine.EnqueueCommand(new JobCancelCmd(msg, connectionId));
+                        break;
+                    }
                 default:
                     _log($"[HotRepl] Unknown message type '{type}' — ignored.");
                     break;

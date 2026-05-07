@@ -1,7 +1,9 @@
 using System;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using HotRepl.Control.Artifacts;
+using HotRepl.Control.Jobs;
 using HotRepl.Protocol;
 using Newtonsoft.Json.Linq;
 
@@ -12,11 +14,13 @@ internal sealed class ControlCommandRouter
 {
     private readonly IControlCommandRegistry _registry;
     private readonly ControlSessionManager? _sessions;
+    private readonly ControlJobManager? _jobs;
 
-    public ControlCommandRouter(IControlCommandRegistry registry, ControlSessionManager? sessions = null)
+    public ControlCommandRouter(IControlCommandRegistry registry, ControlSessionManager? sessions = null, ControlJobManager? jobs = null)
     {
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
         _sessions = sessions;
+        _jobs = jobs;
     }
 
     public CommandDescribeResultMessage Describe(string id)
@@ -35,14 +39,34 @@ internal sealed class ControlCommandRouter
             return CommandError(message.Id, "unknown_command", "unknownCommand", $"Unknown control command '{message.Name}'.", retryable: false);
         }
 
-        if (handler.Descriptor.Kind != ControlCommandKind.Synchronous)
-        {
-            return CommandError(message.Id, "unsupported_operation", "jobCommandRequiresJobProtocol", $"Command '{message.Name}' is not synchronous.", retryable: false);
-        }
-
         if (handler.Descriptor.MutatesState && _sessions is { } sessions && !sessions.IsLeaseValid(message.LeaseId))
         {
             return CommandError(message.Id, "lease_required", "missingOrInvalidLease", "A valid control lease is required for this command.", retryable: true);
+        }
+
+        if (handler.Descriptor.Kind == ControlCommandKind.Job)
+        {
+            if (_jobs == null)
+                return CommandError(message.Id, "unsupported_operation", "jobsUnavailable", "Control jobs are not available.", retryable: false);
+
+            var timeout = message.TimeoutMs > 0 ? TimeSpan.FromMilliseconds(message.TimeoutMs) : (TimeSpan?)null;
+            var job = _jobs.StartJob(
+                message.Id,
+                message.LeaseId,
+                message.IdempotencyKey,
+                (context, token) => handler.ExecuteAsync(context.ToCommandContext(timeout), message.Args, token));
+
+            return new CommandAcceptedMessage
+            {
+                Id = message.Id,
+                JobId = job.JobId,
+                State = job.State,
+            };
+        }
+
+        if (handler.Descriptor.Kind != ControlCommandKind.Synchronous)
+        {
+            return CommandError(message.Id, "unsupported_operation", "unsupportedCommandKind", $"Command '{message.Name}' has unsupported kind '{handler.Descriptor.Kind}'.", retryable: false);
         }
 
         try
@@ -63,6 +87,71 @@ internal sealed class ControlCommandRouter
         {
             return CommandError(message.Id, "internal", "handlerException", ex.Message, retryable: false);
         }
+    }
+
+    public ValueTask RunJobAsync(string jobId)
+    {
+        if (_jobs == null)
+            throw new InvalidOperationException("Control jobs are not available.");
+        return _jobs.RunAsync(jobId);
+    }
+
+    public JobStatusResultMessage GetJobStatus(JobStatusMessage message)
+    {
+        var status = _jobs!.GetStatus(message.JobId);
+        return new JobStatusResultMessage
+        {
+            Id = message.Id,
+            JobId = status.JobId,
+            State = status.State,
+            Progress = status.Progress,
+        };
+    }
+
+    public object GetJobResult(JobResultRequestMessage message)
+    {
+        var status = _jobs!.GetStatus(message.JobId);
+        if (status.State is ControlJobStates.Accepted or ControlJobStates.Running or ControlJobStates.Cancelling)
+        {
+            return CommandError(message.Id, "busy", "jobNotTerminal", $"Job '{message.JobId}' is still {status.State}.", retryable: true);
+        }
+
+        if (status.State == ControlJobStates.Failed)
+        {
+            return new CommandErrorMessage
+            {
+                Id = message.Id,
+                Status = "failed",
+                Error = ToMessage(status.Error ?? new ControlCommandError("internal", "missingJobError", "Job failed without an error.", Retryable: false, Details: new JObject())),
+                Diagnostics = status.Diagnostics.Select(ToMessage).ToArray(),
+            };
+        }
+
+        if (status.State == ControlJobStates.Cancelled)
+            return CommandError(message.Id, "cancelled", "jobCancelled", $"Job '{message.JobId}' was cancelled.", retryable: false);
+
+        return new JobResultMessage
+        {
+            Id = message.Id,
+            JobId = status.JobId,
+            State = status.State,
+            Status = "ok",
+            Result = status.Result ?? new JObject(),
+            Artifacts = status.Artifacts.Select(ToMessage).ToArray(),
+            Diagnostics = status.Diagnostics.Select(ToMessage).ToArray(),
+        };
+    }
+
+    public JobCancelResultMessage CancelJob(JobCancelMessage message)
+    {
+        var accepted = _jobs!.Cancel(message.JobId);
+        var status = _jobs.GetStatus(message.JobId);
+        return new JobCancelResultMessage
+        {
+            Id = message.Id,
+            Accepted = accepted,
+            State = status.State,
+        };
     }
 
     private static CommandDescriptorMessage ToMessage(ControlCommandDescriptor descriptor) => new()

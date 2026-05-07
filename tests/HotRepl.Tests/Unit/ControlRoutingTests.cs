@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using HotRepl.Control;
+using HotRepl.Control.Artifacts;
+using HotRepl.Control.Jobs;
 using HotRepl.Protocol;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -80,6 +82,84 @@ public class ControlRoutingTests
         Assert.Contains("boom", error.Error.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Execute_JobCommand_ReturnsCommandAccepted()
+    {
+        var jobs = new ControlJobManager(maxEventBuffer: 100);
+        var router = new ControlCommandRouter(new FakeRegistry(new JobHandler()), jobs: jobs);
+
+        var result = router.Execute(new CommandCallMessage { Id = "cmd-1", Name = "archive.export" });
+
+        var accepted = Assert.IsType<CommandAcceptedMessage>(result);
+        Assert.Equal(MessageType.CommandAccepted, accepted.Type);
+        Assert.Equal("cmd-1", accepted.Id);
+        Assert.Equal("accepted", accepted.State);
+        Assert.Equal("accepted", jobs.GetStatus(accepted.JobId).State);
+    }
+
+    [Fact]
+    public void JobStatus_ReturnsCurrentState()
+    {
+        var jobs = new ControlJobManager(maxEventBuffer: 100);
+        var router = new ControlCommandRouter(new FakeRegistry(new JobHandler()), jobs: jobs);
+        var accepted = Assert.IsType<CommandAcceptedMessage>(router.Execute(new CommandCallMessage { Id = "cmd-1", Name = "archive.export" }));
+
+        var status = router.GetJobStatus(new JobStatusMessage { Id = "status-1", JobId = accepted.JobId });
+
+        Assert.Equal(MessageType.JobStatusResult, status.Type);
+        Assert.Equal("status-1", status.Id);
+        Assert.Equal(accepted.JobId, status.JobId);
+        Assert.Equal("accepted", status.State);
+    }
+
+    [Fact]
+    public void JobResult_BeforeTerminalState_ReturnsBusyError()
+    {
+        var router = new ControlCommandRouter(new FakeRegistry(new JobHandler()), jobs: new ControlJobManager(maxEventBuffer: 100));
+        var accepted = Assert.IsType<CommandAcceptedMessage>(router.Execute(new CommandCallMessage { Id = "cmd-1", Name = "archive.export" }));
+
+        var result = router.GetJobResult(new JobResultRequestMessage { Id = "result-1", JobId = accepted.JobId });
+
+        var error = Assert.IsType<CommandErrorMessage>(result);
+        Assert.Equal("busy", error.Error.Kind);
+        Assert.True(error.Error.Retryable);
+    }
+
+    [Fact]
+    public async Task JobResult_AfterCompletion_ReturnsArtifactsAndResult()
+    {
+        var jobs = new ControlJobManager(maxEventBuffer: 100);
+        var router = new ControlCommandRouter(new FakeRegistry(new JobHandler()), jobs: jobs);
+        var accepted = Assert.IsType<CommandAcceptedMessage>(router.Execute(new CommandCallMessage { Id = "cmd-1", Name = "archive.export" }));
+        await router.RunJobAsync(accepted.JobId);
+
+        var result = router.GetJobResult(new JobResultRequestMessage { Id = "result-1", JobId = accepted.JobId });
+
+        var ok = Assert.IsType<JobResultMessage>(result);
+        Assert.Equal(MessageType.JobResult, ok.Type);
+        Assert.Equal("completed", ok.State);
+        Assert.Equal("ok", ok.Status);
+        Assert.Equal("done", ok.Result["value"]!.Value<string>());
+        var artifact = Assert.Single(ok.Artifacts);
+        Assert.Equal("items", artifact.LogicalName);
+        Assert.Equal("sha", artifact.Sha256);
+    }
+
+    [Fact]
+    public void JobCancel_ReturnsAcknowledgement()
+    {
+        var jobs = new ControlJobManager(maxEventBuffer: 100);
+        var router = new ControlCommandRouter(new FakeRegistry(new JobHandler()), jobs: jobs);
+        var accepted = Assert.IsType<CommandAcceptedMessage>(router.Execute(new CommandCallMessage { Id = "cmd-1", Name = "archive.export" }));
+
+        var result = router.CancelJob(new JobCancelMessage { Id = "cancel-1", JobId = accepted.JobId });
+
+        Assert.Equal(MessageType.JobCancelResult, result.Type);
+        Assert.Equal("cancel-1", result.Id);
+        Assert.True(result.Accepted);
+        Assert.Equal("cancelling", result.State);
+    }
+
     private sealed class FakeRegistry : IControlCommandRegistry
     {
         private readonly IControlCommandHandler _handler;
@@ -131,5 +211,27 @@ public class ControlRoutingTests
             ControlCommandContext context,
             JObject args,
             CancellationToken cancellationToken) => throw new InvalidOperationException("boom");
+    }
+
+    private sealed class JobHandler : IControlCommandHandler
+    {
+        public ControlCommandDescriptor Descriptor { get; } = new(
+            "archive.export",
+            1,
+            ControlCommandKind.Job,
+            mutatesState: false,
+            argsSchema: JObject.Parse("{\"type\":\"object\"}"),
+            resultSchema: JObject.Parse("{\"type\":\"object\"}"));
+
+        public ValueTask<ControlCommandResult> ExecuteAsync(
+            ControlCommandContext context,
+            JObject args,
+            CancellationToken cancellationToken)
+        {
+            return ValueTask.FromResult(new ControlCommandResult(
+                new JObject { ["value"] = "done" },
+                new[] { new ArtifactRef("items", "file:///tmp/items.json", "/tmp/items.json", "application/json", 10, "sha", true) },
+                Array.Empty<ControlCommandError>()));
+        }
     }
 }
