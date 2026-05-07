@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+from dataclasses import asdict, is_dataclass
 import json
 import os
 import sys
 from typing import Any
 
-from hotrepl._client import DEFAULT_URL, Client, EvalError
+from hotrepl._client import DEFAULT_URL, Client, ControlCommandError, EvalError
 
 
 def _get_url(args: argparse.Namespace) -> str:
@@ -89,6 +90,49 @@ async def _cmd_info(args: argparse.Namespace) -> None:
     else:
         print(_format_info(handshake))
 
+
+
+async def _cmd_control(args: argparse.Namespace) -> None:
+    async with Client(_get_url(args)) as client:
+        try:
+            if args.control_command == "describe":
+                _print_json(await client.describe_commands())
+            elif args.control_command == "call":
+                _print_json(await client.call(args.name, _parse_json_object(args.args_json)))
+            elif args.control_command == "start-job":
+                _print_json(await client.start_job(args.name, _parse_json_object(args.args_json)))
+            elif args.control_command == "job-status":
+                _print_json(await client.job_status(args.job_id))
+            elif args.control_command == "job-result":
+                _print_json(await client.job_result(args.job_id))
+            elif args.control_command == "cancel":
+                _print_json(await client.cancel_job(args.job_id))
+            else:
+                raise RuntimeError(f"Unknown control command: {args.control_command}")
+        except ControlCommandError as exc:
+            _print_json({"error": asdict(exc.error), "diagnostics": [asdict(d) for d in exc.diagnostics]})
+            sys.exit(1)
+
+
+def _parse_json_object(raw: str) -> dict[str, Any]:
+    parsed = json.loads(raw)
+    if not isinstance(parsed, dict):
+        raise SystemExit("control command args must be a JSON object")
+    return parsed
+
+
+def _print_json(value: Any) -> None:
+    print(json.dumps(_jsonable(value), indent=2))
+
+
+def _jsonable(value: Any) -> Any:
+    if is_dataclass(value) and not isinstance(value, type):
+        return asdict(value)
+    if isinstance(value, list):
+        return [_jsonable(item) for item in value]
+    if isinstance(value, dict):
+        return {key: _jsonable(item) for key, item in value.items()}
+    return value
 
 def _format_info(handshake: dict[str, Any]) -> str:
     evaluator = handshake.get("evaluator") or {}
@@ -216,6 +260,29 @@ def _build_parser() -> argparse.ArgumentParser:
     p_watch.add_argument("--timeout", "-t", type=int, default=10000, help="Timeout per eval in ms")
     p_watch.add_argument("--json", action="store_true", help="Output raw JSON")
 
+    # control
+    p_control = sub.add_parser("control", help="Typed control-plane commands")
+    control_sub = p_control.add_subparsers(dest="control_command", required=True)
+
+    control_sub.add_parser("describe", help="List registered control commands")
+
+    p_control_call = control_sub.add_parser("call", help="Call a synchronous control command")
+    p_control_call.add_argument("name", help="Control command name")
+    p_control_call.add_argument("args_json", help="Command args JSON object")
+
+    p_control_start = control_sub.add_parser("start-job", help="Start a job control command")
+    p_control_start.add_argument("name", help="Control command name")
+    p_control_start.add_argument("args_json", help="Command args JSON object")
+
+    p_control_status = control_sub.add_parser("job-status", help="Get job status")
+    p_control_status.add_argument("job_id", help="Job id")
+
+    p_control_result = control_sub.add_parser("job-result", help="Get terminal job result")
+    p_control_result.add_argument("job_id", help="Job id")
+
+    p_control_cancel = control_sub.add_parser("cancel", help="Cancel a job")
+    p_control_cancel.add_argument("job_id", help="Job id")
+
     # test
     p_test = sub.add_parser("test", help="Run smoke tests via pytest")
     p_test.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
@@ -236,6 +303,7 @@ def main() -> None:
         "watch": _cmd_watch,
         "info": _cmd_info,
         "select-evaluator": _cmd_select_evaluator,
+        "control": _cmd_control,
     }
 
     if args.command == "test":

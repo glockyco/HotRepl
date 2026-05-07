@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from hotrepl import Client
+from hotrepl.cli import _build_parser
 
 from ._fake_control_server import fake_control_server
 
@@ -65,3 +66,25 @@ async def test_call_sends_command_call_and_parses_result() -> None:
         assert result.result == {"echo": "ok"}
         assert result.artifacts == []
         await client.close()
+
+
+def test_cli_control_subcommands_parse() -> None:
+    parser = _build_parser()
+
+    describe = parser.parse_args(["control", "describe"])
+    call = parser.parse_args(["control", "call", "archive.preflight", "{}"])
+    status = parser.parse_args(["control", "job-status", "job-123"])
+    result = parser.parse_args(["control", "job-result", "job-123"])
+    cancel = parser.parse_args(["control", "cancel", "job-123"])
+
+    assert describe.command == "control"
+    assert describe.control_command == "describe"
+    assert call.control_command == "call"
+    assert call.name == "archive.preflight"
+    assert call.args_json == "{}"
+    assert status.control_command == "job-status"
+    assert status.job_id == "job-123"
+    assert result.control_command == "job-result"
+    assert result.job_id == "job-123"
+    assert cancel.control_command == "cancel"
+    assert cancel.job_id == "job-123"
