@@ -63,6 +63,21 @@ public class ControlSessionManagerTests
     }
 
     [Fact]
+    public void OnDisconnected_ReleasesLeaseOwnedByConnection()
+    {
+        var manager = new ControlSessionManager(new ReplConfig());
+        var firstConnection = Guid.NewGuid();
+        var first = manager.Authenticate(firstConnection, token: null);
+        var second = manager.Authenticate(Guid.NewGuid(), token: null);
+        Assert.True(manager.AcquireLease(first.SessionId!, "first").Ok);
+
+        manager.OnDisconnected(firstConnection);
+        var lease = manager.AcquireLease(second.SessionId!, "second");
+
+        Assert.True(lease.Ok);
+    }
+
+    [Fact]
     public void Router_RejectsMutatingCommandWithoutLease()
     {
         var manager = new ControlSessionManager(new ReplConfig { RequireControlLease = true });

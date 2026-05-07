@@ -65,6 +65,25 @@ internal sealed class ControlSessionManager
         }
     }
 
+    public void OnDisconnected(Guid connectionId)
+    {
+        lock (_sync)
+        {
+            var removedSessionIds = new List<string>();
+            foreach (var session in _sessions.Values)
+            {
+                if (session.ConnectionId == connectionId)
+                    removedSessionIds.Add(session.SessionId);
+            }
+
+            foreach (var sessionId in removedSessionIds)
+                _sessions.Remove(sessionId);
+
+            if (_activeLease != null && removedSessionIds.Contains(_activeLease.SessionId))
+                _activeLease = null;
+        }
+    }
+
     public bool IsLeaseValid(string? leaseId)
     {
         if (!_config.RequireControlLease)

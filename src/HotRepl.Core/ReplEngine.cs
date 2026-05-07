@@ -97,6 +97,7 @@ public sealed class ReplEngine : IDisposable
 
         _wsServer.ClientConnected += OnClientConnected;
         _wsServer.ClientDisconnected += _clients.OnDisconnected;
+        _wsServer.ClientDisconnected += _controlSessions.OnDisconnected;
         _wsServer.MessageReceived += _router.HandleMessage;
 
         _wsServer.Start(_host.Config.Port, _host.Config.BindHost);
