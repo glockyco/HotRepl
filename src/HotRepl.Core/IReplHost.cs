@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Reflection;
+using HotRepl.Control;
 using HotRepl.Evaluator;
 
 namespace HotRepl;
@@ -17,6 +18,9 @@ public interface IReplHost
 
     /// <summary>Metadata about the embedding host, reported in the protocol handshake.</summary>
     HostInfo HostInfo { get; }
+
+    /// <summary>Registry of host-provided typed control-plane commands.</summary>
+    IControlCommandRegistry ControlCommands { get; }
 
     /// <summary>Evaluators this host can construct in the current runtime.</summary>
     IReadOnlyList<EvaluatorCapabilities> AvailableEvaluators { get; }

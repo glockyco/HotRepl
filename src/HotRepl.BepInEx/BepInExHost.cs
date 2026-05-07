@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using BepInEx.Logging;
 using HotRepl;
+using HotRepl.Control;
 using HotRepl.Evaluator;
 using HotRepl.Evaluator.MonoCSharp;
 using HotRepl.Evaluator.Roslyn;
@@ -55,6 +56,8 @@ internal sealed class BepInExHost : IReplHost
         Runtime = ".NET Framework/Mono",
         Platform = "Unity Mono",
     };
+
+    public IControlCommandRegistry ControlCommands => EmptyControlCommandRegistry.Instance;
 
     public IReadOnlyList<EvaluatorCapabilities> AvailableEvaluators => _availableEvaluators;
 

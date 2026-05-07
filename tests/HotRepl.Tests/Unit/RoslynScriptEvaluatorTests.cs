@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Threading;
+using HotRepl.Control;
 using HotRepl.Evaluator;
 using HotRepl.Evaluator.Roslyn;
 using Xunit;
@@ -14,6 +15,7 @@ public class RoslynScriptEvaluatorTests
     {
         public ReplConfig Config { get; } = new();
         public HostInfo HostInfo { get; } = new() { Name = "Tests", Version = "1", Runtime = ".NET", Platform = "Unit" };
+        public IControlCommandRegistry ControlCommands => EmptyControlCommandRegistry.Instance;
         public IReadOnlyList<EvaluatorCapabilities> AvailableEvaluators => RoslynEvaluatorFactory.Capabilities;
         public string DefaultEvaluatorName => RoslynScriptEvaluator.ScriptCapabilities.Name;
         public ICodeEvaluator CreateEvaluator(string evaluatorName) => RoslynEvaluatorFactory.Create(evaluatorName, this);

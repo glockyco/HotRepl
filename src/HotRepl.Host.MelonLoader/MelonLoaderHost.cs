@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using HotRepl.Control;
 using HotRepl.Evaluator;
 using HotRepl.Evaluator.Roslyn;
 using HotRepl.Helpers;
@@ -41,6 +42,8 @@ internal sealed class MelonLoaderHost : IReplHost
         Runtime = ".NET 6",
         Platform = "Unity IL2CPP",
     };
+
+    public IControlCommandRegistry ControlCommands => EmptyControlCommandRegistry.Instance;
 
     public IReadOnlyList<EvaluatorCapabilities> AvailableEvaluators => RoslynEvaluatorFactory.Capabilities;
 
