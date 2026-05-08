@@ -1,4 +1,5 @@
 using System;
+using HotRepl.Engine.Commands;
 using HotRepl.Evaluator;
 using HotRepl.Protocol;
 
