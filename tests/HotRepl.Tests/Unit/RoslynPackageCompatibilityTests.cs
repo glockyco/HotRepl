@@ -11,16 +11,17 @@ public class RoslynPackageCompatibilityTests
     [Fact]
     public void RoslynScriptingPackage_UsesMelonLoaderNet6CompatibleVersion()
     {
-        var project = XDocument.Load(
-            ProjectPath("src", "HotRepl.Evaluator.Roslyn", "HotRepl.Evaluator.Roslyn.csproj")
-        );
-        var package = project
-            .Descendants("PackageReference")
+        // Versions live in Directory.Packages.props under Central Package Management.
+        // The Roslyn scripting version is pinned to a .NET 6-compatible release so
+        // the MelonLoader host can load it at runtime.
+        var packages = XDocument.Load(ProjectPath("Directory.Packages.props"));
+        var entry = packages
+            .Descendants("PackageVersion")
             .Single(x =>
                 (string?)x.Attribute("Include") == "Microsoft.CodeAnalysis.CSharp.Scripting"
             );
 
-        Assert.Equal("4.4.0", (string?)package.Attribute("Version"));
+        Assert.Equal("4.4.0", (string?)entry.Attribute("Version"));
     }
 
     private static string ProjectPath(params string[] parts)

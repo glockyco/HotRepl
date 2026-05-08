@@ -10,10 +10,10 @@
 
   <ItemGroup>
     <!-- WebSocket server -->
-    <PackageReference Include="Fleck" Version="1.*" />
+    <PackageReference Include="Fleck" />
 
     <!-- JSON serialization -->
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Newtonsoft.Json" />
   </ItemGroup>
 
   <ItemGroup>

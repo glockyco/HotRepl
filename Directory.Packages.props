@@ -1,0 +1,33 @@
+<Project>
+  <!--
+    Central Package Management. Every csproj declares packages by Include only;
+    versions live here and apply to the whole solution.
+
+    Versions are pinned (no floating ranges) so a clean restore on a fresh
+    machine resolves the same packages CI uses. Update intentionally and
+    review the diff.
+
+    Analyzer and formatter packages added by the Phase 4 strict-build setup are
+    declared here too and applied to every csproj via Directory.Build.props.
+  -->
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+  <ItemGroup Label="Runtime dependencies">
+    <PackageVersion Include="Fleck" Version="1.2.0" />
+    <PackageVersion Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Scripting" Version="4.4.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="BepInEx host">
+    <PackageVersion Include="BepInEx.Core" Version="5.4.21" />
+    <PackageVersion Include="ILRepack.Lib.MSBuild.Task" Version="2.0.34.2" />
+  </ItemGroup>
+
+  <ItemGroup Label="Test infrastructure">
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+</Project>
