@@ -52,7 +52,8 @@ internal sealed class SubscriptionManager
     /// <summary>Snapshot of all active subscriptions. Used by reset to notify before clearing.</summary>
     public IReadOnlyCollection<SubscriptionState> GetAll() =>
         new System.Collections.ObjectModel.ReadOnlyCollection<SubscriptionState>(
-            new List<SubscriptionState>(_subscriptions.Values));
+            new List<SubscriptionState>(_subscriptions.Values)
+        );
 
     // ── Per-frame processing ──────────────────────────────────────────────────
 
@@ -64,7 +65,8 @@ internal sealed class SubscriptionManager
     public void Tick(
         Func<string, string, int, EvalOutcome> guardedEvaluate,
         Action<Guid, string> send,
-        IResultSerializer serializer)
+        IResultSerializer serializer
+    )
     {
         if (_subscriptions.Count == 0)
             return;
@@ -104,16 +106,21 @@ internal sealed class SubscriptionManager
                 sub.DeliveryCount++;
                 bool isFinal = sub.Limit > 0 && sub.DeliveryCount >= sub.Limit;
 
-                send(sub.ConnectionId, MessageSerializer.Serialize(new SubscribeResultMessage
-                {
-                    Id = sub.Id,
-                    Seq = sub.Seq,
-                    HasValue = outcome.HasValue,
-                    Value = serialized,
-                    ValueType = outcome.ValueType,
-                    DurationMs = outcome.DurationMs,
-                    Final = isFinal,
-                }));
+                send(
+                    sub.ConnectionId,
+                    MessageSerializer.Serialize(
+                        new SubscribeResultMessage
+                        {
+                            Id = sub.Id,
+                            Seq = sub.Seq,
+                            HasValue = outcome.HasValue,
+                            Value = serialized,
+                            ValueType = outcome.ValueType,
+                            DurationMs = outcome.DurationMs,
+                            Final = isFinal,
+                        }
+                    )
+                );
 
                 if (isFinal)
                     (toRemove ??= new List<string>()).Add(sub.Id);
@@ -124,14 +131,19 @@ internal sealed class SubscriptionManager
                 sub.ConsecutiveErrors++;
                 bool isFinal = sub.ConsecutiveErrors >= MaxConsecutiveErrors;
 
-                send(sub.ConnectionId, MessageSerializer.Serialize(new SubscribeErrorMessage
-                {
-                    Id = sub.Id,
-                    Seq = sub.Seq,
-                    ErrorKind = outcome.ErrorKind ?? Protocol.ErrorKind.Runtime,
-                    Message = outcome.ErrorMessage ?? "Unknown error",
-                    Final = isFinal,
-                }));
+                send(
+                    sub.ConnectionId,
+                    MessageSerializer.Serialize(
+                        new SubscribeErrorMessage
+                        {
+                            Id = sub.Id,
+                            Seq = sub.Seq,
+                            ErrorKind = outcome.ErrorKind ?? Protocol.ErrorKind.Runtime,
+                            Message = outcome.ErrorMessage ?? "Unknown error",
+                            Final = isFinal,
+                        }
+                    )
+                );
 
                 if (isFinal)
                     (toRemove ??= new List<string>()).Add(sub.Id);

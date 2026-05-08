@@ -21,14 +21,14 @@ public class MessageSerializerTests
     public void ParseType_MissingType_Throws()
     {
         Assert.Throws<InvalidOperationException>(() =>
-            MessageSerializer.ParseType("{\"id\":\"1\"}"));
+            MessageSerializer.ParseType("{\"id\":\"1\"}")
+        );
     }
 
     [Fact]
     public void ParseType_InvalidJson_Throws()
     {
-        Assert.ThrowsAny<JsonException>(() =>
-            MessageSerializer.ParseType("not json"));
+        Assert.ThrowsAny<JsonException>(() => MessageSerializer.ParseType("not json"));
     }
 
     // ── Inbound round-trips ───────────────────────────────────────────────────
@@ -36,7 +36,12 @@ public class MessageSerializerTests
     [Fact]
     public void RoundTrip_EvalMessage()
     {
-        var msg = new EvalMessage { Id = "t-1", Code = "1+1", TimeoutMs = 5000 };
+        var msg = new EvalMessage
+        {
+            Id = "t-1",
+            Code = "1+1",
+            TimeoutMs = 5000,
+        };
         var json = MessageSerializer.Serialize(msg);
         var back = MessageSerializer.Deserialize<EvalMessage>(json);
 
@@ -49,7 +54,12 @@ public class MessageSerializerTests
     [Fact]
     public void RoundTrip_CompleteMessage()
     {
-        var msg = new CompleteMessage { Id = "t-6", Code = "Console.", CursorPos = 8 };
+        var msg = new CompleteMessage
+        {
+            Id = "t-6",
+            Code = "Console.",
+            CursorPos = 8,
+        };
         var json = MessageSerializer.Serialize(msg);
         var back = MessageSerializer.Deserialize<CompleteMessage>(json);
 

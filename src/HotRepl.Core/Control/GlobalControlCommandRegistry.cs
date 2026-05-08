@@ -8,7 +8,9 @@ namespace HotRepl.Control;
 public sealed class GlobalControlCommandRegistry : IControlCommandRegistry
 {
     private readonly object _sync = new();
-    private readonly Dictionary<string, IControlCommandHandler> _handlers = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, IControlCommandHandler> _handlers = new(
+        StringComparer.Ordinal
+    );
 
     /// <summary>Shared registry used by host adapters.</summary>
     public static GlobalControlCommandRegistry Instance { get; } = new();
@@ -23,7 +25,9 @@ public sealed class GlobalControlCommandRegistry : IControlCommandRegistry
         lock (_sync)
         {
             if (_handlers.ContainsKey(name))
-                throw new InvalidOperationException($"Control command '{name}' is already registered.");
+                throw new InvalidOperationException(
+                    $"Control command '{name}' is already registered."
+                );
             _handlers.Add(name, handler);
         }
 
@@ -34,7 +38,10 @@ public sealed class GlobalControlCommandRegistry : IControlCommandRegistry
     public IReadOnlyList<ControlCommandDescriptor> Describe()
     {
         lock (_sync)
-            return _handlers.Values.Select(h => h.Descriptor).OrderBy(d => d.Name, StringComparer.Ordinal).ToArray();
+            return _handlers
+                .Values.Select(h => h.Descriptor)
+                .OrderBy(d => d.Name, StringComparer.Ordinal)
+                .ToArray();
     }
 
     /// <inheritdoc />
@@ -60,7 +67,11 @@ public sealed class GlobalControlCommandRegistry : IControlCommandRegistry
         private readonly IControlCommandHandler _handler;
         private bool _disposed;
 
-        public Registration(GlobalControlCommandRegistry owner, string name, IControlCommandHandler handler)
+        public Registration(
+            GlobalControlCommandRegistry owner,
+            string name,
+            IControlCommandHandler handler
+        )
         {
             _owner = owner;
             _name = name;

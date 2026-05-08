@@ -15,17 +15,32 @@ public class RoslynIsolatedEvaluatorTests
     private sealed class TestHost : IReplHost
     {
         public ReplConfig Config { get; } = new();
-        public HostInfo HostInfo { get; } = new() { Name = "Tests", Version = "1", Runtime = ".NET", Platform = "Unit" };
+        public HostInfo HostInfo { get; } =
+            new()
+            {
+                Name = "Tests",
+                Version = "1",
+                Runtime = ".NET",
+                Platform = "Unit",
+            };
         public IControlCommandRegistry ControlCommands => EmptyControlCommandRegistry.Instance;
-        public IReadOnlyList<EvaluatorCapabilities> AvailableEvaluators => RoslynEvaluatorFactory.Capabilities;
+        public IReadOnlyList<EvaluatorCapabilities> AvailableEvaluators =>
+            RoslynEvaluatorFactory.Capabilities;
         public string DefaultEvaluatorName => RoslynIsolatedEvaluator.IsolatedCapabilities.Name;
-        public ICodeEvaluator CreateEvaluator(string evaluatorName) => RoslynEvaluatorFactory.Create(evaluatorName, this);
+
+        public ICodeEvaluator CreateEvaluator(string evaluatorName) =>
+            RoslynEvaluatorFactory.Create(evaluatorName, this);
+
         public IReadOnlyList<Assembly> AdditionalAssemblies { get; } = Array.Empty<Assembly>();
         public IReadOnlyList<string> AdditionalUsings { get; } = Array.Empty<string>();
         public string[] AdditionalHelperSignatures { get; } = Array.Empty<string>();
+
         public void LogInfo(string message) { }
+
         public void LogDebug(string message) { }
+
         public void LogWarning(string message) { }
+
         public void LogError(string message, Exception? ex = null) { }
     }
 
@@ -34,7 +49,10 @@ public class RoslynIsolatedEvaluatorTests
     {
         Assert.Equal("Roslyn.Isolated", RoslynIsolatedEvaluator.IsolatedCapabilities.Name);
         Assert.False(RoslynIsolatedEvaluator.IsolatedCapabilities.SupportsPersistentState);
-        Assert.Equal(TimeoutMode.Cooperative, RoslynIsolatedEvaluator.IsolatedCapabilities.TimeoutMode);
+        Assert.Equal(
+            TimeoutMode.Cooperative,
+            RoslynIsolatedEvaluator.IsolatedCapabilities.TimeoutMode
+        );
     }
 
     [Fact]

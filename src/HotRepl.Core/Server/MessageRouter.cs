@@ -33,97 +33,108 @@ internal sealed class MessageRouter
             switch (type)
             {
                 case MessageType.Eval:
-                    {
-                        var msg = MessageSerializer.Deserialize<EvalMessage>(rawJson);
-                        var timeoutMs = msg.TimeoutMs > 0 ? msg.TimeoutMs : _engine.Config.DefaultTimeoutMs;
-                        _engine.EnqueueEval(new EvalJob(msg.Id, msg.Code, timeoutMs, connectionId));
-                        break;
-                    }
+                {
+                    var msg = MessageSerializer.Deserialize<EvalMessage>(rawJson);
+                    var timeoutMs =
+                        msg.TimeoutMs > 0 ? msg.TimeoutMs : _engine.Config.DefaultTimeoutMs;
+                    _engine.EnqueueEval(new EvalJob(msg.Id, msg.Code, timeoutMs, connectionId));
+                    break;
+                }
                 case MessageType.Cancel:
-                    {
-                        // Cancel is time-sensitive: skip the queue and abort directly.
-                        var msg = MessageSerializer.Deserialize<CancelMessage>(rawJson);
-                        _engine.CancelEval(msg.Id);
-                        break;
-                    }
+                {
+                    // Cancel is time-sensitive: skip the queue and abort directly.
+                    var msg = MessageSerializer.Deserialize<CancelMessage>(rawJson);
+                    _engine.CancelEval(msg.Id);
+                    break;
+                }
                 case MessageType.Reset:
-                    {
-                        var msg = MessageSerializer.Deserialize<ResetMessage>(rawJson);
-                        _engine.EnqueueCommand(new ResetCmd(msg.Id, connectionId));
-                        break;
-                    }
+                {
+                    var msg = MessageSerializer.Deserialize<ResetMessage>(rawJson);
+                    _engine.EnqueueCommand(new ResetCmd(msg.Id, connectionId));
+                    break;
+                }
                 case MessageType.Ping:
-                    {
-                        var msg = MessageSerializer.Deserialize<PingMessage>(rawJson);
-                        _engine.EnqueueCommand(new PingCmd(msg.Id, connectionId));
-                        break;
-                    }
+                {
+                    var msg = MessageSerializer.Deserialize<PingMessage>(rawJson);
+                    _engine.EnqueueCommand(new PingCmd(msg.Id, connectionId));
+                    break;
+                }
                 case MessageType.Complete:
-                    {
-                        var msg = MessageSerializer.Deserialize<CompleteMessage>(rawJson);
-                        _engine.EnqueueCommand(new CompleteCmd(msg.Id, msg.Code, msg.CursorPos, connectionId));
-                        break;
-                    }
+                {
+                    var msg = MessageSerializer.Deserialize<CompleteMessage>(rawJson);
+                    _engine.EnqueueCommand(
+                        new CompleteCmd(msg.Id, msg.Code, msg.CursorPos, connectionId)
+                    );
+                    break;
+                }
                 case MessageType.Subscribe:
-                    {
-                        var msg = MessageSerializer.Deserialize<SubscribeMessage>(rawJson);
-                        _engine.EnqueueCommand(new SubscribeCmd(
-                            msg.Id, msg.Code,
+                {
+                    var msg = MessageSerializer.Deserialize<SubscribeMessage>(rawJson);
+                    _engine.EnqueueCommand(
+                        new SubscribeCmd(
+                            msg.Id,
+                            msg.Code,
                             Math.Max(1, msg.IntervalFrames),
                             msg.OnChange,
                             msg.Limit,
                             msg.TimeoutMs > 0 ? msg.TimeoutMs : _engine.Config.DefaultTimeoutMs,
-                            connectionId));
-                        break;
-                    }
+                            connectionId
+                        )
+                    );
+                    break;
+                }
                 case MessageType.SelectEvaluator:
-                    {
-                        var msg = MessageSerializer.Deserialize<SelectEvaluatorMessage>(rawJson);
-                        _engine.EnqueueCommand(new SelectEvaluatorCmd(msg.Id, msg.Evaluator, connectionId));
-                        break;
-                    }
+                {
+                    var msg = MessageSerializer.Deserialize<SelectEvaluatorMessage>(rawJson);
+                    _engine.EnqueueCommand(
+                        new SelectEvaluatorCmd(msg.Id, msg.Evaluator, connectionId)
+                    );
+                    break;
+                }
                 case MessageType.ControlAuth:
-                    {
-                        var msg = MessageSerializer.Deserialize<ControlAuthMessage>(rawJson);
-                        _engine.EnqueueCommand(new ControlAuthCmd(msg.Id, msg.Token, connectionId));
-                        break;
-                    }
+                {
+                    var msg = MessageSerializer.Deserialize<ControlAuthMessage>(rawJson);
+                    _engine.EnqueueCommand(new ControlAuthCmd(msg.Id, msg.Token, connectionId));
+                    break;
+                }
                 case MessageType.LeaseAcquire:
-                    {
-                        var msg = MessageSerializer.Deserialize<LeaseAcquireMessage>(rawJson);
-                        _engine.EnqueueCommand(new LeaseAcquireCmd(msg.Id, msg.SessionId, msg.ClientName, connectionId));
-                        break;
-                    }
+                {
+                    var msg = MessageSerializer.Deserialize<LeaseAcquireMessage>(rawJson);
+                    _engine.EnqueueCommand(
+                        new LeaseAcquireCmd(msg.Id, msg.SessionId, msg.ClientName, connectionId)
+                    );
+                    break;
+                }
                 case MessageType.CommandDescribe:
-                    {
-                        var msg = MessageSerializer.Deserialize<CommandDescribeMessage>(rawJson);
-                        _engine.EnqueueCommand(new CommandDescribeCmd(msg.Id, connectionId));
-                        break;
-                    }
+                {
+                    var msg = MessageSerializer.Deserialize<CommandDescribeMessage>(rawJson);
+                    _engine.EnqueueCommand(new CommandDescribeCmd(msg.Id, connectionId));
+                    break;
+                }
                 case MessageType.CommandCall:
-                    {
-                        var msg = MessageSerializer.Deserialize<CommandCallMessage>(rawJson);
-                        _engine.EnqueueCommand(new CommandCallCmd(msg, connectionId));
-                        break;
-                    }
+                {
+                    var msg = MessageSerializer.Deserialize<CommandCallMessage>(rawJson);
+                    _engine.EnqueueCommand(new CommandCallCmd(msg, connectionId));
+                    break;
+                }
                 case MessageType.JobStatus:
-                    {
-                        var msg = MessageSerializer.Deserialize<JobStatusMessage>(rawJson);
-                        _engine.EnqueueCommand(new JobStatusCmd(msg, connectionId));
-                        break;
-                    }
+                {
+                    var msg = MessageSerializer.Deserialize<JobStatusMessage>(rawJson);
+                    _engine.EnqueueCommand(new JobStatusCmd(msg, connectionId));
+                    break;
+                }
                 case MessageType.JobResult:
-                    {
-                        var msg = MessageSerializer.Deserialize<JobResultRequestMessage>(rawJson);
-                        _engine.EnqueueCommand(new JobResultCmd(msg, connectionId));
-                        break;
-                    }
+                {
+                    var msg = MessageSerializer.Deserialize<JobResultRequestMessage>(rawJson);
+                    _engine.EnqueueCommand(new JobResultCmd(msg, connectionId));
+                    break;
+                }
                 case MessageType.JobCancel:
-                    {
-                        var msg = MessageSerializer.Deserialize<JobCancelMessage>(rawJson);
-                        _engine.EnqueueCommand(new JobCancelCmd(msg, connectionId));
-                        break;
-                    }
+                {
+                    var msg = MessageSerializer.Deserialize<JobCancelMessage>(rawJson);
+                    _engine.EnqueueCommand(new JobCancelCmd(msg, connectionId));
+                    break;
+                }
                 default:
                     _log($"[HotRepl] Unknown message type '{type}' — ignored.");
                     break;

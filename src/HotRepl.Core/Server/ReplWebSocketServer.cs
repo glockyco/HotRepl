@@ -61,8 +61,13 @@ internal sealed class ReplWebSocketServer : IDisposable
         if (!socket.IsAvailable)
             return;
         try
-        { socket.Send(json); }
-        catch (Exception ex) { _log($"[HotRepl] Send failed: {ex.Message}"); }
+        {
+            socket.Send(json);
+        }
+        catch (Exception ex)
+        {
+            _log($"[HotRepl] Send failed: {ex.Message}");
+        }
     }
 
     public void Dispose() => _server?.Dispose();

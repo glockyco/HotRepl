@@ -18,7 +18,8 @@ internal sealed record ControlJob(
     string RequestId,
     string? LeaseId,
     string? IdempotencyKey,
-    string State);
+    string State
+);
 
 internal sealed record ControlJobStatus(
     string JobId,
@@ -27,4 +28,5 @@ internal sealed record ControlJobStatus(
     JObject? Result,
     ArtifactRef[] Artifacts,
     ControlCommandError[] Diagnostics,
-    ControlCommandError? Error);
+    ControlCommandError? Error
+);

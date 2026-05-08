@@ -10,7 +10,8 @@ public sealed class EmptyControlCommandRegistry : IControlCommandRegistry
 
     private EmptyControlCommandRegistry() { }
 
-    public IReadOnlyList<ControlCommandDescriptor> Describe() => Array.Empty<ControlCommandDescriptor>();
+    public IReadOnlyList<ControlCommandDescriptor> Describe() =>
+        Array.Empty<ControlCommandDescriptor>();
 
     public bool TryGet(string name, out IControlCommandHandler handler)
     {

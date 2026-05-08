@@ -14,17 +14,32 @@ public class RoslynScriptEvaluatorTests
     private sealed class TestHost : IReplHost
     {
         public ReplConfig Config { get; } = new();
-        public HostInfo HostInfo { get; } = new() { Name = "Tests", Version = "1", Runtime = ".NET", Platform = "Unit" };
+        public HostInfo HostInfo { get; } =
+            new()
+            {
+                Name = "Tests",
+                Version = "1",
+                Runtime = ".NET",
+                Platform = "Unit",
+            };
         public IControlCommandRegistry ControlCommands => EmptyControlCommandRegistry.Instance;
-        public IReadOnlyList<EvaluatorCapabilities> AvailableEvaluators => RoslynEvaluatorFactory.Capabilities;
+        public IReadOnlyList<EvaluatorCapabilities> AvailableEvaluators =>
+            RoslynEvaluatorFactory.Capabilities;
         public string DefaultEvaluatorName => RoslynScriptEvaluator.ScriptCapabilities.Name;
-        public ICodeEvaluator CreateEvaluator(string evaluatorName) => RoslynEvaluatorFactory.Create(evaluatorName, this);
+
+        public ICodeEvaluator CreateEvaluator(string evaluatorName) =>
+            RoslynEvaluatorFactory.Create(evaluatorName, this);
+
         public IReadOnlyList<Assembly> AdditionalAssemblies { get; } = Array.Empty<Assembly>();
         public IReadOnlyList<string> AdditionalUsings { get; } = Array.Empty<string>();
         public string[] AdditionalHelperSignatures { get; } = Array.Empty<string>();
+
         public void LogInfo(string message) { }
+
         public void LogDebug(string message) { }
+
         public void LogWarning(string message) { }
+
         public void LogError(string message, Exception? ex = null) { }
     }
 
@@ -98,7 +113,10 @@ public class RoslynScriptEvaluatorTests
         using var evaluator = new RoslynScriptEvaluator(new TestHost());
         evaluator.Initialize();
 
-        var result = evaluator.Evaluate("throw new InvalidOperationException(\"boom\");", CancellationToken.None);
+        var result = evaluator.Evaluate(
+            "throw new InvalidOperationException(\"boom\");",
+            CancellationToken.None
+        );
 
         Assert.False(result.Success);
         Assert.Equal("runtime", result.ErrorKind);

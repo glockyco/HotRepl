@@ -27,7 +27,9 @@ public class ControlSessionManagerTests
     [Fact]
     public void Authenticate_FailsForWrongConfiguredToken()
     {
-        var manager = new ControlSessionManager(new ReplConfig { ControlAuthToken = "secret", RequireControlAuth = true });
+        var manager = new ControlSessionManager(
+            new ReplConfig { ControlAuthToken = "secret", RequireControlAuth = true }
+        );
 
         var result = manager.Authenticate(Guid.NewGuid(), token: "wrong");
 
@@ -113,7 +115,10 @@ public class ControlSessionManagerTests
     public void ControlResponseToDisconnectedClient_DoesNotFallbackToReplacementClient()
     {
         var sent = new List<string>();
-        var registry = new ClientRegistry((socket, json) => sent.Add($"{socket.ConnectionInfo.Id}:{json}"), _ => { });
+        var registry = new ClientRegistry(
+            (socket, json) => sent.Add($"{socket.ConnectionInfo.Id}:{json}"),
+            _ => { }
+        );
         var firstId = Guid.NewGuid();
         var secondId = Guid.NewGuid();
         var first = new FakeSocket(firstId);
@@ -131,8 +136,11 @@ public class ControlSessionManagerTests
     private sealed class FakeRegistry : IControlCommandRegistry
     {
         private readonly IControlCommandHandler _handler;
+
         public FakeRegistry(IControlCommandHandler handler) => _handler = handler;
+
         public IReadOnlyList<ControlCommandDescriptor> Describe() => new[] { _handler.Descriptor };
+
         public bool TryGet(string name, out IControlCommandHandler handler)
         {
             handler = _handler;
@@ -142,21 +150,27 @@ public class ControlSessionManagerTests
 
     private sealed class MutatingHandler : IControlCommandHandler
     {
-        public ControlCommandDescriptor Descriptor { get; } = new(
-            "archive.mutate",
-            1,
-            ControlCommandKind.Synchronous,
-            mutatesState: true,
-            argsSchema: JObject.Parse("{\"type\":\"object\"}"),
-            resultSchema: JObject.Parse("{\"type\":\"object\"}"));
+        public ControlCommandDescriptor Descriptor { get; } =
+            new(
+                "archive.mutate",
+                1,
+                ControlCommandKind.Synchronous,
+                mutatesState: true,
+                argsSchema: JObject.Parse("{\"type\":\"object\"}"),
+                resultSchema: JObject.Parse("{\"type\":\"object\"}")
+            );
 
-        public ValueTask<ControlCommandResult> ExecuteAsync(ControlCommandContext context, JObject args, CancellationToken cancellationToken) =>
-            ValueTask.FromResult(ControlCommandResult.Empty);
+        public ValueTask<ControlCommandResult> ExecuteAsync(
+            ControlCommandContext context,
+            JObject args,
+            CancellationToken cancellationToken
+        ) => ValueTask.FromResult(ControlCommandResult.Empty);
     }
 
     private sealed class FakeSocket : IWebSocketConnection
     {
         public FakeSocket(Guid id) => ConnectionInfo = new FakeConnectionInfo(id);
+
         public Action OnOpen { get; set; } = () => { };
         public Action OnClose { get; set; } = () => { };
         public Action<string> OnMessage { get; set; } = _ => { };
@@ -166,17 +180,24 @@ public class ControlSessionManagerTests
         public Action<Exception> OnError { get; set; } = _ => { };
         public IWebSocketConnectionInfo ConnectionInfo { get; }
         public bool IsAvailable { get; set; } = true;
+
         public Task Send(string message) => Task.CompletedTask;
+
         public Task Send(byte[] message) => Task.CompletedTask;
+
         public Task SendPing(byte[] message) => Task.CompletedTask;
+
         public Task SendPong(byte[] message) => Task.CompletedTask;
+
         public void Close() => IsAvailable = false;
+
         public void Close(int code) => IsAvailable = false;
     }
 
     private sealed class FakeConnectionInfo : IWebSocketConnectionInfo
     {
         public FakeConnectionInfo(Guid id) => Id = id;
+
         public string SubProtocol => "";
         public string Origin => "";
         public string Host => "localhost";

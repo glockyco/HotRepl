@@ -1,5 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
     <LangVersion>latest</LangVersion>
@@ -18,7 +17,6 @@
 
     <!-- ILRepack for merging dependencies into single DLL -->
     <PackageReference Include="ILRepack.Lib.MSBuild.Task" Version="2.0.34.2" />
-
   </ItemGroup>
 
   <!-- Project reference to Core -->
@@ -50,11 +48,13 @@
   </Target>
 
   <Target Name="GetGitVersion" BeforeTargets="GeneratePluginInfo" Condition="'$(ModVersion)' == ''">
-    <Exec Command="python3 ../../scripts/generate-mod-version.py . $(Configuration)"
-          ConsoleToMSBuild="true"
-          IgnoreExitCode="false"
-          StandardOutputImportance="low"
-          EchoOff="true">
+    <Exec
+      Command="python3 ../../scripts/generate-mod-version.py . $(Configuration)"
+      ConsoleToMSBuild="true"
+      IgnoreExitCode="false"
+      StandardOutputImportance="low"
+      EchoOff="true"
+    >
       <Output TaskParameter="ConsoleOutput" PropertyName="GitVersion" />
     </Exec>
     <PropertyGroup>
@@ -63,7 +63,11 @@
   </Target>
 
   <!-- Generate PluginInfo.g.cs with version -->
-  <Target Name="GeneratePluginInfo" BeforeTargets="CoreCompile" DependsOnTargets="SetModVersion;GetGitVersion">
+  <Target
+    Name="GeneratePluginInfo"
+    BeforeTargets="CoreCompile"
+    DependsOnTargets="SetModVersion;GetGitVersion"
+  >
     <PropertyGroup>
       <PluginInfoFile>$(IntermediateOutputPath)PluginInfo.g.cs</PluginInfoFile>
       <PluginInfoLine1>namespace HotRepl.BepInEx%3B</PluginInfoLine1>
@@ -78,7 +82,10 @@
 
   <!-- Copy mcs.dll to output (not merged by ILRepack, shipped alongside) -->
   <Target Name="CopyMcs" AfterTargets="Build">
-    <Copy SourceFiles="../../lib/mcs.dll" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="true" />
+    <Copy
+      SourceFiles="../../lib/mcs.dll"
+      DestinationFolder="$(OutputPath)"
+      SkipUnchangedFiles="true"
+    />
   </Target>
-
 </Project>

@@ -16,7 +16,12 @@ public class ControlJobManagerTests
     {
         var manager = new ControlJobManager(maxEventBuffer: 100);
 
-        var job = manager.StartJob("request-1", null, null, (_, _) => ValueTask.FromResult(ControlCommandResult.Empty));
+        var job = manager.StartJob(
+            "request-1",
+            null,
+            null,
+            (_, _) => ValueTask.FromResult(ControlCommandResult.Empty)
+        );
 
         Assert.Equal("accepted", job.State);
         Assert.Equal(job.JobId, manager.GetStatus(job.JobId).JobId);
@@ -27,10 +32,19 @@ public class ControlJobManagerTests
     public async Task RunJob_TransitionsToCompletedWithResult()
     {
         var manager = new ControlJobManager(maxEventBuffer: 100);
-        var job = manager.StartJob("request-1", null, null, (_, _) => ValueTask.FromResult(new ControlCommandResult(
-            new JObject { ["ok"] = true },
-            Array.Empty<HotRepl.Control.Artifacts.ArtifactRef>(),
-            Array.Empty<ControlCommandError>())));
+        var job = manager.StartJob(
+            "request-1",
+            null,
+            null,
+            (_, _) =>
+                ValueTask.FromResult(
+                    new ControlCommandResult(
+                        new JObject { ["ok"] = true },
+                        Array.Empty<HotRepl.Control.Artifacts.ArtifactRef>(),
+                        Array.Empty<ControlCommandError>()
+                    )
+                )
+        );
 
         await manager.RunAsync(job.JobId);
 
@@ -43,7 +57,12 @@ public class ControlJobManagerTests
     public async Task RunJob_HandlerExceptionTransitionsToFailedError()
     {
         var manager = new ControlJobManager(maxEventBuffer: 100);
-        var job = manager.StartJob("request-1", null, null, (_, _) => throw new InvalidOperationException("boom"));
+        var job = manager.StartJob(
+            "request-1",
+            null,
+            null,
+            (_, _) => throw new InvalidOperationException("boom")
+        );
 
         await manager.RunAsync(job.JobId);
 
@@ -58,12 +77,17 @@ public class ControlJobManagerTests
     {
         var manager = new ControlJobManager(maxEventBuffer: 100);
         var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var job = manager.StartJob("request-1", null, null, async (_, token) =>
-        {
-            started.SetResult();
-            await Task.Delay(TimeSpan.FromSeconds(30), token);
-            return ControlCommandResult.Empty;
-        });
+        var job = manager.StartJob(
+            "request-1",
+            null,
+            null,
+            async (_, token) =>
+            {
+                started.SetResult();
+                await Task.Delay(TimeSpan.FromSeconds(30), token);
+                return ControlCommandResult.Empty;
+            }
+        );
 
         var run = manager.RunAsync(job.JobId).AsTask();
         await started.Task;
@@ -82,12 +106,17 @@ public class ControlJobManagerTests
     public async Task EventsAfter_ReturnsEventsAfterRequestedSequence()
     {
         var manager = new ControlJobManager(maxEventBuffer: 100);
-        var job = manager.StartJob("request-1", null, null, (context, _) =>
-        {
-            context.Report(new JObject { ["step"] = 1 }, "step 1");
-            context.Report(new JObject { ["step"] = 2 }, "step 2");
-            return ValueTask.FromResult(ControlCommandResult.Empty);
-        });
+        var job = manager.StartJob(
+            "request-1",
+            null,
+            null,
+            (context, _) =>
+            {
+                context.Report(new JObject { ["step"] = 1 }, "step 1");
+                context.Report(new JObject { ["step"] = 2 }, "step 2");
+                return ValueTask.FromResult(ControlCommandResult.Empty);
+            }
+        );
         await manager.RunAsync(job.JobId);
         var firstProgress = manager.EventsAfter(job.JobId, 0).Single(e => e.Message == "step 1");
 
@@ -101,12 +130,17 @@ public class ControlJobManagerTests
     public async Task EventsAfter_CapsAtConfiguredBufferSize()
     {
         var manager = new ControlJobManager(maxEventBuffer: 3);
-        var job = manager.StartJob("request-1", null, null, (context, _) =>
-        {
-            for (var i = 0; i < 5; i++)
-                context.Report(new JObject { ["step"] = i }, $"step {i}");
-            return ValueTask.FromResult(ControlCommandResult.Empty);
-        });
+        var job = manager.StartJob(
+            "request-1",
+            null,
+            null,
+            (context, _) =>
+            {
+                for (var i = 0; i < 5; i++)
+                    context.Report(new JObject { ["step"] = i }, $"step {i}");
+                return ValueTask.FromResult(ControlCommandResult.Empty);
+            }
+        );
 
         await manager.RunAsync(job.JobId);
 

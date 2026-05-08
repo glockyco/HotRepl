@@ -11,12 +11,21 @@ public sealed class BepInExPluginSourceTests
     {
         var source = File.ReadAllText(FindRepoFile("src/HotRepl.BepInEx/ReplPlugin.cs"));
 
-        var hideIndex = source.IndexOf("gameObject.hideFlags = HideFlags.HideAndDontSave;", StringComparison.Ordinal);
+        var hideIndex = source.IndexOf(
+            "gameObject.hideFlags = HideFlags.HideAndDontSave;",
+            StringComparison.Ordinal
+        );
         var configIndex = source.IndexOf("var config = LoadConfig();", StringComparison.Ordinal);
 
-        Assert.True(hideIndex >= 0, "ReplPlugin.Awake must hide the BepInEx manager GameObject so games cannot destroy HotRepl during scene cleanup.");
+        Assert.True(
+            hideIndex >= 0,
+            "ReplPlugin.Awake must hide the BepInEx manager GameObject so games cannot destroy HotRepl during scene cleanup."
+        );
         Assert.True(configIndex >= 0, "Expected ReplPlugin.Awake to load configuration.");
-        Assert.True(hideIndex < configIndex, "The manager GameObject must be hidden before HotRepl starts the WebSocket engine.");
+        Assert.True(
+            hideIndex < configIndex,
+            "The manager GameObject must be hidden before HotRepl starts the WebSocket engine."
+        );
     }
 
     private static string FindRepoFile(string relativePath)
@@ -31,6 +40,8 @@ public sealed class BepInExPluginSourceTests
             directory = directory.Parent;
         }
 
-        throw new FileNotFoundException($"Could not find repository file '{relativePath}' from '{AppContext.BaseDirectory}'.");
+        throw new FileNotFoundException(
+            $"Could not find repository file '{relativePath}' from '{AppContext.BaseDirectory}'."
+        );
     }
 }

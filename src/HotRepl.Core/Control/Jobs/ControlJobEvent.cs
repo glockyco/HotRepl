@@ -7,4 +7,5 @@ internal sealed record ControlJobEvent(
     long Sequence,
     string State,
     JObject? Progress,
-    string? Message);
+    string? Message
+);

@@ -28,7 +28,8 @@ public class SelectEvaluatorProtocolTests
         };
 
         var back = MessageSerializer.Deserialize<SelectEvaluatorResultMessage>(
-            MessageSerializer.Serialize(msg));
+            MessageSerializer.Serialize(msg)
+        );
 
         Assert.Equal(MessageType.SelectEvaluatorResult, back.Type);
         Assert.True(back.Success);

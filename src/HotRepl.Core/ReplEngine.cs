@@ -93,7 +93,11 @@ public sealed class ReplEngine : IDisposable
         _router = new MessageRouter(this, msg => _host.LogInfo(msg));
         _controlSessions = new ControlSessionManager(_host.Config);
         _controlJobs = new ControlJobManager(_host.Config.MaxJobEventBuffer);
-        _controlRouter = new ControlCommandRouter(_host.ControlCommands, _controlSessions, _controlJobs);
+        _controlRouter = new ControlCommandRouter(
+            _host.ControlCommands,
+            _controlSessions,
+            _controlJobs
+        );
 
         _wsServer.ClientConnected += OnClientConnected;
         _wsServer.ClientDisconnected += _clients.OnDisconnected;
@@ -149,12 +153,17 @@ public sealed class ReplEngine : IDisposable
                 using (job)
                 {
                     // Cancelled before it ever ran.
-                    _clients!.SendTo(job.ConnectionId, MessageSerializer.Serialize(new EvalErrorMessage
-                    {
-                        Id = job.Id,
-                        ErrorKind = ErrorKind.Cancelled,
-                        Message = "Evaluation cancelled.",
-                    }));
+                    _clients!.SendTo(
+                        job.ConnectionId,
+                        MessageSerializer.Serialize(
+                            new EvalErrorMessage
+                            {
+                                Id = job.Id,
+                                ErrorKind = ErrorKind.Cancelled,
+                                Message = "Evaluation cancelled.",
+                            }
+                        )
+                    );
                 }
                 continue; // try next in queue — but only process one non-cancelled eval
             }
@@ -166,7 +175,8 @@ public sealed class ReplEngine : IDisposable
         _subscriptions!.Tick(
             (id, code, timeoutMs) => GuardedEvaluate(id, code, timeoutMs),
             (connId, json) => _clients!.SendTo(connId, json),
-            _serializer!);
+            _serializer!
+        );
 
         // 5. Drain stale cancel IDs. Any cancel received during this Tick has
         //    already preempted a queued eval or aborted the running one.
@@ -216,7 +226,8 @@ public sealed class ReplEngine : IDisposable
         var available = _host.AvailableEvaluators.Select(c => c.Name).ToArray();
         if (!available.Contains(evaluatorName, StringComparer.Ordinal))
             throw new NotSupportedException(
-                $"Evaluator '{evaluatorName}' is not available. Available: {string.Join(", ", available)}");
+                $"Evaluator '{evaluatorName}' is not available. Available: {string.Join(", ", available)}"
+            );
 
         return _host.CreateEvaluator(evaluatorName);
     }
@@ -260,7 +271,12 @@ public sealed class ReplEngine : IDisposable
         return RunGuarded(id, code, timeoutMs, cancellation);
     }
 
-    private EvalOutcome RunGuarded(string id, string code, int timeoutMs, CancellationTokenSource cancellation)
+    private EvalOutcome RunGuarded(
+        string id,
+        string code,
+        int timeoutMs,
+        CancellationTokenSource cancellation
+    )
     {
         long gen;
         lock (_abortLock)
@@ -277,20 +293,25 @@ public sealed class ReplEngine : IDisposable
 
         try
         {
-            watchdog = new Timer(_ =>
-            {
-                lock (_abortLock)
+            watchdog = new Timer(
+                _ =>
                 {
-                    if (_evalInProgress && _currentGeneration == gen)
+                    lock (_abortLock)
                     {
-                        _timedOut = true;
-                        if (_evaluator!.Capabilities.TimeoutMode == TimeoutMode.HardAbort)
-                            _mainThread?.Abort();
-                        else if (_evaluator.Capabilities.TimeoutMode == TimeoutMode.Cooperative)
-                            cancellation.Cancel();
+                        if (_evalInProgress && _currentGeneration == gen)
+                        {
+                            _timedOut = true;
+                            if (_evaluator!.Capabilities.TimeoutMode == TimeoutMode.HardAbort)
+                                _mainThread?.Abort();
+                            else if (_evaluator.Capabilities.TimeoutMode == TimeoutMode.Cooperative)
+                                cancellation.Cancel();
+                        }
                     }
-                }
-            }, null, timeoutMs, Timeout.Infinite);
+                },
+                null,
+                timeoutMs,
+                Timeout.Infinite
+            );
 
             var outcome = _evaluator!.Evaluate(code, cancellation.Token);
 
@@ -330,7 +351,10 @@ public sealed class ReplEngine : IDisposable
                 HandleReset(r);
                 break;
             case PingCmd p:
-                _clients!.SendTo(p.ConnectionId, MessageSerializer.Serialize(new PongMessage { Id = p.Id }));
+                _clients!.SendTo(
+                    p.ConnectionId,
+                    MessageSerializer.Serialize(new PongMessage { Id = p.Id })
+                );
                 break;
             case CompleteCmd c:
                 HandleComplete(c);
@@ -342,16 +366,19 @@ public sealed class ReplEngine : IDisposable
                 HandleSelectEvaluator(s);
                 break;
             case CommandDescribeCmd c:
-                _clients!.SendControlTo(c.ConnectionId, MessageSerializer.Serialize(_controlRouter!.Describe(c.Id)));
+                _clients!.SendControlTo(
+                    c.ConnectionId,
+                    MessageSerializer.Serialize(_controlRouter!.Describe(c.Id))
+                );
                 break;
             case CommandCallCmd c:
-                {
-                    var response = _controlRouter!.Execute(c.Message);
-                    _clients!.SendControlTo(c.ConnectionId, MessageSerializer.Serialize(response));
-                    if (response is CommandAcceptedMessage accepted)
-                        _jobRunQueue.Enqueue(accepted.JobId);
-                    break;
-                }
+            {
+                var response = _controlRouter!.Execute(c.Message);
+                _clients!.SendControlTo(c.ConnectionId, MessageSerializer.Serialize(response));
+                if (response is CommandAcceptedMessage accepted)
+                    _jobRunQueue.Enqueue(accepted.JobId);
+                break;
+            }
             case ControlAuthCmd c:
                 HandleControlAuth(c);
                 break;
@@ -359,13 +386,22 @@ public sealed class ReplEngine : IDisposable
                 HandleLeaseAcquire(c);
                 break;
             case JobStatusCmd c:
-                _clients!.SendControlTo(c.ConnectionId, MessageSerializer.Serialize(_controlRouter!.GetJobStatus(c.Message)));
+                _clients!.SendControlTo(
+                    c.ConnectionId,
+                    MessageSerializer.Serialize(_controlRouter!.GetJobStatus(c.Message))
+                );
                 break;
             case JobResultCmd c:
-                _clients!.SendControlTo(c.ConnectionId, MessageSerializer.Serialize(_controlRouter!.GetJobResult(c.Message)));
+                _clients!.SendControlTo(
+                    c.ConnectionId,
+                    MessageSerializer.Serialize(_controlRouter!.GetJobResult(c.Message))
+                );
                 break;
             case JobCancelCmd c:
-                _clients!.SendControlTo(c.ConnectionId, MessageSerializer.Serialize(_controlRouter!.CancelJob(c.Message)));
+                _clients!.SendControlTo(
+                    c.ConnectionId,
+                    MessageSerializer.Serialize(_controlRouter!.CancelJob(c.Message))
+                );
                 break;
         }
     }
@@ -373,35 +409,46 @@ public sealed class ReplEngine : IDisposable
     private void HandleControlAuth(ControlAuthCmd cmd)
     {
         var result = _controlSessions!.Authenticate(cmd.ConnectionId, cmd.Token);
-        _clients!.SendControlTo(cmd.ConnectionId, MessageSerializer.Serialize(new ControlAuthResultMessage
-        {
-            Id = cmd.Id,
-            Ok = result.Ok,
-            SessionId = result.SessionId,
-            Error = result.Error == null ? null : ToControlErrorMessage(result.Error),
-        }));
+        _clients!.SendControlTo(
+            cmd.ConnectionId,
+            MessageSerializer.Serialize(
+                new ControlAuthResultMessage
+                {
+                    Id = cmd.Id,
+                    Ok = result.Ok,
+                    SessionId = result.SessionId,
+                    Error = result.Error == null ? null : ToControlErrorMessage(result.Error),
+                }
+            )
+        );
     }
 
     private void HandleLeaseAcquire(LeaseAcquireCmd cmd)
     {
         var result = _controlSessions!.AcquireLease(cmd.SessionId, cmd.ClientName);
-        _clients!.SendControlTo(cmd.ConnectionId, MessageSerializer.Serialize(new LeaseAcquireResultMessage
-        {
-            Id = cmd.Id,
-            Ok = result.Ok,
-            LeaseId = result.LeaseId,
-            Error = result.Error == null ? null : ToControlErrorMessage(result.Error),
-        }));
+        _clients!.SendControlTo(
+            cmd.ConnectionId,
+            MessageSerializer.Serialize(
+                new LeaseAcquireResultMessage
+                {
+                    Id = cmd.Id,
+                    Ok = result.Ok,
+                    LeaseId = result.LeaseId,
+                    Error = result.Error == null ? null : ToControlErrorMessage(result.Error),
+                }
+            )
+        );
     }
 
-    private static ControlErrorMessage ToControlErrorMessage(ControlCommandError error) => new()
-    {
-        Kind = error.Kind,
-        Code = error.Code,
-        Message = error.Message,
-        Retryable = error.Retryable,
-        Details = error.Details,
-    };
+    private static ControlErrorMessage ToControlErrorMessage(ControlCommandError error) =>
+        new()
+        {
+            Kind = error.Kind,
+            Code = error.Code,
+            Message = error.Message,
+            Retryable = error.Retryable,
+            Details = error.Details,
+        };
 
     private void HandleReset(ResetCmd cmd)
     {
@@ -410,25 +457,35 @@ public sealed class ReplEngine : IDisposable
         {
             using (job)
             {
-                _clients!.SendTo(job.ConnectionId, MessageSerializer.Serialize(new EvalErrorMessage
-                {
-                    Id = job.Id,
-                    ErrorKind = ErrorKind.Cancelled,
-                    Message = "Reset in progress.",
-                }));
+                _clients!.SendTo(
+                    job.ConnectionId,
+                    MessageSerializer.Serialize(
+                        new EvalErrorMessage
+                        {
+                            Id = job.Id,
+                            ErrorKind = ErrorKind.Cancelled,
+                            Message = "Reset in progress.",
+                        }
+                    )
+                );
             }
         }
         // Cancel all subscriptions with a final error.
         foreach (var sub in GetAllSubscriptions())
         {
-            _clients!.SendTo(sub.ConnectionId, MessageSerializer.Serialize(new SubscribeErrorMessage
-            {
-                Id = sub.Id,
-                Seq = sub.Seq + 1,
-                ErrorKind = ErrorKind.Cancelled,
-                Message = "Reset in progress.",
-                Final = true,
-            }));
+            _clients!.SendTo(
+                sub.ConnectionId,
+                MessageSerializer.Serialize(
+                    new SubscribeErrorMessage
+                    {
+                        Id = sub.Id,
+                        Seq = sub.Seq + 1,
+                        ErrorKind = ErrorKind.Cancelled,
+                        Message = "Reset in progress.",
+                        Final = true,
+                    }
+                )
+            );
         }
         _subscriptions!.CancelAll();
         _cancelledIds.Clear();
@@ -442,46 +499,55 @@ public sealed class ReplEngine : IDisposable
         catch (Exception ex)
         {
             _host.LogError("[HotRepl] Evaluator reset failed.", ex);
-            _clients!.SendTo(cmd.ConnectionId, MessageSerializer.Serialize(new ResetResultMessage
-            {
-                Id = cmd.Id,
-                Success = false,
-            }));
+            _clients!.SendTo(
+                cmd.ConnectionId,
+                MessageSerializer.Serialize(new ResetResultMessage { Id = cmd.Id, Success = false })
+            );
             return;
         }
 
         _host.LogInfo("[HotRepl] Evaluator reset.");
-        _clients!.SendTo(cmd.ConnectionId, MessageSerializer.Serialize(new ResetResultMessage
-        {
-            Id = cmd.Id,
-            Success = true,
-        }));
+        _clients!.SendTo(
+            cmd.ConnectionId,
+            MessageSerializer.Serialize(new ResetResultMessage { Id = cmd.Id, Success = true })
+        );
     }
 
     private void HandleSelectEvaluator(SelectEvaluatorCmd cmd)
     {
         if (!_host.AvailableEvaluators.Any(e => e.Name == cmd.Evaluator))
         {
-            _clients!.SendTo(cmd.ConnectionId, MessageSerializer.Serialize(new SelectEvaluatorErrorMessage
-            {
-                Id = cmd.Id,
-                ErrorKind = ErrorKind.Unsupported,
-                Message = $"Evaluator '{cmd.Evaluator}' is not available. Available: "
-                    + string.Join(", ", _host.AvailableEvaluators.Select(e => e.Name)),
-            }));
+            _clients!.SendTo(
+                cmd.ConnectionId,
+                MessageSerializer.Serialize(
+                    new SelectEvaluatorErrorMessage
+                    {
+                        Id = cmd.Id,
+                        ErrorKind = ErrorKind.Unsupported,
+                        Message =
+                            $"Evaluator '{cmd.Evaluator}' is not available. Available: "
+                            + string.Join(", ", _host.AvailableEvaluators.Select(e => e.Name)),
+                    }
+                )
+            );
             return;
         }
 
         foreach (var sub in GetAllSubscriptions())
         {
-            _clients!.SendTo(sub.ConnectionId, MessageSerializer.Serialize(new SubscribeErrorMessage
-            {
-                Id = sub.Id,
-                Seq = sub.Seq + 1,
-                ErrorKind = ErrorKind.Cancelled,
-                Message = "Evaluator selection changed.",
-                Final = true,
-            }));
+            _clients!.SendTo(
+                sub.ConnectionId,
+                MessageSerializer.Serialize(
+                    new SubscribeErrorMessage
+                    {
+                        Id = sub.Id,
+                        Seq = sub.Seq + 1,
+                        ErrorKind = ErrorKind.Cancelled,
+                        Message = "Evaluator selection changed.",
+                        Final = true,
+                    }
+                )
+            );
         }
         _subscriptions!.CancelAll();
 
@@ -489,12 +555,17 @@ public sealed class ReplEngine : IDisposable
         {
             using (job)
             {
-                _clients!.SendTo(job.ConnectionId, MessageSerializer.Serialize(new EvalErrorMessage
-                {
-                    Id = job.Id,
-                    ErrorKind = ErrorKind.Cancelled,
-                    Message = "Evaluator selection changed.",
-                }));
+                _clients!.SendTo(
+                    job.ConnectionId,
+                    MessageSerializer.Serialize(
+                        new EvalErrorMessage
+                        {
+                            Id = job.Id,
+                            ErrorKind = ErrorKind.Cancelled,
+                            Message = "Evaluator selection changed.",
+                        }
+                    )
+                );
             }
         }
 
@@ -504,12 +575,17 @@ public sealed class ReplEngine : IDisposable
         InitializeEvaluator();
         _evaluatorReady = true;
 
-        _clients!.SendTo(cmd.ConnectionId, MessageSerializer.Serialize(new SelectEvaluatorResultMessage
-        {
-            Id = cmd.Id,
-            Success = true,
-            Evaluator = _evaluator.Capabilities.Name,
-        }));
+        _clients!.SendTo(
+            cmd.ConnectionId,
+            MessageSerializer.Serialize(
+                new SelectEvaluatorResultMessage
+                {
+                    Id = cmd.Id,
+                    Success = true,
+                    Evaluator = _evaluator.Capabilities.Name,
+                }
+            )
+        );
 
         _host.LogInfo($"[HotRepl] Evaluator selected: {_evaluator.Capabilities.Name}.");
     }
@@ -523,11 +599,15 @@ public sealed class ReplEngine : IDisposable
             HelperInjector.Inject(_evaluator, _host, _history!, _host.Config);
             _host.LogInfo("[HotRepl] Evaluator auto-reset after hot reload.");
 
-            _clients!.Send(MessageSerializer.Serialize(new AssemblyReloadMessage
-            {
-                Assembly = assembly,
-                Message = "Hot-reload detected. REPL session reset.",
-            }));
+            _clients!.Send(
+                MessageSerializer.Serialize(
+                    new AssemblyReloadMessage
+                    {
+                        Assembly = assembly,
+                        Message = "Hot-reload detected. REPL session reset.",
+                    }
+                )
+            );
         }
         catch (Exception ex)
         {
@@ -538,30 +618,46 @@ public sealed class ReplEngine : IDisposable
     private void HandleComplete(CompleteCmd cmd)
     {
         var result = _evaluator!.Complete(cmd.Code, cmd.CursorPos);
-        _clients!.SendTo(cmd.ConnectionId, MessageSerializer.Serialize(new CompleteResultMessage
-        {
-            Id = cmd.Id,
-            Completions = result.Completions,
-            DurationMs = result.DurationMs,
-        }));
+        _clients!.SendTo(
+            cmd.ConnectionId,
+            MessageSerializer.Serialize(
+                new CompleteResultMessage
+                {
+                    Id = cmd.Id,
+                    Completions = result.Completions,
+                    DurationMs = result.DurationMs,
+                }
+            )
+        );
     }
 
     private void HandleSubscribe(SubscribeCmd cmd)
     {
         var sub = new SubscriptionState(
-            cmd.Id, cmd.ConnectionId, cmd.Code,
-            cmd.IntervalFrames, cmd.OnChange, cmd.Limit, cmd.TimeoutMs);
+            cmd.Id,
+            cmd.ConnectionId,
+            cmd.Code,
+            cmd.IntervalFrames,
+            cmd.OnChange,
+            cmd.Limit,
+            cmd.TimeoutMs
+        );
 
         if (!_subscriptions!.TryAdd(sub, out var error))
         {
-            _clients!.SendTo(cmd.ConnectionId, MessageSerializer.Serialize(new SubscribeErrorMessage
-            {
-                Id = cmd.Id,
-                Seq = 0,
-                ErrorKind = ErrorKind.Runtime,
-                Message = error!,
-                Final = true,
-            }));
+            _clients!.SendTo(
+                cmd.ConnectionId,
+                MessageSerializer.Serialize(
+                    new SubscribeErrorMessage
+                    {
+                        Id = cmd.Id,
+                        Seq = 0,
+                        ErrorKind = ErrorKind.Runtime,
+                        Message = error!,
+                        Final = true,
+                    }
+                )
+            );
         }
     }
 
@@ -575,7 +671,10 @@ public sealed class ReplEngine : IDisposable
             if (outcome.Success && outcome.HasValue && outcome.Value != null)
             {
                 serializedValue = _serializer!.Serialize(outcome.Value, _host.Config);
-                serializedValue = _serializer.Truncate(serializedValue, _host.Config.MaxResultLength);
+                serializedValue = _serializer.Truncate(
+                    serializedValue,
+                    _host.Config.MaxResultLength
+                );
             }
             Repl.__RecordEntry(code, serializedValue, outcome.ErrorMessage);
         }
@@ -602,15 +701,17 @@ public sealed class ReplEngine : IDisposable
                 serialized = _serializer!.Serialize(outcome.Value, _host.Config);
                 serialized = _serializer.Truncate(serialized, _host.Config.MaxResultLength);
             }
-            json = MessageSerializer.Serialize(new EvalResultMessage
-            {
-                Id = id,
-                HasValue = outcome.HasValue,
-                Value = serialized,
-                ValueType = outcome.ValueType,
-                Stdout = string.IsNullOrEmpty(outcome.Stdout) ? null : outcome.Stdout,
-                DurationMs = outcome.DurationMs,
-            });
+            json = MessageSerializer.Serialize(
+                new EvalResultMessage
+                {
+                    Id = id,
+                    HasValue = outcome.HasValue,
+                    Value = serialized,
+                    ValueType = outcome.ValueType,
+                    Stdout = string.IsNullOrEmpty(outcome.Stdout) ? null : outcome.Stdout,
+                    DurationMs = outcome.DurationMs,
+                }
+            );
         }
         else
         {
@@ -620,13 +721,15 @@ public sealed class ReplEngine : IDisposable
             if (errorKind == ErrorKind.Runtime)
                 errorMessage = AppendCrossAssemblyHint(errorMessage);
 
-            json = MessageSerializer.Serialize(new EvalErrorMessage
-            {
-                Id = id,
-                ErrorKind = errorKind,
-                Message = errorMessage,
-                StackTrace = outcome.StackTrace,
-            });
+            json = MessageSerializer.Serialize(
+                new EvalErrorMessage
+                {
+                    Id = id,
+                    ErrorKind = errorKind,
+                    Message = errorMessage,
+                    StackTrace = outcome.StackTrace,
+                }
+            );
         }
         _clients!.SendTo(connectionId, json);
     }
@@ -642,40 +745,44 @@ public sealed class ReplEngine : IDisposable
         var usings = _host.AdditionalUsings.ToArray();
         var helpers = HelperInjector.AllHelperSignatures(_host);
 
-        _clients.Send(MessageSerializer.Serialize(new HandshakeMessage
-        {
-            Version = "1.0.0",
-            Evaluator = _evaluator?.Capabilities,
-            Host = _host.HostInfo,
-            AvailableEvaluators = _host.AvailableEvaluators.Select(e => e.Name).ToArray(),
-            CsharpVersion = _evaluator?.Capabilities.LanguageVersion ?? "unknown",
-            DefaultUsings = usings,
-            Helpers = helpers,
-            ControlPlane = _host.Config.ControlPlaneEnabled
-                ? new ControlPlaneHandshake
+        _clients.Send(
+            MessageSerializer.Serialize(
+                new HandshakeMessage
                 {
-                    Supported = true,
-                    ProtocolVersion = 1,
-                    AuthRequired = _host.Config.RequireControlAuth,
-                    LeaseRequired = true,
-                    ArtifactRefsSupported = true,
-                    JobEventsSupported = true,
-                    Limits = new ControlPlaneLimits
-                    {
-                        MaxMessageBytes = _host.Config.MaxControlMessageBytes,
-                        MaxInFlightCommands = 1,
-                        MaxQueuedCommands = _host.Config.MaxQueuedControlCommands,
-                        MaxJobEventBuffer = _host.Config.MaxJobEventBuffer,
-                    },
+                    Version = "1.0.0",
+                    Evaluator = _evaluator?.Capabilities,
+                    Host = _host.HostInfo,
+                    AvailableEvaluators = _host.AvailableEvaluators.Select(e => e.Name).ToArray(),
+                    CsharpVersion = _evaluator?.Capabilities.LanguageVersion ?? "unknown",
+                    DefaultUsings = usings,
+                    Helpers = helpers,
+                    ControlPlane = _host.Config.ControlPlaneEnabled
+                        ? new ControlPlaneHandshake
+                        {
+                            Supported = true,
+                            ProtocolVersion = 1,
+                            AuthRequired = _host.Config.RequireControlAuth,
+                            LeaseRequired = true,
+                            ArtifactRefsSupported = true,
+                            JobEventsSupported = true,
+                            Limits = new ControlPlaneLimits
+                            {
+                                MaxMessageBytes = _host.Config.MaxControlMessageBytes,
+                                MaxInFlightCommands = 1,
+                                MaxQueuedCommands = _host.Config.MaxQueuedControlCommands,
+                                MaxJobEventBuffer = _host.Config.MaxJobEventBuffer,
+                            },
+                        }
+                        : null,
                 }
-                : null,
-        }));
+            )
+        );
     }
 
     // ── Private: helpers ─────────────────────────────────────────────────────
 
-    private System.Collections.Generic.IReadOnlyCollection<SubscriptionState> GetAllSubscriptions()
-        => _subscriptions!.GetAll();
+    private System.Collections.Generic.IReadOnlyCollection<SubscriptionState> GetAllSubscriptions() =>
+        _subscriptions!.GetAll();
 
     /// <summary>
     /// Detects known cross-assembly error patterns in runtime errors and appends a
@@ -690,14 +797,18 @@ public sealed class ReplEngine : IDisposable
             + "If the problem persists, try: eval reset";
 
         // FieldInfo.GetValue cross-assembly mismatch
-        if (message.Contains("is not a field on the target object")
-            || message.Contains("is not a field on the target type"))
+        if (
+            message.Contains("is not a field on the target object")
+            || message.Contains("is not a field on the target type")
+        )
             return message + hint;
 
         // InvalidCastException where source and target type names are identical
         // (e.g. "Cannot cast object of type 'Foo' to type 'Foo'")
-        if (message.Contains("InvalidCastException")
-            || message.StartsWith("Cannot cast object of type", StringComparison.Ordinal))
+        if (
+            message.Contains("InvalidCastException")
+            || message.StartsWith("Cannot cast object of type", StringComparison.Ordinal)
+        )
         {
             // Look for the pattern: type 'X' to type 'X' — same name from different assemblies
             int firstQuote = message.IndexOf('\'');
@@ -713,7 +824,10 @@ public sealed class ReplEngine : IDisposable
                         int endSecond = message.IndexOf('\'', secondQuote + 1);
                         if (endSecond > secondQuote)
                         {
-                            string secondName = message.Substring(secondQuote + 1, endSecond - secondQuote - 1);
+                            string secondName = message.Substring(
+                                secondQuote + 1,
+                                endSecond - secondQuote - 1
+                            );
                             if (string.Equals(firstName, secondName, StringComparison.Ordinal))
                                 return message + hint;
                         }
@@ -739,14 +853,24 @@ internal sealed class ResetCmd : IEngineCommand
 {
     public string Id { get; }
     public Guid ConnectionId { get; }
-    public ResetCmd(string id, Guid connectionId) { Id = id; ConnectionId = connectionId; }
+
+    public ResetCmd(string id, Guid connectionId)
+    {
+        Id = id;
+        ConnectionId = connectionId;
+    }
 }
 
 internal sealed class PingCmd : IEngineCommand
 {
     public string Id { get; }
     public Guid ConnectionId { get; }
-    public PingCmd(string id, Guid connectionId) { Id = id; ConnectionId = connectionId; }
+
+    public PingCmd(string id, Guid connectionId)
+    {
+        Id = id;
+        ConnectionId = connectionId;
+    }
 }
 
 internal sealed class CompleteCmd : IEngineCommand
@@ -755,8 +879,14 @@ internal sealed class CompleteCmd : IEngineCommand
     public string Code { get; }
     public int CursorPos { get; }
     public Guid ConnectionId { get; }
+
     public CompleteCmd(string id, string code, int cursorPos, Guid connectionId)
-    { Id = id; Code = code; CursorPos = cursorPos; ConnectionId = connectionId; }
+    {
+        Id = id;
+        Code = code;
+        CursorPos = cursorPos;
+        ConnectionId = connectionId;
+    }
 }
 
 internal sealed class SubscribeCmd : IEngineCommand
@@ -768,15 +898,37 @@ internal sealed class SubscribeCmd : IEngineCommand
     public int Limit { get; }
     public int TimeoutMs { get; }
     public Guid ConnectionId { get; }
-    public SubscribeCmd(string id, string code, int intervalFrames, bool onChange, int limit, int timeoutMs, Guid connectionId)
-    { Id = id; Code = code; IntervalFrames = intervalFrames; OnChange = onChange; Limit = limit; TimeoutMs = timeoutMs; ConnectionId = connectionId; }
+
+    public SubscribeCmd(
+        string id,
+        string code,
+        int intervalFrames,
+        bool onChange,
+        int limit,
+        int timeoutMs,
+        Guid connectionId
+    )
+    {
+        Id = id;
+        Code = code;
+        IntervalFrames = intervalFrames;
+        OnChange = onChange;
+        Limit = limit;
+        TimeoutMs = timeoutMs;
+        ConnectionId = connectionId;
+    }
 }
 
 internal sealed class CommandDescribeCmd : IEngineCommand
 {
     public string Id { get; }
     public Guid ConnectionId { get; }
-    public CommandDescribeCmd(string id, Guid connectionId) { Id = id; ConnectionId = connectionId; }
+
+    public CommandDescribeCmd(string id, Guid connectionId)
+    {
+        Id = id;
+        ConnectionId = connectionId;
+    }
 }
 
 internal sealed class CommandCallCmd : IEngineCommand
@@ -784,7 +936,12 @@ internal sealed class CommandCallCmd : IEngineCommand
     public string Id => Message.Id;
     public Guid ConnectionId { get; }
     public CommandCallMessage Message { get; }
-    public CommandCallCmd(CommandCallMessage message, Guid connectionId) { Message = message; ConnectionId = connectionId; }
+
+    public CommandCallCmd(CommandCallMessage message, Guid connectionId)
+    {
+        Message = message;
+        ConnectionId = connectionId;
+    }
 }
 
 internal sealed class ControlAuthCmd : IEngineCommand
@@ -792,7 +949,13 @@ internal sealed class ControlAuthCmd : IEngineCommand
     public string Id { get; }
     public string? Token { get; }
     public Guid ConnectionId { get; }
-    public ControlAuthCmd(string id, string? token, Guid connectionId) { Id = id; Token = token; ConnectionId = connectionId; }
+
+    public ControlAuthCmd(string id, string? token, Guid connectionId)
+    {
+        Id = id;
+        Token = token;
+        ConnectionId = connectionId;
+    }
 }
 
 internal sealed class LeaseAcquireCmd : IEngineCommand
@@ -801,8 +964,14 @@ internal sealed class LeaseAcquireCmd : IEngineCommand
     public string SessionId { get; }
     public string ClientName { get; }
     public Guid ConnectionId { get; }
+
     public LeaseAcquireCmd(string id, string sessionId, string clientName, Guid connectionId)
-    { Id = id; SessionId = sessionId; ClientName = clientName; ConnectionId = connectionId; }
+    {
+        Id = id;
+        SessionId = sessionId;
+        ClientName = clientName;
+        ConnectionId = connectionId;
+    }
 }
 
 internal sealed class JobStatusCmd : IEngineCommand
@@ -810,7 +979,12 @@ internal sealed class JobStatusCmd : IEngineCommand
     public string Id => Message.Id;
     public Guid ConnectionId { get; }
     public JobStatusMessage Message { get; }
-    public JobStatusCmd(JobStatusMessage message, Guid connectionId) { Message = message; ConnectionId = connectionId; }
+
+    public JobStatusCmd(JobStatusMessage message, Guid connectionId)
+    {
+        Message = message;
+        ConnectionId = connectionId;
+    }
 }
 
 internal sealed class JobResultCmd : IEngineCommand
@@ -818,7 +992,12 @@ internal sealed class JobResultCmd : IEngineCommand
     public string Id => Message.Id;
     public Guid ConnectionId { get; }
     public JobResultRequestMessage Message { get; }
-    public JobResultCmd(JobResultRequestMessage message, Guid connectionId) { Message = message; ConnectionId = connectionId; }
+
+    public JobResultCmd(JobResultRequestMessage message, Guid connectionId)
+    {
+        Message = message;
+        ConnectionId = connectionId;
+    }
 }
 
 internal sealed class JobCancelCmd : IEngineCommand
@@ -826,5 +1005,10 @@ internal sealed class JobCancelCmd : IEngineCommand
     public string Id => Message.Id;
     public Guid ConnectionId { get; }
     public JobCancelMessage Message { get; }
-    public JobCancelCmd(JobCancelMessage message, Guid connectionId) { Message = message; ConnectionId = connectionId; }
+
+    public JobCancelCmd(JobCancelMessage message, Guid connectionId)
+    {
+        Message = message;
+        ConnectionId = connectionId;
+    }
 }

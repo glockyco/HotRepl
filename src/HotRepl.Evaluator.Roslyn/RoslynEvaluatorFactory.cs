@@ -25,6 +25,8 @@ public static class RoslynEvaluatorFactory
 
 #endif
 
-        throw new NotSupportedException($"Evaluator '{evaluatorName}' is not available in HotRepl.Evaluator.Roslyn.");
+        throw new NotSupportedException(
+            $"Evaluator '{evaluatorName}' is not available in HotRepl.Evaluator.Roslyn."
+        );
     }
 }

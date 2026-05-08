@@ -62,20 +62,36 @@ public sealed class RoslynScriptEvaluator : ICodeEvaluator
 
         try
         {
-            _state = _state == null
-                ? CSharpScript.RunAsync(code, _options, cancellationToken: cancellationToken).GetAwaiter().GetResult()
-                : _state.ContinueWithAsync(code, _options, cancellationToken).GetAwaiter().GetResult();
+            _state =
+                _state == null
+                    ? CSharpScript
+                        .RunAsync(code, _options, cancellationToken: cancellationToken)
+                        .GetAwaiter()
+                        .GetResult()
+                    : _state
+                        .ContinueWithAsync(code, _options, cancellationToken)
+                        .GetAwaiter()
+                        .GetResult();
 
             sw.Stop();
             var value = _state.ReturnValue;
             return value != null
-                ? EvalOutcome.Ok(value, value.GetType().FullName, Stdout(capture), sw.ElapsedMilliseconds)
+                ? EvalOutcome.Ok(
+                    value,
+                    value.GetType().FullName,
+                    Stdout(capture),
+                    sw.ElapsedMilliseconds
+                )
                 : EvalOutcome.OkVoid(Stdout(capture), sw.ElapsedMilliseconds);
         }
         catch (CompilationErrorException ex)
         {
             sw.Stop();
-            return EvalOutcome.CompileError(string.Join(Environment.NewLine, ex.Diagnostics), Stdout(capture), sw.ElapsedMilliseconds);
+            return EvalOutcome.CompileError(
+                string.Join(Environment.NewLine, ex.Diagnostics),
+                Stdout(capture),
+                sw.ElapsedMilliseconds
+            );
         }
         catch (OperationCanceledException)
         {
@@ -85,7 +101,12 @@ public sealed class RoslynScriptEvaluator : ICodeEvaluator
         catch (Exception ex)
         {
             sw.Stop();
-            return EvalOutcome.RuntimeError(ex.Message, ex.StackTrace, Stdout(capture), sw.ElapsedMilliseconds);
+            return EvalOutcome.RuntimeError(
+                ex.Message,
+                ex.StackTrace,
+                Stdout(capture),
+                sw.ElapsedMilliseconds
+            );
         }
         finally
         {
@@ -93,8 +114,7 @@ public sealed class RoslynScriptEvaluator : ICodeEvaluator
         }
     }
 
-    public CompletionResult Complete(string code, int cursorPos) =>
-        new(Array.Empty<string>(), 0);
+    public CompletionResult Complete(string code, int cursorPos) => new(Array.Empty<string>(), 0);
 
     public void Reset()
     {
@@ -114,9 +134,10 @@ public sealed class RoslynScriptEvaluator : ICodeEvaluator
         EnsureInitialized();
         try
         {
-            _state = _state == null
-                ? CSharpScript.RunAsync(code, _options).GetAwaiter().GetResult()
-                : _state.ContinueWithAsync(code, _options).GetAwaiter().GetResult();
+            _state =
+                _state == null
+                    ? CSharpScript.RunAsync(code, _options).GetAwaiter().GetResult()
+                    : _state.ContinueWithAsync(code, _options).GetAwaiter().GetResult();
         }
         catch
         {
@@ -135,14 +156,15 @@ public sealed class RoslynScriptEvaluator : ICodeEvaluator
 
     private ScriptOptions BuildOptions()
     {
-        var assemblies = AppDomain.CurrentDomain.GetAssemblies()
+        var assemblies = AppDomain
+            .CurrentDomain.GetAssemblies()
             .Concat(_host.AdditionalAssemblies)
             .Where(CanReference)
             .Distinct()
             .ToArray();
 
-        return ScriptOptions.Default
-            .WithReferences(assemblies)
+        return ScriptOptions
+            .Default.WithReferences(assemblies)
             .WithImports(DefaultImports.Concat(_host.AdditionalUsings));
     }
 

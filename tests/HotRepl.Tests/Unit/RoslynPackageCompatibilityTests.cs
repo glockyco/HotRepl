@@ -11,10 +11,14 @@ public class RoslynPackageCompatibilityTests
     [Fact]
     public void RoslynScriptingPackage_UsesMelonLoaderNet6CompatibleVersion()
     {
-        var project = XDocument.Load(ProjectPath("src", "HotRepl.Evaluator.Roslyn", "HotRepl.Evaluator.Roslyn.csproj"));
+        var project = XDocument.Load(
+            ProjectPath("src", "HotRepl.Evaluator.Roslyn", "HotRepl.Evaluator.Roslyn.csproj")
+        );
         var package = project
             .Descendants("PackageReference")
-            .Single(x => (string?)x.Attribute("Include") == "Microsoft.CodeAnalysis.CSharp.Scripting");
+            .Single(x =>
+                (string?)x.Attribute("Include") == "Microsoft.CodeAnalysis.CSharp.Scripting"
+            );
 
         Assert.Equal("4.4.0", (string?)package.Attribute("Version"));
     }

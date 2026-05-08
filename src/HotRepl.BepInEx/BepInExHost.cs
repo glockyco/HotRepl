@@ -23,21 +23,25 @@ internal sealed class BepInExHost : IReplHost
     private readonly ManualLogSource _logger;
 
     // Computed once at class load — reflects over the compiled UnityHelpers type.
-    private static readonly string[] _unityHelperSignatures =
-        HelperInjector.BuildSignatures(typeof(UnityHelpers));
+    private static readonly string[] _unityHelperSignatures = HelperInjector.BuildSignatures(
+        typeof(UnityHelpers)
+    );
 
-    private static readonly IReadOnlyList<Assembly> _additionalAssemblies =
-        new[] { typeof(UnityHelpers).Assembly };
+    private static readonly IReadOnlyList<Assembly> _additionalAssemblies = new[]
+    {
+        typeof(UnityHelpers).Assembly,
+    };
 
-    private static readonly IReadOnlyList<string> _additionalUsings =
-        MonoCSharpEvaluator.DefaultUsings
-            .Concat(new[] { "HotRepl.Helpers.Unity" })
-            .ToArray();
+    private static readonly IReadOnlyList<string> _additionalUsings = MonoCSharpEvaluator
+        .DefaultUsings.Concat(new[] { "HotRepl.Helpers.Unity" })
+        .ToArray();
 
-    private static readonly EvaluatorCapabilities[] _availableEvaluators =
-        new[] { MonoCSharpEvaluator.MonoCapabilities }
-            .Concat(RoslynEvaluatorFactory.Capabilities)
-            .ToArray();
+    private static readonly EvaluatorCapabilities[] _availableEvaluators = new[]
+    {
+        MonoCSharpEvaluator.MonoCapabilities,
+    }
+        .Concat(RoslynEvaluatorFactory.Capabilities)
+        .ToArray();
 
     public BepInExHost(ManualLogSource logger, ReplConfig? config = null)
     {
@@ -49,13 +53,14 @@ internal sealed class BepInExHost : IReplHost
 
     public ReplConfig Config { get; }
 
-    public HostInfo HostInfo { get; } = new()
-    {
-        Name = "BepInEx",
-        Version = "5.x",
-        Runtime = ".NET Framework/Mono",
-        Platform = "Unity Mono",
-    };
+    public HostInfo HostInfo { get; } =
+        new()
+        {
+            Name = "BepInEx",
+            Version = "5.x",
+            Runtime = ".NET Framework/Mono",
+            Platform = "Unity Mono",
+        };
 
     public IControlCommandRegistry ControlCommands => GlobalControlCommandRegistry.Instance;
 
@@ -71,12 +76,17 @@ internal sealed class BepInExHost : IReplHost
         if (evaluatorName == RoslynScriptEvaluator.ScriptCapabilities.Name)
             return RoslynEvaluatorFactory.Create(evaluatorName, this);
 
-        throw new NotSupportedException($"Evaluator '{evaluatorName}' is not available in this host.");
+        throw new NotSupportedException(
+            $"Evaluator '{evaluatorName}' is not available in this host."
+        );
     }
 
     public void LogInfo(string message) => _logger.LogInfo(message);
+
     public void LogDebug(string message) => _logger.LogDebug(message);
+
     public void LogWarning(string message) => _logger.LogWarning(message);
+
     public void LogError(string message, Exception? ex = null)
     {
         if (ex != null)

@@ -8,4 +8,5 @@ public sealed record ControlCommandError(
     string Code,
     string Message,
     bool Retryable,
-    JObject? Details = null);
+    JObject? Details = null
+);

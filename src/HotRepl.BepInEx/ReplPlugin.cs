@@ -19,7 +19,6 @@ namespace HotRepl.BepInEx;
 [BepInPlugin(PluginInfo.GUID, PluginInfo.Name, PluginInfo.Version)]
 public sealed class ReplPlugin : BaseUnityPlugin
 {
-
     private ReplEngine? _engine;
 
     private void Awake()
@@ -34,7 +33,9 @@ public sealed class ReplPlugin : BaseUnityPlugin
             UnityHelpers.Initialize(this);
             _engine.Start();
 
-            Logger.LogInfo($"{PluginInfo.Name} v{PluginInfo.Version} loaded — REPL on {host.Config.BindHost}:{host.Config.Port}.");
+            Logger.LogInfo(
+                $"{PluginInfo.Name} v{PluginInfo.Version} loaded — REPL on {host.Config.BindHost}:{host.Config.Port}."
+            );
         }
         catch (Exception ex)
         {
@@ -46,9 +47,24 @@ public sealed class ReplPlugin : BaseUnityPlugin
     private ReplConfig LoadConfig()
     {
         var port = Config.Bind("Server", "Port", 18590, "WebSocket listen port.");
-        var bindHost = Config.Bind("Server", "BindHost", "127.0.0.1", "WebSocket bind host. Use 127.0.0.1 for loopback-only, or explicitly set 0.0.0.0 for host-reachable automation.");
-        var requireAuth = Config.Bind("Control", "RequireAuth", false, "Require control-plane authentication.");
-        var authToken = Config.Bind("Control", "AuthToken", string.Empty, "Token required for control-plane authentication. Set this when BindHost is not loopback.");
+        var bindHost = Config.Bind(
+            "Server",
+            "BindHost",
+            "127.0.0.1",
+            "WebSocket bind host. Use 127.0.0.1 for loopback-only, or explicitly set 0.0.0.0 for host-reachable automation."
+        );
+        var requireAuth = Config.Bind(
+            "Control",
+            "RequireAuth",
+            false,
+            "Require control-plane authentication."
+        );
+        var authToken = Config.Bind(
+            "Control",
+            "AuthToken",
+            string.Empty,
+            "Token required for control-plane authentication. Set this when BindHost is not loopback."
+        );
 
         var config = new ReplConfig
         {

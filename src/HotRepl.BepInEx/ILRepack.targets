@@ -1,21 +1,37 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-
   <!-- Copy BepInEx for type resolution -->
-  <Target Name="CopyReferenceAssemblies" BeforeTargets="ILRepackMod"
-          Condition="'$(SkipILRepack)' != 'true'">
+  <Target
+    Name="CopyReferenceAssemblies"
+    BeforeTargets="ILRepackMod"
+    Condition="'$(SkipILRepack)' != 'true'"
+  >
     <PropertyGroup>
-      <NuGetPackagesPath Condition="'$(NuGetPackageRoot)' != ''">$(NuGetPackageRoot)</NuGetPackagesPath>
-      <NuGetPackagesPath Condition="'$(NuGetPackagesPath)' == '' AND '$(OS)' == 'Windows_NT'">$(USERPROFILE)\.nuget\packages</NuGetPackagesPath>
-      <NuGetPackagesPath Condition="'$(NuGetPackagesPath)' == ''">$(HOME)/.nuget/packages</NuGetPackagesPath>
+      <NuGetPackagesPath Condition="'$(NuGetPackageRoot)' != ''"
+        >$(NuGetPackageRoot)</NuGetPackagesPath
+      >
+      <NuGetPackagesPath Condition="'$(NuGetPackagesPath)' == '' AND '$(OS)' == 'Windows_NT'"
+        >$(USERPROFILE)\.nuget\packages</NuGetPackagesPath
+      >
+      <NuGetPackagesPath Condition="'$(NuGetPackagesPath)' == ''"
+        >$(HOME)/.nuget/packages</NuGetPackagesPath
+      >
       <BepInExSource>$(NuGetPackagesPath)/bepinex.baselib/5.4.20/lib/netstandard2.0/BepInEx.dll</BepInExSource>
     </PropertyGroup>
-    <Copy SourceFiles="$(BepInExSource)" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="true" />
+    <Copy
+      SourceFiles="$(BepInExSource)"
+      DestinationFolder="$(OutputPath)"
+      SkipUnchangedFiles="true"
+    />
   </Target>
 
   <!-- Discover dependencies to merge -->
-  <Target Name="DiscoverDependencies" BeforeTargets="ILRepackMod" DependsOnTargets="CopyReferenceAssemblies"
-          Condition="'$(SkipILRepack)' != 'true'">
+  <Target
+    Name="DiscoverDependencies"
+    BeforeTargets="ILRepackMod"
+    DependsOnTargets="CopyReferenceAssemblies"
+    Condition="'$(SkipILRepack)' != 'true'"
+  >
     <ItemGroup>
       <MergeAssemblies Include="$(OutputPath)$(TargetName)$(TargetExt)" />
       <!-- Merge evaluator/helper assemblies into the plugin DLL.
@@ -27,12 +43,19 @@
            ILRepack internalizes types, which breaks the Evaluator's self-references
            from dynamically compiled code. -->
     </ItemGroup>
-    <Message Text="ILRepack: merging %(MergeAssemblies.Filename)%(MergeAssemblies.Extension)" Importance="high" />
+    <Message
+      Text="ILRepack: merging %(MergeAssemblies.Filename)%(MergeAssemblies.Extension)"
+      Importance="high"
+    />
   </Target>
 
   <!-- Run ILRepack -->
-  <Target Name="ILRepackMod" AfterTargets="Build" DependsOnTargets="DiscoverDependencies"
-          Condition="'$(SkipILRepack)' != 'true'">
+  <Target
+    Name="ILRepackMod"
+    AfterTargets="Build"
+    DependsOnTargets="DiscoverDependencies"
+    Condition="'$(SkipILRepack)' != 'true'"
+  >
     <ILRepack
       Parallel="true"
       DebugInfo="true"
@@ -46,8 +69,11 @@
   </Target>
 
   <!-- Clean up merged DLLs, keep only the final plugin, mcs.dll, and Roslyn sidecars -->
-  <Target Name="CleanupAfterMerge" AfterTargets="ILRepackMod"
-          Condition="'$(SkipILRepack)' != 'true'">
+  <Target
+    Name="CleanupAfterMerge"
+    AfterTargets="ILRepackMod"
+    Condition="'$(SkipILRepack)' != 'true'"
+  >
     <ItemGroup>
       <KeepFiles Include="$(OutputPath)$(TargetName).dll" />
       <KeepFiles Include="$(OutputPath)$(TargetName).pdb" />
@@ -66,7 +92,9 @@
       <DeleteFiles Include="@(AllFiles)" Exclude="@(KeepFiles)" />
     </ItemGroup>
     <Delete Files="@(DeleteFiles)" />
-    <Message Text="Cleaned up — HotRepl.BepInEx.dll + HotRepl.Core.dll + Core dependencies + mcs.dll + Roslyn sidecars ready" Importance="high" />
+    <Message
+      Text="Cleaned up — HotRepl.BepInEx.dll + HotRepl.Core.dll + Core dependencies + mcs.dll + Roslyn sidecars ready"
+      Importance="high"
+    />
   </Target>
-
 </Project>

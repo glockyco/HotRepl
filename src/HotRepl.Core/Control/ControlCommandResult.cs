@@ -9,7 +9,9 @@ namespace HotRepl.Control;
 public sealed record ControlCommandResult(
     JObject Result,
     IReadOnlyList<ArtifactRef> Artifacts,
-    IReadOnlyList<ControlCommandError> Diagnostics)
+    IReadOnlyList<ControlCommandError> Diagnostics
+)
 {
-    public static ControlCommandResult Empty { get; } = new(new JObject(), Array.Empty<ArtifactRef>(), Array.Empty<ControlCommandError>());
+    public static ControlCommandResult Empty { get; } =
+        new(new JObject(), Array.Empty<ArtifactRef>(), Array.Empty<ControlCommandError>());
 }

@@ -24,7 +24,12 @@ internal static class HelperInjector
     /// Injects the Core Repl class and any host-provided additional assemblies/usings
     /// into the evaluator session. Must be called during Initialize() / Reset().
     /// </summary>
-    public static void Inject(ICodeEvaluator evaluator, IReplHost host, HistoryTracker history, ReplConfig config)
+    public static void Inject(
+        ICodeEvaluator evaluator,
+        IReplHost host,
+        HistoryTracker history,
+        ReplConfig config
+    )
     {
         // Bind runtime services so Repl.Help(), Repl.History(), etc. work.
         Repl.Initialize(history, config.MaxEnumerableElements);
@@ -59,9 +64,12 @@ internal static class HelperInjector
 
     internal static string[] BuildSignatures(Type type)
     {
-        return type
-            .GetMethods(BindingFlags.Public | BindingFlags.Static)
-            .Where(m => m.DeclaringType == type && !m.IsSpecialName && !m.Name.StartsWith("__", StringComparison.Ordinal))
+        return type.GetMethods(BindingFlags.Public | BindingFlags.Static)
+            .Where(m =>
+                m.DeclaringType == type
+                && !m.IsSpecialName
+                && !m.Name.StartsWith("__", StringComparison.Ordinal)
+            )
             .Select(FormatSignature)
             .ToArray();
     }
@@ -69,13 +77,19 @@ internal static class HelperInjector
     private static string FormatSignature(MethodInfo m)
     {
         var ps = m.GetParameters();
-        var pstr = string.Join(", ", Array.ConvertAll(ps, p =>
-        {
-            var part = $"{p.ParameterType.Name} {p.Name}";
-            if (p.HasDefaultValue)
-                part += $" = {p.DefaultValue ?? "null"}";
-            return part;
-        }));
+        var pstr = string.Join(
+            ", ",
+            Array.ConvertAll(
+                ps,
+                p =>
+                {
+                    var part = $"{p.ParameterType.Name} {p.Name}";
+                    if (p.HasDefaultValue)
+                        part += $" = {p.DefaultValue ?? "null"}";
+                    return part;
+                }
+            )
+        );
         return $"{m.ReturnType.Name} {m.Name}({pstr})";
     }
 }

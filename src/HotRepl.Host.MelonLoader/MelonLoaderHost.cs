@@ -16,16 +16,23 @@ internal sealed class MelonLoaderHost : IReplHost
 {
     private readonly MelonLogger.Instance _logger;
 
-    private static readonly string[] _helperSignatures =
-        HelperInjector.BuildSignatures(typeof(UnityHelpers))
-            .Concat(HelperInjector.BuildSignatures(typeof(Il2CppHelpers)))
-            .ToArray();
+    private static readonly string[] _helperSignatures = HelperInjector
+        .BuildSignatures(typeof(UnityHelpers))
+        .Concat(HelperInjector.BuildSignatures(typeof(Il2CppHelpers)))
+        .ToArray();
 
-    private static readonly IReadOnlyList<Assembly> _additionalAssemblies =
-        new[] { typeof(UnityHelpers).Assembly, typeof(Il2CppHelpers).Assembly };
+    private static readonly IReadOnlyList<Assembly> _additionalAssemblies = new[]
+    {
+        typeof(UnityHelpers).Assembly,
+        typeof(Il2CppHelpers).Assembly,
+    };
 
-    private static readonly IReadOnlyList<string> _additionalUsings =
-        new[] { "HotRepl.Helpers.Unity", "HotRepl.Helpers.Il2Cpp", "Il2CppInterop.Runtime" };
+    private static readonly IReadOnlyList<string> _additionalUsings = new[]
+    {
+        "HotRepl.Helpers.Unity",
+        "HotRepl.Helpers.Il2Cpp",
+        "Il2CppInterop.Runtime",
+    };
 
     public MelonLoaderHost(MelonLogger.Instance logger, ReplConfig config = null)
     {
@@ -35,17 +42,19 @@ internal sealed class MelonLoaderHost : IReplHost
 
     public ReplConfig Config { get; }
 
-    public HostInfo HostInfo { get; } = new()
-    {
-        Name = "MelonLoader",
-        Version = "0.x",
-        Runtime = ".NET 6",
-        Platform = "Unity IL2CPP",
-    };
+    public HostInfo HostInfo { get; } =
+        new()
+        {
+            Name = "MelonLoader",
+            Version = "0.x",
+            Runtime = ".NET 6",
+            Platform = "Unity IL2CPP",
+        };
 
     public IControlCommandRegistry ControlCommands => GlobalControlCommandRegistry.Instance;
 
-    public IReadOnlyList<EvaluatorCapabilities> AvailableEvaluators => RoslynEvaluatorFactory.Capabilities;
+    public IReadOnlyList<EvaluatorCapabilities> AvailableEvaluators =>
+        RoslynEvaluatorFactory.Capabilities;
 
     public string DefaultEvaluatorName =>
         Config.DefaultEvaluatorName ?? RoslynScriptEvaluator.ScriptCapabilities.Name;
@@ -58,7 +67,9 @@ internal sealed class MelonLoaderHost : IReplHost
     public string[] AdditionalHelperSignatures => _helperSignatures;
 
     public void LogInfo(string message) => _logger.Msg(message);
+
     public void LogDebug(string message) => _logger.Msg(message);
+
     public void LogWarning(string message) => _logger.Warning(message);
 
     public void LogError(string message, Exception ex = null)

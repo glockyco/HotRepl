@@ -33,8 +33,7 @@ internal static class MessageSerializer
             ?? throw new InvalidOperationException($"Message has no 'type' field: {rawJson}");
     }
 
-    public static T Deserialize<T>(string rawJson) =>
-        JsonConvert.DeserializeObject<T>(rawJson)!;
+    public static T Deserialize<T>(string rawJson) => JsonConvert.DeserializeObject<T>(rawJson)!;
 
     /// <summary>Serializes an outbound message, omitting null properties.</summary>
     public static string Serialize<T>(T message) =>

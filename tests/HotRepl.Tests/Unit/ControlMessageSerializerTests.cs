@@ -20,7 +20,12 @@ public class ControlMessageSerializerTests
     [Fact]
     public void RoundTrip_ControlAuthResultMessage()
     {
-        var msg = new ControlAuthResultMessage { Id = "auth-1", Ok = true, SessionId = "session-1" };
+        var msg = new ControlAuthResultMessage
+        {
+            Id = "auth-1",
+            Ok = true,
+            SessionId = "session-1",
+        };
         var back = RoundTrip<ControlAuthResultMessage>(msg);
 
         Assert.Equal(MessageType.ControlAuthResult, back.Type);
@@ -32,7 +37,12 @@ public class ControlMessageSerializerTests
     [Fact]
     public void RoundTrip_LeaseAcquireMessage()
     {
-        var msg = new LeaseAcquireMessage { Id = "lease-1", SessionId = "session-1", ClientName = "ardenfall-export" };
+        var msg = new LeaseAcquireMessage
+        {
+            Id = "lease-1",
+            SessionId = "session-1",
+            ClientName = "ardenfall-export",
+        };
         var back = RoundTrip<LeaseAcquireMessage>(msg);
 
         Assert.Equal(MessageType.LeaseAcquire, back.Type);
@@ -44,7 +54,12 @@ public class ControlMessageSerializerTests
     [Fact]
     public void RoundTrip_LeaseAcquireResultMessage()
     {
-        var msg = new LeaseAcquireResultMessage { Id = "lease-1", Ok = true, LeaseId = "lease-token" };
+        var msg = new LeaseAcquireResultMessage
+        {
+            Id = "lease-1",
+            Ok = true,
+            LeaseId = "lease-token",
+        };
         var back = RoundTrip<LeaseAcquireResultMessage>(msg);
 
         Assert.Equal(MessageType.LeaseAcquireResult, back.Type);
@@ -75,7 +90,11 @@ public class ControlMessageSerializerTests
             ArgsSchema = JObject.Parse("{\"type\":\"object\"}"),
             ResultSchema = JObject.Parse("{\"type\":\"object\"}"),
         };
-        var msg = new CommandDescribeResultMessage { Id = "describe-1", Commands = new[] { descriptor } };
+        var msg = new CommandDescribeResultMessage
+        {
+            Id = "describe-1",
+            Commands = new[] { descriptor },
+        };
         var back = RoundTrip<CommandDescribeResultMessage>(msg);
 
         Assert.Equal(MessageType.CommandDescribeResult, back.Type);
@@ -157,7 +176,12 @@ public class ControlMessageSerializerTests
     [Fact]
     public void RoundTrip_CommandAcceptedMessage()
     {
-        var msg = new CommandAcceptedMessage { Id = "cmd-2", JobId = "job-1", State = "accepted" };
+        var msg = new CommandAcceptedMessage
+        {
+            Id = "cmd-2",
+            JobId = "job-1",
+            State = "accepted",
+        };
         var back = RoundTrip<CommandAcceptedMessage>(msg);
 
         Assert.Equal(MessageType.CommandAccepted, back.Type);
@@ -169,7 +193,12 @@ public class ControlMessageSerializerTests
     [Fact]
     public void RoundTrip_JobStatusMessage()
     {
-        var msg = new JobStatusMessage { Id = "status-1", LeaseId = "lease-token", JobId = "job-1" };
+        var msg = new JobStatusMessage
+        {
+            Id = "status-1",
+            LeaseId = "lease-token",
+            JobId = "job-1",
+        };
         var back = RoundTrip<JobStatusMessage>(msg);
 
         Assert.Equal(MessageType.JobStatus, back.Type);
@@ -224,7 +253,12 @@ public class ControlMessageSerializerTests
     [Fact]
     public void RoundTrip_JobCancelMessage()
     {
-        var msg = new JobCancelMessage { Id = "cancel-1", LeaseId = "lease-token", JobId = "job-1" };
+        var msg = new JobCancelMessage
+        {
+            Id = "cancel-1",
+            LeaseId = "lease-token",
+            JobId = "job-1",
+        };
         var back = RoundTrip<JobCancelMessage>(msg);
 
         Assert.Equal(MessageType.JobCancel, back.Type);
@@ -236,7 +270,12 @@ public class ControlMessageSerializerTests
     [Fact]
     public void RoundTrip_JobCancelResultMessage()
     {
-        var msg = new JobCancelResultMessage { Id = "cancel-1", Accepted = true, State = "cancelling" };
+        var msg = new JobCancelResultMessage
+        {
+            Id = "cancel-1",
+            Accepted = true,
+            State = "cancelling",
+        };
         var back = RoundTrip<JobCancelResultMessage>(msg);
 
         Assert.Equal(MessageType.JobCancelResult, back.Type);
@@ -269,23 +308,25 @@ public class ControlMessageSerializerTests
     private static T RoundTrip<T>(T message) =>
         MessageSerializer.Deserialize<T>(MessageSerializer.Serialize(message));
 
-    private static ArtifactRefMessage ExampleArtifact() => new()
-    {
-        LogicalName = "items.json",
-        Uri = "file:///tmp/items.json",
-        Path = "/tmp/items.json",
-        ContentType = "application/json",
-        ByteSize = 128,
-        Sha256 = new string('a', 64),
-        Finalized = true,
-    };
+    private static ArtifactRefMessage ExampleArtifact() =>
+        new()
+        {
+            LogicalName = "items.json",
+            Uri = "file:///tmp/items.json",
+            Path = "/tmp/items.json",
+            ContentType = "application/json",
+            ByteSize = 128,
+            Sha256 = new string('a', 64),
+            Finalized = true,
+        };
 
-    private static ControlErrorMessage ExampleControlError(string kind) => new()
-    {
-        Kind = kind,
-        Code = "sampleCode",
-        Message = "sample message",
-        Retryable = true,
-        Details = JObject.Parse("{\"field\":\"value\"}"),
-    };
+    private static ControlErrorMessage ExampleControlError(string kind) =>
+        new()
+        {
+            Kind = kind,
+            Code = "sampleCode",
+            Message = "sample message",
+            Retryable = true,
+            Details = JObject.Parse("{\"field\":\"value\"}"),
+        };
 }

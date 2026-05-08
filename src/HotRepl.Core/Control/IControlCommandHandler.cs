@@ -14,5 +14,6 @@ public interface IControlCommandHandler
     ValueTask<ControlCommandResult> ExecuteAsync(
         ControlCommandContext context,
         JObject args,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken
+    );
 }

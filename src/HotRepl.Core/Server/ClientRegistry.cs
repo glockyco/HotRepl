@@ -25,9 +25,7 @@ internal sealed class ClientRegistry
     private volatile IWebSocketConnection? _current;
 
     public ClientRegistry(ReplWebSocketServer server, Action<string> log)
-        : this((socket, json) => server.Send(socket, json), log)
-    {
-    }
+        : this((socket, json) => server.Send(socket, json), log) { }
 
     internal ClientRegistry(Action<IWebSocketConnection, string> send, Action<string> log)
     {
@@ -43,8 +41,12 @@ internal sealed class ClientRegistry
         {
             _log("[HotRepl] New client connected; closing previous connection.");
             try
-            { prev.Close(); }
-            catch { /* best-effort */ }
+            {
+                prev.Close();
+            }
+            catch
+            { /* best-effort */
+            }
         }
 
         _clients[id] = socket;

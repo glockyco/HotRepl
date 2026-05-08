@@ -48,7 +48,9 @@ public static class UnityHelpers
     public static string Screenshot(string? path = null)
     {
         if (_coroutineHost == null)
-            throw new InvalidOperationException("UnityHelpers not initialized — no coroutine host.");
+            throw new InvalidOperationException(
+                "UnityHelpers not initialized — no coroutine host."
+            );
 
         path ??= Path.Combine(Application.temporaryCachePath, "hotrepl_screenshot.png");
         _coroutineHost.StartCoroutine(CaptureFullFrame(path));
@@ -74,7 +76,12 @@ public static class UnityHelpers
     /// <param name="layer">Layer name filter. null = all layers.</param>
     /// <param name="depth">Maximum traversal depth.</param>
     /// <param name="maxResults">Maximum number of nodes returned.</param>
-    public static object SceneGraph(string? filter = null, string? layer = null, int depth = 3, int maxResults = 200)
+    public static object SceneGraph(
+        string? filter = null,
+        string? layer = null,
+        int depth = 3,
+        int maxResults = 200
+    )
     {
         var roots = UnityEngine.SceneManagement.SceneManager.GetActiveScene().GetRootGameObjects();
         var results = new System.Collections.Generic.List<object>();
@@ -130,7 +137,8 @@ public static class UnityHelpers
         var cam = FindCamera();
         if (cam == null)
             throw new InvalidOperationException(
-                "No active camera found. Tried Camera.main, 'MainCam', and Camera.allCameras.");
+                "No active camera found. Tried Camera.main, 'MainCam', and Camera.allCameras."
+            );
 
         int w = Screen.width;
         int h = Screen.height;
@@ -194,14 +202,19 @@ public static class UnityHelpers
 
     private static MethodInfo ResolveEncodeToPng()
     {
-        var imageConversion = Type.GetType("UnityEngine.ImageConversion, UnityEngine.ImageConversionModule")
-                           ?? Type.GetType("UnityEngine.ImageConversion, UnityEngine");
-        var method = imageConversion?.GetMethod("EncodeToPNG", BindingFlags.Public | BindingFlags.Static);
+        var imageConversion =
+            Type.GetType("UnityEngine.ImageConversion, UnityEngine.ImageConversionModule")
+            ?? Type.GetType("UnityEngine.ImageConversion, UnityEngine");
+        var method = imageConversion?.GetMethod(
+            "EncodeToPNG",
+            BindingFlags.Public | BindingFlags.Static
+        );
 
         if (method == null)
             throw new InvalidOperationException(
-                "Screenshot helpers require UnityEngine.ImageConversionModule to be loaded. " +
-                "This is available in the running game but may be absent in test environments.");
+                "Screenshot helpers require UnityEngine.ImageConversionModule to be loaded. "
+                    + "This is available in the running game but may be absent in test environments."
+            );
 
         return method;
     }
@@ -209,15 +222,22 @@ public static class UnityHelpers
     // ── Private: scene graph traversal ───────────────────────────────────────
 
     private static System.Collections.Generic.Dictionary<string, object>? TraverseGO(
-        GameObject go, string? filter, string? layer,
-        int depth, int maxResults, ref int count)
+        GameObject go,
+        string? filter,
+        string? layer,
+        int depth,
+        int maxResults,
+        ref int count
+    )
     {
         if (count >= maxResults || depth < 0)
             return null;
 
         var goLayer = LayerMask.LayerToName(go.layer);
-        bool nameMatch = filter == null || go.name.IndexOf(filter, StringComparison.OrdinalIgnoreCase) >= 0;
-        bool layerMatch = layer == null || string.Equals(goLayer, layer, StringComparison.OrdinalIgnoreCase);
+        bool nameMatch =
+            filter == null || go.name.IndexOf(filter, StringComparison.OrdinalIgnoreCase) >= 0;
+        bool layerMatch =
+            layer == null || string.Equals(goLayer, layer, StringComparison.OrdinalIgnoreCase);
 
         var children = new System.Collections.Generic.List<object>();
         if (depth > 0)
@@ -226,7 +246,14 @@ public static class UnityHelpers
             {
                 if (count >= maxResults)
                     break;
-                var child = TraverseGO(go.transform.GetChild(i).gameObject, filter, layer, depth - 1, maxResults, ref count);
+                var child = TraverseGO(
+                    go.transform.GetChild(i).gameObject,
+                    filter,
+                    layer,
+                    depth - 1,
+                    maxResults,
+                    ref count
+                );
                 if (child != null)
                     children.Add(child);
             }
@@ -244,7 +271,8 @@ public static class UnityHelpers
             ["active"] = go.activeInHierarchy,
             ["components"] = Array.ConvertAll(
                 go.GetComponents<Component>(),
-                c => c != null ? (object)c.GetType().Name : "<null>"),
+                c => c != null ? (object)c.GetType().Name : "<null>"
+            ),
             ["children"] = children,
         };
     }

@@ -21,7 +21,8 @@ public class GlobalControlCommandRegistryTests
         Assert.Collection(
             descriptors,
             descriptor => Assert.Equal("a.command", descriptor.Name),
-            descriptor => Assert.Equal("z.command", descriptor.Name));
+            descriptor => Assert.Equal("z.command", descriptor.Name)
+        );
     }
 
     [Fact]
@@ -39,7 +40,10 @@ public class GlobalControlCommandRegistryTests
     {
         var registry = new GlobalControlCommandRegistry();
         using var first = registry.Register(new Handler("archive.info"));
-        Assert.Throws<InvalidOperationException>(() => { registry.Register(new Handler("archive.info")); });
+        Assert.Throws<InvalidOperationException>(() =>
+        {
+            registry.Register(new Handler("archive.info"));
+        });
     }
 
     private sealed class Handler : IControlCommandHandler
@@ -52,7 +56,8 @@ public class GlobalControlCommandRegistryTests
                 ControlCommandKind.Synchronous,
                 mutatesState: false,
                 argsSchema: JObject.Parse("{\"type\":\"object\"}"),
-                resultSchema: JObject.Parse("{\"type\":\"object\"}"));
+                resultSchema: JObject.Parse("{\"type\":\"object\"}")
+            );
         }
 
         public ControlCommandDescriptor Descriptor { get; }
@@ -60,6 +65,7 @@ public class GlobalControlCommandRegistryTests
         public ValueTask<ControlCommandResult> ExecuteAsync(
             ControlCommandContext context,
             JObject args,
-            CancellationToken cancellationToken) => ValueTask.FromResult(ControlCommandResult.Empty);
+            CancellationToken cancellationToken
+        ) => ValueTask.FromResult(ControlCommandResult.Empty);
     }
 }

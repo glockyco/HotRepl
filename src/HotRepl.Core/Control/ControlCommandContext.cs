@@ -7,4 +7,5 @@ public sealed record ControlCommandContext(
     string RequestId,
     string? LeaseId,
     string? IdempotencyKey,
-    TimeSpan? Timeout);
+    TimeSpan? Timeout
+);

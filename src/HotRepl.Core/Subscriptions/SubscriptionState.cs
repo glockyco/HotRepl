@@ -13,7 +13,7 @@ internal sealed class SubscriptionState
     public string Code { get; }
     public int IntervalFrames { get; }
     public bool OnChange { get; }
-    public int Limit { get; }         // 0 = unlimited
+    public int Limit { get; } // 0 = unlimited
     public int TimeoutMs { get; }
 
     // ── Mutable fields updated each tick ──────────────────────────────────────
@@ -25,8 +25,14 @@ internal sealed class SubscriptionState
     public bool Active { get; set; } = true;
 
     public SubscriptionState(
-        string id, Guid connectionId, string code,
-        int intervalFrames, bool onChange, int limit, int timeoutMs)
+        string id,
+        Guid connectionId,
+        string code,
+        int intervalFrames,
+        bool onChange,
+        int limit,
+        int timeoutMs
+    )
     {
         Id = id;
         ConnectionId = connectionId;

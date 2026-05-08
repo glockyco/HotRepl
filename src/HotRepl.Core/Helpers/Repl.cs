@@ -45,7 +45,8 @@ public static class Repl
     /// <summary>Returns the <paramref name="limit"/> most recent eval history entries.</summary>
     public static object History(int limit = 20)
     {
-        return _history.GetRecent(limit)
+        return _history
+            .GetRecent(limit)
             .Select(e => new Dictionary<string, object?>
             {
                 ["code"] = e.Code,
@@ -60,42 +61,63 @@ public static class Repl
     /// Deeply inspects <paramref name="obj"/> via reflection, returning a
     /// dictionary tree. Handles circular references and depth limits.
     /// </summary>
-    public static object? Inspect(object? obj, int depth = 2, int maxChildren = 50)
-        => InspectCore(obj, depth, maxChildren, new HashSet<object>(ReferenceComparer.Instance));
+    public static object? Inspect(object? obj, int depth = 2, int maxChildren = 50) =>
+        InspectCore(obj, depth, maxChildren, new HashSet<object>(ReferenceComparer.Instance));
 
     /// <summary>Returns type metadata: base type, interfaces, properties, fields, methods.</summary>
     public static object Describe(Type type)
     {
         const BindingFlags flags =
-            BindingFlags.Public | BindingFlags.NonPublic |
-            BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly;
+            BindingFlags.Public
+            | BindingFlags.NonPublic
+            | BindingFlags.Instance
+            | BindingFlags.Static
+            | BindingFlags.DeclaredOnly;
 
         return new Dictionary<string, object?>
         {
             ["type"] = type.FullName ?? type.Name,
             ["baseType"] = type.BaseType?.FullName ?? type.BaseType?.Name,
             ["interfaces"] = type.GetInterfaces().Select(i => i.FullName ?? i.Name).ToArray(),
-            ["properties"] = type.GetProperties(flags).Select(p => new Dictionary<string, object>
-            {
-                ["name"] = p.Name,
-                ["type"] = p.PropertyType.FullName ?? p.PropertyType.Name,
-                ["canRead"] = p.CanRead,
-                ["canWrite"] = p.CanWrite,
-            }).ToArray(),
-            ["fields"] = type.GetFields(flags).Select(f => new Dictionary<string, object>
-            {
-                ["name"] = f.Name,
-                ["type"] = f.FieldType.FullName ?? f.FieldType.Name,
-                ["isPublic"] = f.IsPublic,
-            }).ToArray(),
-            ["methods"] = type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly)
-                .Where(m => !m.IsSpecialName && m.Name != "Equals" && m.Name != "GetHashCode" && m.Name != "GetType" && m.Name != "ToString")
+            ["properties"] = type.GetProperties(flags)
+                .Select(p => new Dictionary<string, object>
+                {
+                    ["name"] = p.Name,
+                    ["type"] = p.PropertyType.FullName ?? p.PropertyType.Name,
+                    ["canRead"] = p.CanRead,
+                    ["canWrite"] = p.CanWrite,
+                })
+                .ToArray(),
+            ["fields"] = type.GetFields(flags)
+                .Select(f => new Dictionary<string, object>
+                {
+                    ["name"] = f.Name,
+                    ["type"] = f.FieldType.FullName ?? f.FieldType.Name,
+                    ["isPublic"] = f.IsPublic,
+                })
+                .ToArray(),
+            ["methods"] = type.GetMethods(
+                    BindingFlags.Public
+                        | BindingFlags.Instance
+                        | BindingFlags.Static
+                        | BindingFlags.DeclaredOnly
+                )
+                .Where(m =>
+                    !m.IsSpecialName
+                    && m.Name != "Equals"
+                    && m.Name != "GetHashCode"
+                    && m.Name != "GetType"
+                    && m.Name != "ToString"
+                )
                 .Select(m => new Dictionary<string, object>
                 {
                     ["name"] = m.Name,
                     ["returnType"] = m.ReturnType.FullName ?? m.ReturnType.Name,
-                    ["parameters"] = m.GetParameters().Select(p => $"{p.ParameterType.Name} {p.Name}").ToArray(),
-                }).ToArray(),
+                    ["parameters"] = m.GetParameters()
+                        .Select(p => $"{p.ParameterType.Name} {p.Name}")
+                        .ToArray(),
+                })
+                .ToArray(),
         };
     }
 
@@ -105,12 +127,20 @@ public static class Repl
     /// Records one eval result into the history ring buffer.
     /// Called directly by the engine (not via Evaluate()) — no evaluator re-entry.
     /// </summary>
-    internal static void __RecordEntry(string code, string? serializedValue, string? errorMessage)
-        => _history?.RecordEntry(code, serializedValue, errorMessage);
+    internal static void __RecordEntry(
+        string code,
+        string? serializedValue,
+        string? errorMessage
+    ) => _history?.RecordEntry(code, serializedValue, errorMessage);
 
     // ── Private helpers ───────────────────────────────────────────────────────
 
-    private static object? InspectCore(object? obj, int depth, int maxChildren, HashSet<object> visited)
+    private static object? InspectCore(
+        object? obj,
+        int depth,
+        int maxChildren,
+        HashSet<object> visited
+    )
     {
         if (obj == null)
             return null;
@@ -123,16 +153,29 @@ public static class Repl
 
         // Circular reference guard (reference types only).
         if (!type.IsValueType && !visited.Add(obj))
-            return new Dictionary<string, object?> { ["_type"] = type.FullName, ["_circular"] = true };
+            return new Dictionary<string, object?>
+            {
+                ["_type"] = type.FullName,
+                ["_circular"] = true,
+            };
 
         if (depth <= 0)
-            return new Dictionary<string, object?> { ["_type"] = type.FullName, ["_truncated"] = true };
+            return new Dictionary<string, object?>
+            {
+                ["_type"] = type.FullName,
+                ["_truncated"] = true,
+            };
 
         var result = new Dictionary<string, object?> { ["_type"] = type.FullName };
 
         try
-        { result["_value"] = obj.ToString(); }
-        catch (Exception ex) { result["_value"] = $"<ToString error: {ex.Message}>"; }
+        {
+            result["_value"] = obj.ToString();
+        }
+        catch (Exception ex)
+        {
+            result["_value"] = $"<ToString error: {ex.Message}>";
+        }
 
         // IEnumerable — enumerate up to maxChildren.
         if (obj is IEnumerable enumerable && obj is not string)
@@ -160,7 +203,12 @@ public static class Repl
                 continue;
             try
             {
-                result[prop.Name] = InspectCore(prop.GetValue(obj, null), depth - 1, maxChildren, visited);
+                result[prop.Name] = InspectCore(
+                    prop.GetValue(obj, null),
+                    depth - 1,
+                    maxChildren,
+                    visited
+                );
                 childCount++;
             }
             catch (Exception ex)
@@ -179,7 +227,12 @@ public static class Repl
                 continue;
             try
             {
-                result[field.Name] = InspectCore(field.GetValue(obj), depth - 1, maxChildren, visited);
+                result[field.Name] = InspectCore(
+                    field.GetValue(obj),
+                    depth - 1,
+                    maxChildren,
+                    visited
+                );
                 childCount++;
             }
             catch (Exception ex)
@@ -195,13 +248,19 @@ public static class Repl
     private static string FormatSignature(MethodInfo m)
     {
         var ps = m.GetParameters();
-        var pstr = string.Join(", ", Array.ConvertAll(ps, p =>
-        {
-            var part = $"{p.ParameterType.Name} {p.Name}";
-            if (p.HasDefaultValue)
-                part += $" = {p.DefaultValue ?? "null"}";
-            return part;
-        }));
+        var pstr = string.Join(
+            ", ",
+            Array.ConvertAll(
+                ps,
+                p =>
+                {
+                    var part = $"{p.ParameterType.Name} {p.Name}";
+                    if (p.HasDefaultValue)
+                        part += $" = {p.DefaultValue ?? "null"}";
+                    return part;
+                }
+            )
+        );
         return $"{m.ReturnType.Name} {m.Name}({pstr})";
     }
 
@@ -209,7 +268,10 @@ public static class Repl
     private sealed class ReferenceComparer : IEqualityComparer<object>
     {
         public static readonly ReferenceComparer Instance = new();
+
         public new bool Equals(object? x, object? y) => ReferenceEquals(x, y);
-        public int GetHashCode(object obj) => System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(obj);
+
+        public int GetHashCode(object obj) =>
+            System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(obj);
     }
 }

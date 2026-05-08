@@ -22,12 +22,17 @@ public sealed record ControlCommandDescriptor
         ControlCommandKind kind,
         bool mutatesState,
         JObject argsSchema,
-        JObject resultSchema)
+        JObject resultSchema
+    )
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Command name is required.", nameof(name));
         if (version <= 0)
-            throw new ArgumentOutOfRangeException(nameof(version), version, "Command version must be positive.");
+            throw new ArgumentOutOfRangeException(
+                nameof(version),
+                version,
+                "Command version must be positive."
+            );
 
         Name = name;
         Version = version;

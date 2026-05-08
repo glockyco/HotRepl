@@ -59,7 +59,12 @@ public sealed class RoslynIsolatedEvaluator : ICodeEvaluator
             var result = CompileAndRun(code, cancellationToken);
             sw.Stop();
             return result != null
-                ? EvalOutcome.Ok(result, result.GetType().FullName, Stdout(capture), sw.ElapsedMilliseconds)
+                ? EvalOutcome.Ok(
+                    result,
+                    result.GetType().FullName,
+                    Stdout(capture),
+                    sw.ElapsedMilliseconds
+                )
                 : EvalOutcome.OkVoid(Stdout(capture), sw.ElapsedMilliseconds);
         }
         catch (OperationCanceledException)
@@ -75,7 +80,12 @@ public sealed class RoslynIsolatedEvaluator : ICodeEvaluator
         catch (Exception ex)
         {
             sw.Stop();
-            return EvalOutcome.RuntimeError(ex.Message, ex.StackTrace, Stdout(capture), sw.ElapsedMilliseconds);
+            return EvalOutcome.RuntimeError(
+                ex.Message,
+                ex.StackTrace,
+                Stdout(capture),
+                sw.ElapsedMilliseconds
+            );
         }
         finally
         {
@@ -101,8 +111,13 @@ public sealed class RoslynIsolatedEvaluator : ICodeEvaluator
     public void RunInternal(string code)
     {
         var trimmed = code.Trim();
-        if (trimmed.StartsWith("using ", StringComparison.Ordinal) && trimmed.EndsWith(";", StringComparison.Ordinal))
-            _imports.Add(trimmed.Substring("using ".Length, trimmed.Length - "using ".Length - 1).Trim());
+        if (
+            trimmed.StartsWith("using ", StringComparison.Ordinal)
+            && trimmed.EndsWith(";", StringComparison.Ordinal)
+        )
+            _imports.Add(
+                trimmed.Substring("using ".Length, trimmed.Length - "using ".Length - 1).Trim()
+            );
     }
 
     public void Dispose() { }
@@ -115,12 +130,14 @@ public sealed class RoslynIsolatedEvaluator : ICodeEvaluator
             .Concat(_imports)
             .Distinct()
             .Select(ns => $"using {ns};");
-        var source = string.Join("\n", imports)
+        var source =
+            string.Join("\n", imports)
             + "\npublic static class __HotReplSnippet { public static object? Run() { "
             + code
             + "\nreturn null; } }";
         var syntaxTree = CSharpSyntaxTree.ParseText(source, cancellationToken: cancellationToken);
-        var references = AppDomain.CurrentDomain.GetAssemblies()
+        var references = AppDomain
+            .CurrentDomain.GetAssemblies()
             .Concat(_host.AdditionalAssemblies)
             .Concat(_referencedAssemblies)
             .Where(a => !a.IsDynamic && !string.IsNullOrEmpty(SafeLocation(a)))
@@ -132,12 +149,15 @@ public sealed class RoslynIsolatedEvaluator : ICodeEvaluator
             "HotRepl.Isolated.Snippet",
             new[] { syntaxTree },
             references,
-            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
+        );
 
         using var pe = new MemoryStream();
         var emit = compilation.Emit(pe, cancellationToken: cancellationToken);
         if (!emit.Success)
-            throw new CompilationFailedException(string.Join(Environment.NewLine, emit.Diagnostics));
+            throw new CompilationFailedException(
+                string.Join(Environment.NewLine, emit.Diagnostics)
+            );
 
         pe.Position = 0;
         var alc = new AssemblyLoadContext("HotRepl.Isolated", isCollectible: true);
@@ -177,7 +197,8 @@ public sealed class RoslynIsolatedEvaluator : ICodeEvaluator
 
     private sealed class CompilationFailedException : Exception
     {
-        public CompilationFailedException(string message) : base(message) { }
+        public CompilationFailedException(string message)
+            : base(message) { }
     }
 }
 #endif

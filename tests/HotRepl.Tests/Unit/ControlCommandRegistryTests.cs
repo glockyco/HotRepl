@@ -29,7 +29,9 @@ public class ControlCommandRegistryTests
                 kind: ControlCommandKind.Synchronous,
                 mutatesState: false,
                 argsSchema: JObject.Parse("{\"type\":\"object\"}"),
-                resultSchema: JObject.Parse("{\"type\":\"object\"}")));
+                resultSchema: JObject.Parse("{\"type\":\"object\"}")
+            )
+        );
 
         Assert.Equal("name", ex.ParamName);
     }
@@ -44,7 +46,9 @@ public class ControlCommandRegistryTests
                 kind: ControlCommandKind.Synchronous,
                 mutatesState: false,
                 argsSchema: JObject.Parse("{\"type\":\"object\"}"),
-                resultSchema: JObject.Parse("{\"type\":\"object\"}")));
+                resultSchema: JObject.Parse("{\"type\":\"object\"}")
+            )
+        );
 
         Assert.Equal("version", ex.ParamName);
     }
@@ -60,17 +64,31 @@ public class ControlCommandRegistryTests
     private sealed class TestHost : IReplHost
     {
         public ReplConfig Config { get; } = new();
-        public HostInfo HostInfo { get; } = new() { Name = "Tests", Version = "1", Runtime = ".NET", Platform = "Unit" };
-        public IReadOnlyList<EvaluatorCapabilities> AvailableEvaluators { get; } = Array.Empty<EvaluatorCapabilities>();
+        public HostInfo HostInfo { get; } =
+            new()
+            {
+                Name = "Tests",
+                Version = "1",
+                Runtime = ".NET",
+                Platform = "Unit",
+            };
+        public IReadOnlyList<EvaluatorCapabilities> AvailableEvaluators { get; } =
+            Array.Empty<EvaluatorCapabilities>();
         public string DefaultEvaluatorName => "none";
         public IControlCommandRegistry ControlCommands => EmptyControlCommandRegistry.Instance;
         public IReadOnlyList<Assembly> AdditionalAssemblies { get; } = Array.Empty<Assembly>();
         public IReadOnlyList<string> AdditionalUsings { get; } = Array.Empty<string>();
         public string[] AdditionalHelperSignatures { get; } = Array.Empty<string>();
-        public ICodeEvaluator CreateEvaluator(string evaluatorName) => throw new NotSupportedException();
+
+        public ICodeEvaluator CreateEvaluator(string evaluatorName) =>
+            throw new NotSupportedException();
+
         public void LogInfo(string message) { }
+
         public void LogDebug(string message) { }
+
         public void LogWarning(string message) { }
+
         public void LogError(string message, Exception? ex = null) { }
     }
 }

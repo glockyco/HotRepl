@@ -16,10 +16,15 @@ public static class ReplConfigExposurePolicy
         var loopbackOnly = IsLoopback(config.BindHost);
         if (!loopbackOnly && string.IsNullOrWhiteSpace(config.ControlAuthToken))
         {
-            warnings.Add($"HotRepl BindHost '{config.BindHost}' is reachable beyond loopback and ControlAuthToken is empty. This exposes the REPL/control socket to any client that can reach the host.");
+            warnings.Add(
+                $"HotRepl BindHost '{config.BindHost}' is reachable beyond loopback and ControlAuthToken is empty. This exposes the REPL/control socket to any client that can reach the host."
+            );
         }
 
-        return new ExposureValidationResult(loopbackOnly && warnings.Count == 0, warnings.ToArray());
+        return new ExposureValidationResult(
+            loopbackOnly && warnings.Count == 0,
+            warnings.ToArray()
+        );
     }
 
     /// <summary>Requires control-plane authentication when a token is configured.</summary>

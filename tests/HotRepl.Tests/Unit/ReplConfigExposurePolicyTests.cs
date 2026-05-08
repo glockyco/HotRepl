@@ -24,7 +24,10 @@ public sealed class ReplConfigExposurePolicyTests
         var result = ReplConfigExposurePolicy.Validate(config);
 
         Assert.False(result.IsSafeDefault);
-        Assert.Contains(result.Warnings, warning => warning.Contains("0.0.0.0") && warning.Contains("ControlAuthToken"));
+        Assert.Contains(
+            result.Warnings,
+            warning => warning.Contains("0.0.0.0") && warning.Contains("ControlAuthToken")
+        );
     }
 
     [Fact]

@@ -23,7 +23,8 @@ internal sealed class ControlJobManager
         string requestId,
         string? leaseId,
         string? idempotencyKey,
-        Func<ControlJobExecutionContext, CancellationToken, ValueTask<ControlCommandResult>> execute)
+        Func<ControlJobExecutionContext, CancellationToken, ValueTask<ControlCommandResult>> execute
+    )
     {
         if (execute == null)
             throw new ArgumentNullException(nameof(execute));
@@ -53,8 +54,16 @@ internal sealed class ControlJobManager
 
         try
         {
-            var context = new ControlJobExecutionContext(state.JobId, state.RequestId, state.LeaseId, state.IdempotencyKey, Report);
-            var result = await state.Execute(context, state.Cancellation.Token).ConfigureAwait(false);
+            var context = new ControlJobExecutionContext(
+                state.JobId,
+                state.RequestId,
+                state.LeaseId,
+                state.IdempotencyKey,
+                Report
+            );
+            var result = await state
+                .Execute(context, state.Cancellation.Token)
+                .ConfigureAwait(false);
             lock (_sync)
             {
                 state.Result = result.Result;
@@ -77,7 +86,8 @@ internal sealed class ControlJobManager
                     "handlerException",
                     ex.Message,
                     Retryable: false,
-                    Details: new JObject());
+                    Details: new JObject()
+                );
                 TransitionLocked(state, ControlJobStates.Failed, message: ex.Message);
             }
         }
@@ -118,7 +128,8 @@ internal sealed class ControlJobManager
                 state.Result,
                 state.Artifacts,
                 state.Diagnostics,
-                state.Error);
+                state.Error
+            );
         }
     }
 
@@ -131,12 +142,8 @@ internal sealed class ControlJobManager
         }
     }
 
-    private static ControlJob Snapshot(JobState state) => new(
-        state.JobId,
-        state.RequestId,
-        state.LeaseId,
-        state.IdempotencyKey,
-        state.State);
+    private static ControlJob Snapshot(JobState state) =>
+        new(state.JobId, state.RequestId, state.LeaseId, state.IdempotencyKey, state.State);
 
     private JobState RequireJob(string jobId)
     {
@@ -151,15 +158,25 @@ internal sealed class ControlJobManager
         AddEventLocked(state, nextState, state.Progress, message);
     }
 
-    private void AddEventLocked(JobState state, string eventState, JObject? progress, string? message)
+    private void AddEventLocked(
+        JobState state,
+        string eventState,
+        JObject? progress,
+        string? message
+    )
     {
-        state.Events.Enqueue(new ControlJobEvent(state.JobId, ++state.NextSequence, eventState, progress, message));
+        state.Events.Enqueue(
+            new ControlJobEvent(state.JobId, ++state.NextSequence, eventState, progress, message)
+        );
         while (state.Events.Count > _maxEventBuffer)
             state.Events.Dequeue();
     }
 
     private static bool IsTerminal(string state) =>
-        state is ControlJobStates.Completed or ControlJobStates.Failed or ControlJobStates.Cancelled;
+        state
+            is ControlJobStates.Completed
+                or ControlJobStates.Failed
+                or ControlJobStates.Cancelled;
 
     private sealed class JobState
     {
@@ -168,7 +185,12 @@ internal sealed class ControlJobManager
             string requestId,
             string? leaseId,
             string? idempotencyKey,
-            Func<ControlJobExecutionContext, CancellationToken, ValueTask<ControlCommandResult>> execute)
+            Func<
+                ControlJobExecutionContext,
+                CancellationToken,
+                ValueTask<ControlCommandResult>
+            > execute
+        )
         {
             JobId = jobId;
             RequestId = requestId;
@@ -181,7 +203,11 @@ internal sealed class ControlJobManager
         public string RequestId { get; }
         public string? LeaseId { get; }
         public string? IdempotencyKey { get; }
-        public Func<ControlJobExecutionContext, CancellationToken, ValueTask<ControlCommandResult>> Execute { get; }
+        public Func<
+            ControlJobExecutionContext,
+            CancellationToken,
+            ValueTask<ControlCommandResult>
+        > Execute { get; }
         public CancellationTokenSource Cancellation { get; } = new();
         public string State { get; set; } = ControlJobStates.Accepted;
         public long NextSequence { get; set; }
@@ -199,7 +225,9 @@ internal sealed record ControlJobExecutionContext(
     string RequestId,
     string? LeaseId,
     string? IdempotencyKey,
-    Action<JObject?, string?> Report)
+    Action<JObject?, string?> Report
+)
 {
-    public ControlCommandContext ToCommandContext(TimeSpan? timeout = null) => new(RequestId, LeaseId, IdempotencyKey, timeout);
+    public ControlCommandContext ToCommandContext(TimeSpan? timeout = null) =>
+        new(RequestId, LeaseId, IdempotencyKey, timeout);
 }

@@ -8,4 +8,5 @@ public sealed record ArtifactRef(
     string ContentType,
     long ByteSize,
     string Sha256,
-    bool Finalized);
+    bool Finalized
+);

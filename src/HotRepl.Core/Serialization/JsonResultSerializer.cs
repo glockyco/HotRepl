@@ -37,8 +37,15 @@ internal sealed class JsonResultSerializer : IResultSerializer
         {
             // Last-resort: at least tell the caller something went wrong.
             try
-            { return JsonConvert.SerializeObject(new { error = $"Serialization failed: {ex.Message}" }); }
-            catch { return "{\"error\":\"Serialization failed\"}"; }
+            {
+                return JsonConvert.SerializeObject(
+                    new { error = $"Serialization failed: {ex.Message}" }
+                );
+            }
+            catch
+            {
+                return "{\"error\":\"Serialization failed\"}";
+            }
         }
     }
 

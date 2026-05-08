@@ -25,7 +25,6 @@ public static class AssemblyFilter
     {
         // mcs autocomplete artifact
         "completions",
-
         // Stdlib duplicates implicitly loaded by Mono.CSharp.Evaluator
         "mscorlib",
         "System",
@@ -48,8 +47,10 @@ public static class AssemblyFilter
     // Ticks is a 17-19 digit integer; values below ~630000000000000000 (~year 2000)
     // are implausible timestamps, avoiding false positives on assembly names that
     // happen to end with a dash and digits.
-    private static readonly Regex ScriptEnginePattern =
-        new(@"^(.+)-(\d{17,19})$", RegexOptions.Compiled);
+    private static readonly Regex ScriptEnginePattern = new(
+        @"^(.+)-(\d{17,19})$",
+        RegexOptions.Compiled
+    );
     private const long MinPlausibleTicks = 630000000000000000L; // ~year 2000
 
     /// <summary>Returns true when the named assembly should be skipped during referencing.</summary>
@@ -62,7 +63,11 @@ public static class AssemblyFilter
     public static bool TryParseScriptEngineName(string name, out string baseName, out long ticks)
     {
         var match = ScriptEnginePattern.Match(name);
-        if (match.Success && long.TryParse(match.Groups[2].Value, out ticks) && ticks > MinPlausibleTicks)
+        if (
+            match.Success
+            && long.TryParse(match.Groups[2].Value, out ticks)
+            && ticks > MinPlausibleTicks
+        )
         {
             baseName = match.Groups[1].Value;
             return true;
@@ -94,9 +99,11 @@ public static class AssemblyFilter
             var otherName = asm.GetName().Name;
             if (string.IsNullOrEmpty(otherName))
                 continue;
-            if (TryParseScriptEngineName(otherName, out var otherBase, out var otherTicks)
+            if (
+                TryParseScriptEngineName(otherName, out var otherBase, out var otherTicks)
                 && string.Equals(baseName, otherBase, StringComparison.OrdinalIgnoreCase)
-                && otherTicks > candidateTicks)
+                && otherTicks > candidateTicks
+            )
             {
                 return true;
             }

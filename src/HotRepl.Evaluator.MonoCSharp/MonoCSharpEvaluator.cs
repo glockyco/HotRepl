@@ -126,8 +126,11 @@ public sealed class MonoCSharpEvaluator : ICodeEvaluator, IDisposable
 
             if (_errors.Length > 0)
             {
-                return EvalOutcome.CompileError(_errors.ToString().Trim(),
-                    Stdout(capture), sw.ElapsedMilliseconds);
+                return EvalOutcome.CompileError(
+                    _errors.ToString().Trim(),
+                    Stdout(capture),
+                    sw.ElapsedMilliseconds
+                );
             }
 
             if (compiled != null)
@@ -136,7 +139,12 @@ public sealed class MonoCSharpEvaluator : ICodeEvaluator, IDisposable
                 compiled.Invoke(ref result);
                 sw.Stop();
                 return result != null
-                    ? EvalOutcome.Ok(result, result.GetType().FullName, Stdout(capture), sw.ElapsedMilliseconds)
+                    ? EvalOutcome.Ok(
+                        result,
+                        result.GetType().FullName,
+                        Stdout(capture),
+                        sw.ElapsedMilliseconds
+                    )
                     : EvalOutcome.OkVoid(Stdout(capture), sw.ElapsedMilliseconds);
             }
 
@@ -158,7 +166,12 @@ public sealed class MonoCSharpEvaluator : ICodeEvaluator, IDisposable
         catch (Exception ex)
         {
             sw.Stop();
-            return EvalOutcome.RuntimeError(ex.Message, ex.StackTrace, Stdout(capture), sw.ElapsedMilliseconds);
+            return EvalOutcome.RuntimeError(
+                ex.Message,
+                ex.StackTrace,
+                Stdout(capture),
+                sw.ElapsedMilliseconds
+            );
         }
         finally
         {
@@ -182,7 +195,8 @@ public sealed class MonoCSharpEvaluator : ICodeEvaluator, IDisposable
         var sw = Stopwatch.StartNew();
         try
         {
-            var slice = cursorPos >= 0 && cursorPos < code.Length ? code.Substring(0, cursorPos) : code;
+            var slice =
+                cursorPos >= 0 && cursorPos < code.Length ? code.Substring(0, cursorPos) : code;
             var completions = _evaluator!.GetCompletions(slice, out _) ?? Array.Empty<string>();
             return new CompletionResult(completions, sw.ElapsedMilliseconds);
         }
@@ -202,8 +216,12 @@ public sealed class MonoCSharpEvaluator : ICodeEvaluator, IDisposable
     {
         _errors!.Clear();
         try
-        { _evaluator!.Compile(code); }
-        catch { /* Silently tolerate — e.g. UnityEngine not present in test builds. */ }
+        {
+            _evaluator!.Compile(code);
+        }
+        catch
+        { /* Silently tolerate — e.g. UnityEngine not present in test builds. */
+        }
     }
 
     // ── Private ───────────────────────────────────────────────────────────────
@@ -315,6 +333,7 @@ public sealed class MonoCSharpEvaluator : ICodeEvaluator, IDisposable
     private sealed class SbReportPrinter : ReportPrinter
     {
         private readonly StringBuilder _sb;
+
         public SbReportPrinter(StringBuilder sb) => _sb = sb;
 
         public override void Print(AbstractMessage msg, bool showFullPath)

@@ -4,14 +4,20 @@ using Il2CppInterop.Runtime.Injection;
 using MelonLoader;
 using UnityEngine;
 
-[assembly: MelonInfo(typeof(HotRepl.Host.MelonLoader.ReplMod), "HotRepl", "0.1.0", "HotRepl Contributors")]
+[assembly: MelonInfo(
+    typeof(HotRepl.Host.MelonLoader.ReplMod),
+    "HotRepl",
+    "0.1.0",
+    "HotRepl Contributors"
+)]
 
 namespace HotRepl.Host.MelonLoader;
 
 [System.Diagnostics.CodeAnalysis.SuppressMessage(
     "Design",
     "CA1001:Types that own disposable fields should be disposable",
-    Justification = "MelonLoader owns the mod lifecycle; OnDeinitializeMelon disposes the engine.")]
+    Justification = "MelonLoader owns the mod lifecycle; OnDeinitializeMelon disposes the engine."
+)]
 public sealed class ReplMod : MelonMod
 {
     private ReplEngine _engine;
@@ -76,6 +82,7 @@ public sealed class ReplMod : MelonMod
 
     public sealed class CoroutineHostBehaviour : MonoBehaviour
     {
-        public CoroutineHostBehaviour(IntPtr nativePointer) : base(nativePointer) { }
+        public CoroutineHostBehaviour(IntPtr nativePointer)
+            : base(nativePointer) { }
     }
 }
