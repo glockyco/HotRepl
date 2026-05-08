@@ -128,17 +128,3 @@ internal sealed class ControlSessionManager
         DateTimeOffset CreatedAt
     );
 }
-
-internal sealed record ControlAuthResult(bool Ok, string? SessionId, ControlCommandError? Error)
-{
-    public static ControlAuthResult Succeeded(string sessionId) => new(true, sessionId, null);
-
-    public static ControlAuthResult Failed(ControlCommandError error) => new(false, null, error);
-}
-
-internal sealed record ControlLeaseResult(bool Ok, string? LeaseId, ControlCommandError? Error)
-{
-    public static ControlLeaseResult Succeeded(string leaseId) => new(true, leaseId, null);
-
-    public static ControlLeaseResult Failed(ControlCommandError error) => new(false, null, error);
-}

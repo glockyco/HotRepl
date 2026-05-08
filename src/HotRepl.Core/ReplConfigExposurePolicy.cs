@@ -45,6 +45,3 @@ public static class ReplConfigExposurePolicy
             || string.Equals(bindHost, "::1", StringComparison.OrdinalIgnoreCase);
     }
 }
-
-/// <summary>Result of HotRepl network exposure validation.</summary>
-public sealed record ExposureValidationResult(bool IsSafeDefault, IReadOnlyList<string> Warnings);

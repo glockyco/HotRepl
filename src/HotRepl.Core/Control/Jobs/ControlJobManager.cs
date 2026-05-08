@@ -219,15 +219,3 @@ internal sealed class ControlJobManager
         public Queue<ControlJobEvent> Events { get; } = new();
     }
 }
-
-internal sealed record ControlJobExecutionContext(
-    string JobId,
-    string RequestId,
-    string? LeaseId,
-    string? IdempotencyKey,
-    Action<JObject?, string?> Report
-)
-{
-    public ControlCommandContext ToCommandContext(TimeSpan? timeout = null) =>
-        new(RequestId, LeaseId, IdempotencyKey, timeout);
-}

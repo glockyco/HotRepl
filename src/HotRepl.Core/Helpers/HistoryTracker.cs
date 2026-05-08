@@ -33,19 +33,3 @@ internal sealed class HistoryTracker
         return result;
     }
 }
-
-internal sealed class HistoryEntry
-{
-    public string Code { get; }
-    public string? Value { get; }
-    public string? Error { get; }
-    public string Timestamp { get; }
-
-    public HistoryEntry(string code, string? value, string? error)
-    {
-        Code = code;
-        Value = value;
-        Error = error;
-        Timestamp = DateTime.UtcNow.ToString("o");
-    }
-}
