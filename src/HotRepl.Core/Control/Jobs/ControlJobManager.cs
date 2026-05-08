@@ -48,7 +48,7 @@ internal sealed class ControlJobManager
             state = RequireJob(jobId);
             if (IsTerminal(state.State))
                 return;
-            if (state.State == ControlJobStates.Accepted)
+            if (string.Equals(state.State, ControlJobStates.Accepted, StringComparison.Ordinal))
                 TransitionLocked(state, ControlJobStates.Running, message: null);
         }
 
@@ -107,7 +107,10 @@ internal sealed class ControlJobManager
         lock (_sync)
         {
             var state = RequireJob(jobId);
-            if (IsTerminal(state.State) || state.State == ControlJobStates.Cancelling)
+            if (
+                IsTerminal(state.State)
+                || string.Equals(state.State, ControlJobStates.Cancelling, StringComparison.Ordinal)
+            )
                 return false;
 
             TransitionLocked(state, ControlJobStates.Cancelling, message: null);

@@ -20,7 +20,9 @@ internal sealed class SubscriptionManager
     private const int MaxSubscriptions = 8;
     private const int MaxConsecutiveErrors = 3;
 
-    private readonly Dictionary<string, SubscriptionState> _subscriptions = new();
+    private readonly Dictionary<string, SubscriptionState> _subscriptions = new(
+        StringComparer.Ordinal
+    );
     private readonly ReplConfig _config;
 
     public SubscriptionManager(ReplConfig config) => _config = config;
@@ -98,7 +100,10 @@ internal sealed class SubscriptionManager
                 }
 
                 // onChange: suppress if value hasn't changed since last delivery.
-                if (sub.OnChange && serialized == sub.LastValue)
+                if (
+                    sub.OnChange
+                    && string.Equals(serialized, sub.LastValue, StringComparison.Ordinal)
+                )
                     continue;
 
                 sub.LastValue = serialized;

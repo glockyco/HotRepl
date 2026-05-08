@@ -47,7 +47,7 @@ public static class Repl
     {
         return _history
             .GetRecent(limit)
-            .Select(e => new Dictionary<string, object?>
+            .Select(e => new Dictionary<string, object?>(StringComparer.Ordinal)
             {
                 ["code"] = e.Code,
                 ["value"] = e.Value,
@@ -74,13 +74,13 @@ public static class Repl
             | BindingFlags.Static
             | BindingFlags.DeclaredOnly;
 
-        return new Dictionary<string, object?>
+        return new Dictionary<string, object?>(StringComparer.Ordinal)
         {
             ["type"] = type.FullName ?? type.Name,
             ["baseType"] = type.BaseType?.FullName ?? type.BaseType?.Name,
             ["interfaces"] = type.GetInterfaces().Select(i => i.FullName ?? i.Name).ToArray(),
             ["properties"] = type.GetProperties(flags)
-                .Select(p => new Dictionary<string, object>
+                .Select(p => new Dictionary<string, object>(StringComparer.Ordinal)
                 {
                     ["name"] = p.Name,
                     ["type"] = p.PropertyType.FullName ?? p.PropertyType.Name,
@@ -89,7 +89,7 @@ public static class Repl
                 })
                 .ToArray(),
             ["fields"] = type.GetFields(flags)
-                .Select(f => new Dictionary<string, object>
+                .Select(f => new Dictionary<string, object>(StringComparer.Ordinal)
                 {
                     ["name"] = f.Name,
                     ["type"] = f.FieldType.FullName ?? f.FieldType.Name,
@@ -104,12 +104,12 @@ public static class Repl
                 )
                 .Where(m =>
                     !m.IsSpecialName
-                    && m.Name != "Equals"
-                    && m.Name != "GetHashCode"
-                    && m.Name != "GetType"
-                    && m.Name != "ToString"
+                    && !string.Equals(m.Name, "Equals", StringComparison.Ordinal)
+                    && !string.Equals(m.Name, "GetHashCode", StringComparison.Ordinal)
+                    && !string.Equals(m.Name, "GetType", StringComparison.Ordinal)
+                    && !string.Equals(m.Name, "ToString", StringComparison.Ordinal)
                 )
-                .Select(m => new Dictionary<string, object>
+                .Select(m => new Dictionary<string, object>(StringComparer.Ordinal)
                 {
                     ["name"] = m.Name,
                     ["returnType"] = m.ReturnType.FullName ?? m.ReturnType.Name,
@@ -153,20 +153,23 @@ public static class Repl
 
         // Circular reference guard (reference types only).
         if (!type.IsValueType && !visited.Add(obj))
-            return new Dictionary<string, object?>
+            return new Dictionary<string, object?>(StringComparer.Ordinal)
             {
                 ["_type"] = type.FullName,
                 ["_circular"] = true,
             };
 
         if (depth <= 0)
-            return new Dictionary<string, object?>
+            return new Dictionary<string, object?>(StringComparer.Ordinal)
             {
                 ["_type"] = type.FullName,
                 ["_truncated"] = true,
             };
 
-        var result = new Dictionary<string, object?> { ["_type"] = type.FullName };
+        var result = new Dictionary<string, object?>(StringComparer.Ordinal)
+        {
+            ["_type"] = type.FullName,
+        };
 
         try
         {
@@ -213,7 +216,10 @@ public static class Repl
             }
             catch (Exception ex)
             {
-                result[prop.Name] = new Dictionary<string, object?> { ["_error"] = ex.Message };
+                result[prop.Name] = new Dictionary<string, object?>(StringComparer.Ordinal)
+                {
+                    ["_error"] = ex.Message,
+                };
                 childCount++;
             }
         }
@@ -237,7 +243,10 @@ public static class Repl
             }
             catch (Exception ex)
             {
-                result[field.Name] = new Dictionary<string, object?> { ["_error"] = ex.Message };
+                result[field.Name] = new Dictionary<string, object?>(StringComparer.Ordinal)
+                {
+                    ["_error"] = ex.Message,
+                };
                 childCount++;
             }
         }

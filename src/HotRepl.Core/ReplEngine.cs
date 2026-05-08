@@ -57,7 +57,7 @@ public sealed class ReplEngine : IDisposable
 
     // Cancel: populated by Fleck threads via CancelEval(); checked by Tick().
     // ConcurrentDictionary used as a concurrent set (value is ignored).
-    private readonly ConcurrentDictionary<string, bool> _cancelledIds = new();
+    private readonly ConcurrentDictionary<string, bool> _cancelledIds = new(StringComparer.Ordinal);
 
     // ── Watchdog state — protected by _abortLock ─────────────────────────────
     private readonly object _abortLock = new();
@@ -210,10 +210,12 @@ public sealed class ReplEngine : IDisposable
 
         lock (_abortLock)
         {
-            if (_evalInProgress && _currentEvalId == id)
+            if (_evalInProgress && string.Equals(_currentEvalId, id, StringComparison.Ordinal))
             {
                 if (_evaluator?.Capabilities.TimeoutMode == TimeoutMode.HardAbort)
+#pragma warning disable MA0035 // HardAbort timeout mode is the documented design — see AGENTS.md "Evaluator timeout is capability-driven".
                     _mainThread?.Abort();
+#pragma warning restore MA0035
                 else if (_evaluator?.Capabilities.TimeoutMode == TimeoutMode.Cooperative)
                     _currentCancellation?.Cancel();
             }
@@ -303,7 +305,9 @@ public sealed class ReplEngine : IDisposable
                         {
                             _timedOut = true;
                             if (_evaluator!.Capabilities.TimeoutMode == TimeoutMode.HardAbort)
+#pragma warning disable MA0035 // HardAbort timeout mode is the documented design — see AGENTS.md "Evaluator timeout is capability-driven".
                                 _mainThread?.Abort();
+#pragma warning restore MA0035
                             else if (_evaluator.Capabilities.TimeoutMode == TimeoutMode.Cooperative)
                                 cancellation.Cancel();
                         }
@@ -516,7 +520,11 @@ public sealed class ReplEngine : IDisposable
 
     private void HandleSelectEvaluator(SelectEvaluatorCmd cmd)
     {
-        if (!_host.AvailableEvaluators.Any(e => e.Name == cmd.Evaluator))
+        if (
+            !_host.AvailableEvaluators.Any(e =>
+                string.Equals(e.Name, cmd.Evaluator, StringComparison.Ordinal)
+            )
+        )
         {
             _clients!.SendTo(
                 cmd.ConnectionId,
@@ -719,7 +727,7 @@ public sealed class ReplEngine : IDisposable
             var errorKind = outcome.ErrorKind ?? ErrorKind.Runtime;
             var errorMessage = outcome.ErrorMessage ?? "Unknown error.";
 
-            if (errorKind == ErrorKind.Runtime)
+            if (string.Equals(errorKind, ErrorKind.Runtime, StringComparison.Ordinal))
                 errorMessage = AppendCrossAssemblyHint(errorMessage);
 
             json = MessageSerializer.Serialize(

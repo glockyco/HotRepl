@@ -182,7 +182,7 @@ internal sealed class ControlCommandRouter
             );
         }
 
-        if (status.State == ControlJobStates.Failed)
+        if (string.Equals(status.State, ControlJobStates.Failed, StringComparison.Ordinal))
         {
             return new CommandErrorMessage
             {
@@ -202,7 +202,7 @@ internal sealed class ControlCommandRouter
             };
         }
 
-        if (status.State == ControlJobStates.Cancelled)
+        if (string.Equals(status.State, ControlJobStates.Cancelled, StringComparison.Ordinal))
             return CommandError(
                 message.Id,
                 "cancelled",

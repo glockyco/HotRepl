@@ -5,7 +5,7 @@ namespace HotRepl.Protocol;
 internal sealed class AssemblyReloadMessage
 {
     [JsonProperty("type")]
-    public string Type => MessageType.AssemblyReload;
+    public string Type { get; } = MessageType.AssemblyReload;
 
     [JsonProperty("assembly")]
     public string? Assembly { get; set; }
