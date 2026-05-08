@@ -17,10 +17,22 @@ public static class RoslynEvaluatorFactory
 
     public static ICodeEvaluator Create(string evaluatorName, IReplHost host)
     {
-        if (evaluatorName == RoslynScriptEvaluator.ScriptCapabilities.Name)
+        if (
+            string.Equals(
+                evaluatorName,
+                RoslynScriptEvaluator.ScriptCapabilities.Name,
+                StringComparison.Ordinal
+            )
+        )
             return new RoslynScriptEvaluator(host);
 #if NET6_0_OR_GREATER
-        if (evaluatorName == RoslynIsolatedEvaluator.IsolatedCapabilities.Name)
+        if (
+            string.Equals(
+                evaluatorName,
+                RoslynIsolatedEvaluator.IsolatedCapabilities.Name,
+                StringComparison.Ordinal
+            )
+        )
             return new RoslynIsolatedEvaluator(host);
 
 #endif

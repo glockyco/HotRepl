@@ -111,10 +111,7 @@ public sealed class RoslynIsolatedEvaluator : ICodeEvaluator
     public void RunInternal(string code)
     {
         var trimmed = code.Trim();
-        if (
-            trimmed.StartsWith("using ", StringComparison.Ordinal)
-            && trimmed.EndsWith(";", StringComparison.Ordinal)
-        )
+        if (trimmed.StartsWith("using ", StringComparison.Ordinal) && trimmed.EndsWith(';'))
             _imports.Add(
                 trimmed.Substring("using ".Length, trimmed.Length - "using ".Length - 1).Trim()
             );
@@ -128,7 +125,7 @@ public sealed class RoslynIsolatedEvaluator : ICodeEvaluator
         var imports = DefaultImports
             .Concat(_host.AdditionalUsings)
             .Concat(_imports)
-            .Distinct()
+            .Distinct(StringComparer.Ordinal)
             .Select(ns => $"using {ns};");
         var source =
             string.Join("\n", imports)

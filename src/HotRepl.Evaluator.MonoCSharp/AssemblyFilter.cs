@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Reflection;
 using System.Text.RegularExpressions;
 
@@ -49,7 +50,8 @@ public static class AssemblyFilter
     // happen to end with a dash and digits.
     private static readonly Regex ScriptEnginePattern = new(
         @"^(.+)-(\d{17,19})$",
-        RegexOptions.Compiled
+        RegexOptions.Compiled | RegexOptions.ExplicitCapture,
+        TimeSpan.FromSeconds(1)
     );
     private const long MinPlausibleTicks = 630000000000000000L; // ~year 2000
 
@@ -65,7 +67,12 @@ public static class AssemblyFilter
         var match = ScriptEnginePattern.Match(name);
         if (
             match.Success
-            && long.TryParse(match.Groups[2].Value, out ticks)
+            && long.TryParse(
+                match.Groups[2].Value,
+                NumberStyles.Integer,
+                CultureInfo.InvariantCulture,
+                out ticks
+            )
             && ticks > MinPlausibleTicks
         )
         {

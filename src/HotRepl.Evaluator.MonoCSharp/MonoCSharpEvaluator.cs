@@ -122,33 +122,7 @@ public sealed class MonoCSharpEvaluator : ICodeEvaluator, IDisposable
         Console.SetOut(capture);
         try
         {
-            CompiledMethod? compiled = _evaluator!.Compile(code);
-
-            if (_errors.Length > 0)
-            {
-                return EvalOutcome.CompileError(
-                    _errors.ToString().Trim(),
-                    Stdout(capture),
-                    sw.ElapsedMilliseconds
-                );
-            }
-
-            if (compiled != null)
-            {
-                object? result = null;
-                compiled.Invoke(ref result);
-                sw.Stop();
-                return result != null
-                    ? EvalOutcome.Ok(
-                        result,
-                        result.GetType().FullName,
-                        Stdout(capture),
-                        sw.ElapsedMilliseconds
-                    )
-                    : EvalOutcome.OkVoid(Stdout(capture), sw.ElapsedMilliseconds);
-            }
-
-            return EvalOutcome.OkVoid(Stdout(capture), sw.ElapsedMilliseconds);
+            return EvaluateCaptured(code, capture, sw);
         }
         catch (ThreadAbortException)
         {
@@ -182,6 +156,37 @@ public sealed class MonoCSharpEvaluator : ICodeEvaluator, IDisposable
             Console.SetOut(previousOut);
             capture.Dispose();
         }
+    }
+
+    private EvalOutcome EvaluateCaptured(string code, System.IO.StringWriter capture, Stopwatch sw)
+    {
+        CompiledMethod? compiled = _evaluator!.Compile(code);
+
+        if (_errors!.Length > 0)
+        {
+            return EvalOutcome.CompileError(
+                _errors.ToString().Trim(),
+                Stdout(capture),
+                sw.ElapsedMilliseconds
+            );
+        }
+
+        if (compiled != null)
+        {
+            object? result = null;
+            compiled.Invoke(ref result);
+            sw.Stop();
+            return result != null
+                ? EvalOutcome.Ok(
+                    result,
+                    result.GetType().FullName,
+                    Stdout(capture),
+                    sw.ElapsedMilliseconds
+                )
+                : EvalOutcome.OkVoid(Stdout(capture), sw.ElapsedMilliseconds);
+        }
+
+        return EvalOutcome.OkVoid(Stdout(capture), sw.ElapsedMilliseconds);
     }
 
     private static string? Stdout(System.IO.StringWriter w)
