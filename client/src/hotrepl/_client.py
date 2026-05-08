@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import asyncio
 import json
-import sys
+import logging
 import time
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
+    from types import TracebackType
     from typing import Self
 
 import websockets
@@ -29,6 +30,8 @@ from hotrepl._types import (
 DEFAULT_URL = "ws://localhost:18590"
 CLIENT_TIMEOUT_S = 30.0  # Hard ceiling on any single round-trip
 
+_log = logging.getLogger("hotrepl.client")
+
 
 class EvalError(Exception):
     """Raised when the server returns an eval_error response."""
@@ -43,7 +46,6 @@ class ServerUnreachableError(Exception):
     """Cannot reach the HotRepl server."""
 
 
-
 class ControlCommandError(Exception):
     """Raised when the server returns a command_error response."""
 
@@ -51,6 +53,7 @@ class ControlCommandError(Exception):
         self.error = error
         self.diagnostics = diagnostics or []
         super().__init__(error.message)
+
 
 class Client:
     """Async WebSocket client for HotRepl eval requests."""
@@ -73,7 +76,7 @@ class Client:
         self,
         exc_type: type[BaseException] | None,
         exc_val: BaseException | None,
-        exc_tb: Any,
+        exc_tb: TracebackType | None,
     ) -> None:
         await self.close()
 
@@ -89,8 +92,8 @@ class Client:
         except (OSError, ConnectionRefusedError) as exc:
             raise ServerUnreachableError("Game not running or HotRepl not loaded") from exc
 
-        assert self._ws is not None, "call connect() first"
-        raw = await asyncio.wait_for(self._ws.recv(), timeout=CLIENT_TIMEOUT_S)
+        ws = self._require_ws()
+        raw = await asyncio.wait_for(ws.recv(), timeout=CLIENT_TIMEOUT_S)
         self.handshake = json.loads(raw)
         return self.handshake
 
@@ -98,6 +101,12 @@ class Client:
         if self._ws is not None:
             await self._ws.close()
             self._ws = None
+
+    def _require_ws(self) -> websockets.ClientConnection:
+        """Return the live websocket or raise if connect() was not called."""
+        if self._ws is None:
+            raise RuntimeError("Client is not connected; call connect() first.")
+        return self._ws
 
     # -- commands --
 
@@ -116,7 +125,7 @@ class Client:
         }
         # Client-side timeout: server timeout + 2 s margin
         client_timeout = (timeout_ms / 1000) + 2.0
-        return await self._request(payload, msg_id, timeout=client_timeout)
+        return await self._request(payload, msg_id, budget_s=client_timeout)
 
     async def reset(self) -> dict[str, Any]:
         """Reset the server-side REPL state."""
@@ -139,8 +148,8 @@ class Client:
         message id and no response is expected.
         """
         payload = {"type": "cancel", "id": eval_id}
-        assert self._ws is not None, "call connect() first"
-        await self._ws.send(json.dumps(payload))
+        ws = self._require_ws()
+        await ws.send(json.dumps(payload))
 
     async def select_evaluator(self, evaluator: str) -> dict[str, Any]:
         """Select a server-side evaluator by advertised capability name."""
@@ -166,7 +175,8 @@ class Client:
     async def acquire_lease(self, client_name: str) -> LeaseResult:
         if self.session_id is None:
             await self.authenticate()
-        assert self.session_id is not None
+        if self.session_id is None:
+            raise RuntimeError("Authentication did not produce a session id.")
         msg_id = self._next_id()
         payload = {
             "type": "lease_acquire",
@@ -281,19 +291,18 @@ class Client:
             "limit": limit,
             "timeoutMs": timeout_ms,
         }
-        assert self._ws is not None, "call connect() first"
-        await self._ws.send(json.dumps(payload))
+        ws = self._require_ws()
+        await ws.send(json.dumps(payload))
 
         try:
             while True:
-                raw = await asyncio.wait_for(self._ws.recv(), timeout=CLIENT_TIMEOUT_S)
+                raw = await asyncio.wait_for(ws.recv(), timeout=CLIENT_TIMEOUT_S)
                 resp: dict[str, Any] = json.loads(raw)
 
                 # Unsolicited server notification — log and keep waiting.
                 if resp.get("type") == "assembly_reload":
                     asm = resp.get("assembly") or "unknown"
-                    msg = f"[HotRepl] Assembly reloaded: {asm}. REPL session reset."
-                    print(msg, file=sys.stderr)
+                    _log.warning("Assembly reloaded: %s. REPL session reset.", asm)
                     continue
 
                 if resp.get("id") != msg_id:
@@ -342,28 +351,27 @@ class Client:
         return payload
 
     async def _request(
-        self, payload: dict[str, Any], msg_id: str, *, timeout: float = CLIENT_TIMEOUT_S
+        self, payload: dict[str, Any], msg_id: str, *, budget_s: float = CLIENT_TIMEOUT_S
     ) -> dict[str, Any]:
         """Send *payload* and wait for a response whose ``id`` matches *msg_id*."""
-        assert self._ws is not None, "call connect() first"
+        ws = self._require_ws()
 
-        await self._ws.send(json.dumps(payload))
+        await ws.send(json.dumps(payload))
 
         # Consume messages until we get our id (server may send broadcasts).
-        deadline = time.monotonic() + timeout
+        deadline = time.monotonic() + budget_s
         while True:
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 raise TimeoutError(f"Timed out waiting for response to {payload['type']}")
 
-            raw = await asyncio.wait_for(self._ws.recv(), timeout=remaining)
+            raw = await asyncio.wait_for(ws.recv(), timeout=remaining)
             resp: dict[str, Any] = json.loads(raw)
 
             # Unsolicited server notification — log and keep waiting.
             if resp.get("type") == "assembly_reload":
                 asm = resp.get("assembly") or "unknown"
-                msg = f"[HotRepl] Assembly reloaded: {asm}. REPL session reset."
-                print(msg, file=sys.stderr)
+                _log.warning("Assembly reloaded: %s. REPL session reset.", asm)
                 continue
 
             if resp.get("id") == msg_id:

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-
 from hotrepl import Client, ControlCommandError
 
 from ._fake_control_server import fake_control_server

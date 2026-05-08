@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 from hotrepl import Client, EvalError
 
 pytestmark = pytest.mark.asyncio

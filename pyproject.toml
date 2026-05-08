@@ -20,6 +20,61 @@ extend-exclude = [
   "**/__pycache__",
 ]
 
+[tool.ruff.format]
+docstring-code-format = true
+docstring-code-line-length = 80
+
 [tool.ruff.lint]
-# Minimal current set; expanded in the next commit.
-select = ["E", "W", "F", "I", "UP", "B"]
+# Broad rule set, deliberately fail-loud. Per-file-ignores below carve out
+# legitimate exceptions; no broad ignores beyond those.
+select = [
+  "E",
+  "W", # pycodestyle
+  "F", # pyflakes
+  "I", # isort
+  "N", # pep8-naming
+  "UP", # pyupgrade
+  "B", # bugbear
+  "C4", # comprehensions
+  "SIM", # simplify
+  "RET", # return
+  "ARG", # unused-args
+  "PIE", # misc
+  "PT", # pytest style
+  "PTH", # use pathlib
+  "TID", # tidy imports
+  "ICN", # import conventions
+  "PYI", # stub style
+  "ASYNC", # async correctness
+  "S", # bandit security
+  "A", # builtins shadowing
+  "T20", # no print()
+  "RUF", # ruff-specific
+  "PERF", # perflint
+  "FURB", # refurb modernizations
+  "LOG",
+  "G", # logging
+  "TRY", # try/except hygiene
+  "TC", # type-checking imports
+  "ERA", # commented-out code
+  "PL", # pylint subset
+  "D", # pydocstyle
+]
+ignore = [
+  "D100",
+  "D104",
+  "D105",
+  "D107", # don't require module/package/magic/init docstrings
+  "D203",
+  "D213", # conflict with D211/D212
+  "TRY003", # long exception messages OK for a dev tool
+  "PLR0913", # arg-count threshold too noisy for protocol code
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"client/tests/**" = ["S101", "S105", "S106", "ARG", "PLR2004", "D"]
+"client/src/hotrepl/cli.py" = ["T201"] # CLI legitimately prints
+"scripts/**" = ["T201", "D", "S603", "S607", "PLR2004"]

@@ -12,11 +12,10 @@ from typing import TYPE_CHECKING
 
 import pytest
 import websockets
+from hotrepl import Client
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
-
-    from hotrepl import Client
 
 HOTREPL_URL = os.environ.get("HOTREPL_URL", "ws://localhost:18590")
 _PROBE_TIMEOUT_S = 2.0
@@ -65,7 +64,6 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
 @pytest.fixture
 async def client() -> AsyncGenerator[Client, None]:
     """Per-test fixture: connected Client with clean state."""
-    from hotrepl import Client
 
     c = Client(url=HOTREPL_URL)
     await c.connect()

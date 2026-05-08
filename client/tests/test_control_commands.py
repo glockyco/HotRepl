@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-
 from hotrepl import Client
 from hotrepl.cli import _build_parser
 

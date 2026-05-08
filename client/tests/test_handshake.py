@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pytest
 
-from hotrepl import Client
+if TYPE_CHECKING:
+    from hotrepl import Client
 
 pytestmark = pytest.mark.asyncio
 

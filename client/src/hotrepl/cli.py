@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import contextlib
 import json
 import os
+import subprocess
 import sys
 from dataclasses import asdict, is_dataclass
+from pathlib import Path
 from typing import Any
 
 from hotrepl._client import DEFAULT_URL, Client, ControlCommandError, EvalError
@@ -19,8 +22,7 @@ def _get_url(args: argparse.Namespace) -> str:
 
 async def _cmd_eval(args: argparse.Namespace) -> None:
     if args.file:
-        with open(args.file) as f:
-            code = f.read()
+        code = await asyncio.to_thread(Path(args.file).read_text)
     else:
         code = args.code
 
@@ -91,7 +93,6 @@ async def _cmd_info(args: argparse.Namespace) -> None:
         print(_format_info(handshake))
 
 
-
 async def _cmd_control(args: argparse.Namespace) -> None:
     async with Client(_get_url(args)) as client:
         try:
@@ -139,13 +140,12 @@ def _jsonable(value: Any) -> Any:
         return {key: _jsonable(item) for key, item in value.items()}
     return value
 
+
 def _format_info(handshake: dict[str, Any]) -> str:
     evaluator = handshake.get("evaluator") or {}
     host = handshake.get("host") or {}
     available = handshake.get("availableEvaluators") or []
-    language = evaluator.get(
-        "languageVersion", handshake.get("csharpVersion", "unknown")
-    )
+    language = evaluator.get("languageVersion", handshake.get("csharpVersion", "unknown"))
     return "\n".join(
         [
             f"host: {host.get('name', 'unknown')} {host.get('version', '')}".rstrip(),
@@ -195,9 +195,7 @@ def _print_subscribe_msg(msg: dict[str, Any]) -> None:
 
 
 def _cmd_test(args: argparse.Namespace) -> None:
-    import subprocess
-    from pathlib import Path
-
+    """Invoke pytest against the bundled smoke tests."""
     tests_dir = Path(__file__).resolve().parent.parent.parent / "tests"
 
     env = os.environ.copy()
@@ -209,7 +207,8 @@ def _cmd_test(args: argparse.Namespace) -> None:
     if args.filter:
         cmd.extend(["-k", args.filter])
 
-    result = subprocess.run(cmd, env=env)
+    # Trusted args: cmd is built from sys.executable and literal pytest flags.
+    result = subprocess.run(cmd, env=env, check=False)  # noqa: S603
     sys.exit(result.returncode)
 
 
@@ -297,6 +296,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
+    """Dispatch the parsed CLI command to its handler."""
     parser = _build_parser()
     args = parser.parse_args()
 
@@ -316,10 +316,8 @@ def main() -> None:
         return
 
     handler = dispatch[args.command]
-    try:
+    with contextlib.suppress(KeyboardInterrupt):
         asyncio.run(handler(args))
-    except KeyboardInterrupt:
-        pass
 
 
 if __name__ == "__main__":

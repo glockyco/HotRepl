@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-
 from hotrepl import Client
 
 from ._fake_control_server import fake_control_server
@@ -54,8 +53,8 @@ async def test_job_status_result_and_cancel_parse_responses() -> None:
                 "artifacts": [
                     {
                         "logicalName": "items",
-                        "uri": "file:///tmp/items.json",
-                        "path": "/tmp/items.json",
+                        "uri": "file:///fixtures/items.json",
+                        "path": "/fixtures/items.json",
                         "contentType": "application/json",
                         "byteSize": 100,
                         "sha256": "abc",
