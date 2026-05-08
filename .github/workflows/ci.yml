@@ -6,20 +6,73 @@ on:
   pull_request:
     branches: [main]
 
+# Defense in depth: every action and tool is pinned to an immutable SHA so a
+# compromised tag cannot silently rewrite our CI. Brew/script installs use
+# either a tagged tarball or a project-pinned version. Comments next to each
+# pin record the human-readable version for easier upgrades.
+
+permissions:
+  contents: read
+
 jobs:
-  csharp:
+  format-and-lint:
+    name: format & lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
         with:
-          lfs: true
+          lfs: false
 
-      - uses: actions/setup-dotnet@v5
+      - uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5
         with:
           dotnet-version: 10.x
 
-      # HotRepl.BepInEx requires Unity assemblies that aren't available in CI.
-      # Build only projects that do not require Unity assemblies.
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+        with:
+          enable-cache: true
+
+      - name: Restore CSharpier
+        run: dotnet tool restore
+
+      - name: dprint check
+        uses: dprint/check@9cb3a2b17a8e606d37aae341e49df3654933fc23 # v2.3
+
+      - name: typos
+        uses: crate-ci/typos@6ac2ebd1b93eade61faf7e12688ad87a073fea59 # v1.46.0
+
+      - name: actionlint
+        run: |
+          bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/03d0035246f3e81f36aed592ffb4bebf33a03106/scripts/download-actionlint.bash) 1.7.7
+          ./actionlint -color
+
+      - name: CSharpier check
+        run: dotnet csharpier check src/ tests/
+
+      - name: Ruff lint
+        run: uvx --quiet ruff check
+
+      - name: Ruff format check
+        run: uvx --quiet ruff format --check
+
+  csharp:
+    name: C# build & test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          lfs: true
+
+      - uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5
+        with:
+          dotnet-version: 10.x
+
+      - name: Restore tools
+        run: dotnet tool restore
+
+      # Only the projects that build without game-local Unity / Il2Cpp /
+      # MelonLoader assemblies. TreatWarningsAsErrors is unconditional via
+      # Directory.Build.props, and CSharpier.MsBuild runs inline during build,
+      # so any unformatted C# fails this job.
       - name: Restore
         run: |
           dotnet restore src/HotRepl.Core/HotRepl.Core.csproj
@@ -29,39 +82,118 @@ jobs:
 
       - name: Build
         run: |
-          dotnet build src/HotRepl.Core/HotRepl.Core.csproj --no-restore
-          dotnet build src/HotRepl.Evaluator.MonoCSharp/HotRepl.Evaluator.MonoCSharp.csproj --no-restore
-          dotnet build src/HotRepl.Evaluator.Roslyn/HotRepl.Evaluator.Roslyn.csproj --no-restore
-          dotnet build tests/HotRepl.Tests/HotRepl.Tests.csproj --no-restore
-
-      - name: Format check
-        run: dotnet format src/HotRepl.Core/HotRepl.Core.csproj --verify-no-changes --no-restore
+          dotnet build src/HotRepl.Core/HotRepl.Core.csproj --no-restore --nologo -v q
+          dotnet build src/HotRepl.Evaluator.MonoCSharp/HotRepl.Evaluator.MonoCSharp.csproj --no-restore --nologo -v q
+          dotnet build src/HotRepl.Evaluator.Roslyn/HotRepl.Evaluator.Roslyn.csproj --no-restore --nologo -v q
+          dotnet build tests/HotRepl.Tests/HotRepl.Tests.csproj --no-restore --nologo -v q
 
       - name: Test
-        run: dotnet test tests/HotRepl.Tests/HotRepl.Tests.csproj --no-build --verbosity quiet
+        run: dotnet test tests/HotRepl.Tests/HotRepl.Tests.csproj --no-build --nologo -v q
 
-  python-client:
+  python:
+    name: Python type-check & smoke tests
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: client
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
-          python-version: "3.12"
+          python-version: "3.11"
 
-      - uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+        with:
+          enable-cache: true
 
-      - name: Install
-        run: uv pip install --system -e '.[dev]'
+      - name: Pyright (strict)
+        run: uvx --quiet pyright
 
-      - name: Lint
-        run: ruff check src/ tests/
+      # The smoke suite skips every test when no HotRepl server is reachable;
+      # this run validates that the suite *imports* and that test collection
+      # succeeds on the CI environment.
+      - name: Pytest (skips when no server)
+        run: uv run --project client --extra test pytest client/tests/ -v --tb=short
 
-      - name: Type check
-        run: mypy src/hotrepl/
+  commit-lint:
+    name: commitlint (PR only)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          fetch-depth: 0
 
-      - name: Smoke tests (no server — all skip)
-        run: pytest tests/ -v --tb=short
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: "22"
+
+      - name: Install commitlint
+        run: npm install --global "@commitlint/cli@20.5.3"
+
+      # Validates every commit in the PR range against commitlint.config.js.
+      # Each commit in base..HEAD is checked individually; a single rule
+      # violation anywhere in the range fails the PR.
+      - name: Lint commits in PR
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: commitlint --from "$BASE" --to "$HEAD" --verbose
+
+  hooks-parity:
+    name: hooks parity (lefthook pre-push)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          lfs: true
+
+      - uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5
+        with:
+          dotnet-version: 10.x
+
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.11"
+
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+        with:
+          enable-cache: true
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: "22"
+
+      # Direct binary downloads, version-pinned. Tarballs are extracted under
+      # ~/.local/bin which is on PATH for ubuntu-latest.
+      - name: Install dprint, typos, actionlint, lefthook, commitlint
+        env:
+          DPRINT_VERSION: "0.54.0"
+          TYPOS_VERSION: "1.43.3"
+          ACTIONLINT_VERSION: "1.7.7"
+          LEFTHOOK_VERSION: "2.1.6"
+          COMMITLINT_VERSION: "20.5.3"
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.local/bin"
+
+          curl -fsSL "https://github.com/dprint/dprint/releases/download/${DPRINT_VERSION}/dprint-x86_64-unknown-linux-gnu.zip" -o /tmp/dprint.zip
+          unzip -q /tmp/dprint.zip -d "$HOME/.local/bin"
+
+          curl -fsSL "https://github.com/crate-ci/typos/releases/download/v${TYPOS_VERSION}/typos-v${TYPOS_VERSION}-x86_64-unknown-linux-musl.tar.gz" \
+            | tar -xz -C "$HOME/.local/bin" ./typos
+
+          curl -fsSL "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" \
+            | tar -xz -C "$HOME/.local/bin" actionlint
+
+          curl -fsSL "https://github.com/evilmartians/lefthook/releases/download/v${LEFTHOOK_VERSION}/lefthook_${LEFTHOOK_VERSION}_Linux_x86_64.gz" \
+            | gunzip > "$HOME/.local/bin/lefthook"
+          chmod +x "$HOME/.local/bin/lefthook"
+
+          npm install --global "@commitlint/cli@${COMMITLINT_VERSION}"
+
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Restore CSharpier
+        run: dotnet tool restore
+
+      - name: lefthook run pre-push
+        run: lefthook run pre-push
