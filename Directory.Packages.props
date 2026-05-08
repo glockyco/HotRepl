@@ -34,5 +34,6 @@
   <ItemGroup Label="Analyzers (applied via Directory.Build.props)">
     <PackageVersion Include="Meziantou.Analyzer" Version="3.0.50" />
     <PackageVersion Include="xunit.analyzers" Version="1.27.0" />
+    <PackageVersion Include="CSharpier.MsBuild" Version="1.2.6" />
   </ItemGroup>
 </Project>
