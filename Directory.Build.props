@@ -1,0 +1,59 @@
+<Project>
+  <!--
+    Solution-wide MSBuild policy. Applies to every csproj before its own
+    PropertyGroup is read; csprojs may still override any property locally,
+    but should not.
+
+    Strict-by-default: warnings are errors, NetAnalyzers run at "All",
+    Meziantou.Analyzer is applied to every project, IDE0xxx style rules
+    are enforced at build time.
+
+    The CSharpier MSBuild check is wired in a follow-up commit so the
+    formatting gate runs alongside the analyzer gate.
+  -->
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+
+    <!-- Analyzer policy -->
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <AnalysisMode>All</AnalysisMode>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <MeziantouAnalysisMode>All</MeziantouAnalysisMode>
+
+    <!-- Documentation generation; XML doc warnings are surfaced. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+    <!--
+      Warnings policy: warnings are errors. Unconditional - Debug, Release,
+      IDE, and CI all see the same gate. The fix path for a warning is
+      either to fix the code or to add a documented per-callsite
+      [SuppressMessage] attribute. There is no broad suppression baseline.
+
+      This is initially false during the analyzer-fix sweep so each
+      Phase 4 commit can land green. Flipped to true once HotRepl.Core,
+      the evaluators, and the test project are clean.
+    -->
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+
+    <!--
+      CS1591 (missing XML doc) is downgraded because GenerateDocumentationFile
+      lights it up across every internal symbol. Public API docs are still
+      enforced via SA-style review; the analyzer pack catches genuinely
+      missing docs on public surfaces via different rules.
+    -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <!--
+    Analyzer references applied to every project. PrivateAssets="all"
+    keeps them out of consumers' transitive graph; analyzer-only assets
+    are pulled in via IncludeAssets.
+  -->
+  <ItemGroup>
+    <PackageReference Include="Meziantou.Analyzer">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+</Project>
