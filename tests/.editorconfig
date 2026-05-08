@@ -1,0 +1,26 @@
+# Test-project analyzer overrides.
+#
+# Two rules are scoped off for tests only because they fight test conventions
+# rather than catching bugs:
+
+[*.cs]
+
+# CA1707: identifiers should not contain underscores.
+# xUnit's de-facto convention for test methods is `Method_Scenario_Outcome`,
+# which makes failures self-describing in CI output. We use that convention
+# throughout. Suppressing here keeps that intent explicit; production code
+# under src/ still has CA1707 active.
+dotnet_diagnostic.CA1707.severity = none
+
+# MA0004: use Task.ConfigureAwait(false) when SynchronizationContext is not needed.
+# xUnit's async test runner does not establish a SynchronizationContext for test
+# methods, so ConfigureAwait would be no-op noise on every await. The rule is
+# valuable in library code (src/) where SynchronizationContext capture matters.
+dotnet_diagnostic.MA0004.severity = none
+
+# CA1861: prefer static readonly fields over constant array arguments.
+# This rule targets hot paths where array allocation per call adds up.
+# Test arrays are one-shot setups (each test has its own expected value);
+# extracting them to scattered static readonly fields hurts readability
+# without paying back on perf. Active in src/.
+dotnet_diagnostic.CA1861.severity = none

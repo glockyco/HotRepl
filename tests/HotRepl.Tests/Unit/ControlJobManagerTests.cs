@@ -98,8 +98,14 @@ public class ControlJobManagerTests
         Assert.True(accepted);
         var status = manager.GetStatus(job.JobId);
         Assert.Equal("cancelled", status.State);
-        Assert.Contains(manager.EventsAfter(job.JobId, 0), e => e.State == "cancelling");
-        Assert.Contains(manager.EventsAfter(job.JobId, 0), e => e.State == "cancelled");
+        Assert.Contains(
+            manager.EventsAfter(job.JobId, 0),
+            e => string.Equals(e.State, "cancelling", StringComparison.Ordinal)
+        );
+        Assert.Contains(
+            manager.EventsAfter(job.JobId, 0),
+            e => string.Equals(e.State, "cancelled", StringComparison.Ordinal)
+        );
     }
 
     [Fact]
@@ -118,12 +124,17 @@ public class ControlJobManagerTests
             }
         );
         await manager.RunAsync(job.JobId);
-        var firstProgress = manager.EventsAfter(job.JobId, 0).Single(e => e.Message == "step 1");
+        var firstProgress = manager
+            .EventsAfter(job.JobId, 0)
+            .Single(e => string.Equals(e.Message, "step 1", StringComparison.Ordinal));
 
         var later = manager.EventsAfter(job.JobId, firstProgress.Sequence);
 
-        Assert.DoesNotContain(later, e => e.Message == "step 1");
-        Assert.Contains(later, e => e.Message == "step 2");
+        Assert.DoesNotContain(
+            later,
+            e => string.Equals(e.Message, "step 1", StringComparison.Ordinal)
+        );
+        Assert.Contains(later, e => string.Equals(e.Message, "step 2", StringComparison.Ordinal));
     }
 
     [Fact]

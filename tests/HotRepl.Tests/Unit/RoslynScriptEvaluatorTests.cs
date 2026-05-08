@@ -104,7 +104,7 @@ public class RoslynScriptEvaluatorTests
 
         Assert.False(result.Success);
         Assert.Equal("compile", result.ErrorKind);
-        Assert.Contains("CS", result.ErrorMessage);
+        Assert.Contains("CS", result.ErrorMessage, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -120,6 +120,6 @@ public class RoslynScriptEvaluatorTests
 
         Assert.False(result.Success);
         Assert.Equal("runtime", result.ErrorKind);
-        Assert.Contains("boom", result.ErrorMessage);
+        Assert.Contains("boom", result.ErrorMessage, StringComparison.Ordinal);
     }
 }

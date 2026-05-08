@@ -204,8 +204,10 @@ public class ControlSessionManagerTests
         public string Path => "/";
         public string ClientIpAddress => "127.0.0.1";
         public int ClientPort => 12345;
-        public IDictionary<string, string> Cookies { get; } = new Dictionary<string, string>();
-        public IDictionary<string, string> Headers { get; } = new Dictionary<string, string>();
+        public IDictionary<string, string> Cookies { get; } =
+            new Dictionary<string, string>(StringComparer.Ordinal);
+        public IDictionary<string, string> Headers { get; } =
+            new Dictionary<string, string>(StringComparer.Ordinal);
         public Guid Id { get; }
         public string NegotiatedSubProtocol => "";
     }

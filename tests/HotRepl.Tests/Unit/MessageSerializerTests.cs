@@ -142,10 +142,10 @@ public class MessageSerializerTests
         var json = MessageSerializer.Serialize(msg);
         var back = MessageSerializer.Deserialize<HandshakeMessage>(json);
 
-        Assert.Contains("\"evaluator\"", json);
-        Assert.Contains("\"timeoutMode\":\"HardAbort\"", json);
-        Assert.Contains("\"host\"", json);
-        Assert.Contains("\"availableEvaluators\"", json);
+        Assert.Contains("\"evaluator\"", json, StringComparison.Ordinal);
+        Assert.Contains("\"timeoutMode\":\"HardAbort\"", json, StringComparison.Ordinal);
+        Assert.Contains("\"host\"", json, StringComparison.Ordinal);
+        Assert.Contains("\"availableEvaluators\"", json, StringComparison.Ordinal);
         Assert.Equal("Mono.CSharp", back.Evaluator!.Name);
         Assert.Equal(TimeoutMode.HardAbort, back.Evaluator.TimeoutMode);
         Assert.Equal("BepInEx", back.Host!.Name);
@@ -179,7 +179,7 @@ public class MessageSerializerTests
         var json = MessageSerializer.Serialize(msg);
         var back = MessageSerializer.Deserialize<HandshakeMessage>(json);
 
-        Assert.Contains("\"controlPlane\"", json);
+        Assert.Contains("\"controlPlane\"", json, StringComparison.Ordinal);
         Assert.True(back.ControlPlane!.Supported);
         Assert.Equal(1, back.ControlPlane.ProtocolVersion);
         Assert.True(back.ControlPlane.AuthRequired);
@@ -320,8 +320,8 @@ public class MessageSerializerTests
         var msg = new EvalResultMessage { Id = "t-11", Value = null };
         var json = MessageSerializer.Serialize(msg);
 
-        Assert.DoesNotContain("\"value\"", json);
-        Assert.DoesNotContain("\"stdout\"", json);
+        Assert.DoesNotContain("\"value\"", json, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"stdout\"", json, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -330,7 +330,7 @@ public class MessageSerializerTests
         var msg = new EvalResultMessage { Id = "t-12", HasValue = true };
         var json = MessageSerializer.Serialize(msg);
 
-        Assert.Contains("\"hasValue\"", json);
-        Assert.DoesNotContain("\"HasValue\"", json);
+        Assert.Contains("\"hasValue\"", json, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"HasValue\"", json, StringComparison.Ordinal);
     }
 }

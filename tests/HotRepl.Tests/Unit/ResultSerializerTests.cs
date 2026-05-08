@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using HotRepl;
@@ -46,8 +47,8 @@ public class ResultSerializerTests
     {
         var result = JsonResultSerializer.Serialize(3.14, _defaults);
         Assert.NotNull(result);
-        Assert.Contains(".", result);
-        Assert.DoesNotContain(",", result);
+        Assert.Contains(".", result, StringComparison.Ordinal);
+        Assert.DoesNotContain(",", result, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -64,7 +65,7 @@ public class ResultSerializerTests
         Assert.NotNull(result);
         // Parsed back: should contain the type name
         var parsed = JsonConvert.DeserializeObject<string>(result);
-        Assert.Contains("String", parsed);
+        Assert.Contains("String", parsed, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -89,7 +90,7 @@ public class ResultSerializerTests
     [Fact]
     public void EmptyEnumerable_ProducesEmptyJsonArray()
     {
-        var result = JsonResultSerializer.Serialize(new int[0], _defaults);
+        var result = JsonResultSerializer.Serialize(Array.Empty<int>(), _defaults);
         Assert.Equal("[]", result);
     }
 
@@ -147,8 +148,8 @@ public class ResultSerializerTests
         var s = new string('x', 200);
         var result = JsonResultSerializer.Truncate(s, 10);
 
-        Assert.StartsWith(new string('x', 10), result);
-        Assert.Contains("200", result); // original length visible for diagnosis
+        Assert.StartsWith(new string('x', 10), result, StringComparison.Ordinal);
+        Assert.Contains("200", result, StringComparison.Ordinal); // original length visible for diagnosis
     }
 
     [Fact]
@@ -163,6 +164,6 @@ public class ResultSerializerTests
     /// <summary>Simulates an object whose ToString throws, to exercise the error path.</summary>
     private sealed class ThrowingToString
     {
-        public string Value => throw new System.InvalidOperationException("boom");
+        public static string Value => throw new InvalidOperationException("boom");
     }
 }

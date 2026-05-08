@@ -1,3 +1,4 @@
+using System;
 using HotRepl.Evaluator;
 using Xunit;
 
@@ -54,7 +55,7 @@ public class EvalResultTests
         Assert.False(result.Success);
         Assert.Equal("compile", result.ErrorKind);
         Assert.NotNull(result.ErrorMessage);
-        Assert.Contains("CS0001", result.ErrorMessage);
+        Assert.Contains("CS0001", result.ErrorMessage, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -75,7 +76,7 @@ public class EvalResultTests
 
         Assert.False(result.Success);
         Assert.Equal("timeout", result.ErrorKind);
-        Assert.Contains("timed out", result.ErrorMessage);
+        Assert.Contains("timed out", result.ErrorMessage, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -85,6 +86,6 @@ public class EvalResultTests
 
         Assert.False(result.Success);
         Assert.Equal("cancelled", result.ErrorKind);
-        Assert.Contains("cancelled", result.ErrorMessage);
+        Assert.Contains("cancelled", result.ErrorMessage, StringComparison.Ordinal);
     }
 }

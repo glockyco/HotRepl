@@ -1,3 +1,4 @@
+using System;
 using HotRepl;
 using Xunit;
 
@@ -26,7 +27,9 @@ public sealed class ReplConfigExposurePolicyTests
         Assert.False(result.IsSafeDefault);
         Assert.Contains(
             result.Warnings,
-            warning => warning.Contains("0.0.0.0") && warning.Contains("ControlAuthToken")
+            warning =>
+                warning.Contains("0.0.0.0", StringComparison.Ordinal)
+                && warning.Contains("ControlAuthToken", StringComparison.Ordinal)
         );
     }
 

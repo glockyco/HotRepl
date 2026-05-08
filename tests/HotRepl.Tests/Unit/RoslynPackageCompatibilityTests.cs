@@ -18,7 +18,11 @@ public class RoslynPackageCompatibilityTests
         var entry = packages
             .Descendants("PackageVersion")
             .Single(x =>
-                (string?)x.Attribute("Include") == "Microsoft.CodeAnalysis.CSharp.Scripting"
+                string.Equals(
+                    (string?)x.Attribute("Include"),
+                    "Microsoft.CodeAnalysis.CSharp.Scripting",
+                    StringComparison.Ordinal
+                )
             );
 
         Assert.Equal("4.4.0", (string?)entry.Attribute("Version"));
