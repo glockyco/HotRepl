@@ -162,3 +162,36 @@ Use a game-local wrapper type for the last two commands; HotRepl itself remains 
 | Completion depends on evaluator   | Mono.CSharp supports completion; Roslyn evaluators report `supportsCompletion: false`                                                                           |
 | Type memory leak                  | Persistent evaluator sessions can emit assemblies that are not reclaimed until process exit; use `Roslyn.Isolated` for stateless audit snippets on .NET 6 hosts |
 | Single client                     | A new WebSocket connection replaces the prior session; old subscriptions are cancelled                                                                          |
+
+## Contributing
+
+The repo is local-first and version-pinned: every formatter, linter, type-checker, and analyzer is
+the same locally as in CI. The `lefthook` gate catches at least everything CI catches, and CI runs
+`lefthook run pre-push` directly in a `hooks-parity` job to keep the invariant.
+
+Bootstrap once per machine:
+
+```bash
+brew install lefthook dprint actionlint commitlint typos
+dotnet tool restore
+lefthook install
+```
+
+Then commit normally. The `pre-commit` hook auto-fixes formatting (CSharpier, Ruff, dprint), the
+`commit-msg` hook validates Conventional Commits via `commitlint`, and the `pre-push` hook runs the
+full repo gate (build, test, lint, type-check, smoke). Run any stage manually:
+
+```bash
+lefthook run pre-commit --all-files   # auto-fix everything
+lefthook run pre-push                 # mirror the full CI gate
+```
+
+Policies that bind:
+
+- `TreatWarningsAsErrors=true` is unconditional — Debug, Release, IDE, CI.
+- No suppression baseline. Targeted, justified `[SuppressMessage]` per call site only when
+  semantically required.
+- Commit messages follow Conventional Commits with the type enum
+  `build, chore, ci, docs, feat, fix, perf, refactor, revert, style, test`.
+
+See `AGENTS.md` for the full toolchain table and contributor-facing conventions.

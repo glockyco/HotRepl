@@ -6,25 +6,66 @@ game, see the skill at `.claude/skills/hotrepl/SKILL.md`.
 
 ## Build & Test
 
+All tooling is local-first and version-pinned. The lefthook gate catches at least everything CI
+catches; CI explicitly runs `lefthook run pre-push` in a `hooks-parity` job to keep the invariant.
+
+### Bootstrap (one-time, per machine)
+
+```bash
+brew install lefthook dprint actionlint commitlint typos
+dotnet tool restore
+lefthook install
+```
+
+`dotnet 10.x` is required: `HotRepl.Tests` targets `net10.0`. The brew formula for `commitlint`
+resolves the canonical `@commitlint/cli`. Versions are pinned in `.config/dotnet-tools.json`,
+`commitlint.config.js`, `dprint.json`, and `lefthook.yml`.
+
 ### C# (always available, no game required)
 
 ```bash
-dotnet build src/HotRepl.Core/ --nologo -v q           # core; CI gate
-dotnet build src/HotRepl.BepInEx/ --nologo -v q        # adapter; requires Unity DLLs in lib/
-dotnet test tests/HotRepl.Tests/ --nologo -v q         # unit tests
-dotnet format src/HotRepl.Core/ --verify-no-changes    # format check; CI gate
-dotnet format src/HotRepl.Core/                        # auto-fix formatting
+dotnet build src/HotRepl.Core/ --nologo -v q       # core; CI gate
+dotnet build src/HotRepl.BepInEx/ --nologo -v q    # adapter; requires Unity DLLs in lib/
+dotnet test  tests/HotRepl.Tests/ --nologo -v q    # unit tests
+dotnet csharpier check src/ tests/                 # standalone format check
+dotnet csharpier format src/ tests/                # auto-fix formatting
 ```
 
-CI path: build Core + format check. Run both before claiming a task complete.
+`TreatWarningsAsErrors=true` is unconditional via `Directory.Build.props`. CSharpier.MsBuild runs
+during every build, so an unformatted `.cs` file fails `dotnet build` directly — the standalone
+`csharpier check` is only for editor scripting and CI fast-feedback.
+
+### Python (no game required)
+
+```bash
+uvx ruff check                                          # lint
+uvx ruff format --check                                 # format check
+uvx pyright                                             # strict type check
+uv run --project client --extra test pytest client/tests/ -v
+```
+
+Pyright runs in strict mode against `client/src`, `client/tests`, and `scripts`. Ruff config covers
+the same tree from the repo-root `pyproject.toml`.
+
+### Cross-language
+
+```bash
+dprint check        # md / json / yaml / toml
+typos               # spell check (excludes lib/, lockfiles, caches)
+actionlint          # GitHub Actions workflows
+lefthook run pre-commit --all-files   # mirror everything pre-commit checks
+lefthook run pre-push                 # mirror the full CI gate locally
+```
 
 ### MelonLoader host
 
 `src/HotRepl.Host.MelonLoader` is not built in CI because it requires game-local MelonLoader and
 IL2CPP assemblies. On this workstation, pass `MelonLoaderPath` and `Il2CppAssembliesPath` from the
-target game's install. Do not hard-code Ancient Kingdoms paths in HotRepl source files.
+target game's install. Do not hard-code Ancient Kingdoms paths in HotRepl source files. The strict
+analyzer / TreatWarningsAsErrors policy applies to these projects automatically when someone with a
+game install builds them.
 
-### Python smoke tests (requires a running game with HotRepl loaded)
+### Python smoke tests against a running game
 
 ```bash
 cd client
@@ -37,6 +78,37 @@ hotrepl test --url ws://host:port   # against a remote endpoint
 Smoke tests skip automatically when no server is reachable. They exercise the full protocol surface:
 eval, errors, state persistence, reset, ping, autocomplete, subscriptions, and edge cases. Read
 `client/tests/` to understand protocol contracts.
+
+## Toolchain
+
+Established, single-purpose, version-pinned. Each tool either replaces multiple older tools, catches
+a class of bugs none of the others cover, or is load-bearing for the local≥CI invariant. See
+`docs/plans/lint-format-overhaul.md` for the full decision log.
+
+| Concern             | Tool                                                       | Pinned in                          |
+| ------------------- | ---------------------------------------------------------- | ---------------------------------- |
+| C# format           | CSharpier (dotnet local tool + MSBuild check)              | `.config/dotnet-tools.json`        |
+| C# analyzers        | NetAnalyzers + Meziantou.Analyzer + xunit.analyzers (test) | `Directory.Packages.props`         |
+| Package versions    | Central Package Management (`Directory.Packages.props`)    | `Directory.Packages.props`         |
+| Python lint+format  | Ruff                                                       | repo-root `pyproject.toml`         |
+| Python type check   | pyright (strict)                                           | repo-root `pyproject.toml`         |
+| md/json/yaml/toml   | dprint with pinned WASM plugins                            | `dprint.json`                      |
+| Spell check         | typos (crate-ci)                                           | `_typos.toml`                      |
+| Actions YAML        | actionlint                                                 | `.github/workflows/ci.yml` install |
+| Hooks orchestrator  | lefthook                                                   | `lefthook.yml`                     |
+| Commit messages     | `@commitlint/cli` with inline Conventional Commits ruleset | `commitlint.config.js`             |
+| Whitespace baseline | `.editorconfig` (slimmed; CSharpier owns C# layout)        | `.editorconfig`                    |
+
+Policies:
+
+- `TreatWarningsAsErrors=true` is unconditional — Debug, Release, IDE, CI.
+- No suppression baseline. Targeted, justified `[SuppressMessage]` per call site only when
+  semantically required; broad `dotnet_diagnostic.*` overrides are limited to the test project's
+  `tests/.editorconfig` with documented reasons.
+- The lefthook gate (pre-commit + pre-push) catches everything CI catches. The `hooks-parity` CI job
+  runs `lefthook run pre-push` directly so drift is impossible.
+- Conventional Commits is enforced by the `commit-msg` hook locally and the `commit-lint` PR job in
+  CI. The type enum is `build, chore, ci, docs, feat, fix, perf, refactor, revert, style, test`.
 
 ## Project Structure
 
@@ -96,8 +168,9 @@ Do not break these without understanding all consequences:
 
 ## Adding Protocol Messages
 
-1. Add a `MessageType` const in `Protocol/Messages.cs`.
-2. Add the inbound and/or outbound record classes in `Protocol/Messages.cs`.
+1. Add a `MessageType` const in `Protocol/MessageType.cs`.
+2. Add the inbound or outbound record class as its own file in `Protocol/Inbound/` or
+   `Protocol/Outbound/` (one type per file; CI's MA0048 enforces this).
 3. Handle the inbound type in `Server/MessageRouter.cs`.
 4. Add an `IEngineCommand` implementation if the message needs main-thread dispatch.
 5. Add the `eval_result` / `eval_error` / `*_result` response in `ReplEngine.cs`.
@@ -109,13 +182,15 @@ Do not break these without understanding all consequences:
 - Newtonsoft.Json for protocol serialization. Do not add a second JSON library.
 - Fleck for WebSocket. Do not add a second WebSocket library.
 - XML doc comments on all public symbols in `IReplHost.cs`, `ReplEngine.cs`, `ReplConfig.cs`.
-- `dotnet format` is the formatter; CI enforces it. Run before committing.
+- CSharpier formats every `.cs` file. CSharpier.MsBuild fails the build on unformatted code; the
+  `pre-commit` hook auto-fixes staged C# before each commit.
 
 ## Commit Guidelines
 
 See `.claude/skills/commit-guidelines/SKILL.md` for the full conventions. Short version:
 `type(scope): imperative summary` — prose body explaining why, not what. One concept per commit. No
-attribution lines.
+attribution lines. The `commit-msg` lefthook hook runs `commitlint` against `commitlint.config.js`,
+so a non-conformant message is rejected before the commit lands.
 
 ## Shell Conventions
 
