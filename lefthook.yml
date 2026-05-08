@@ -12,6 +12,9 @@
 #   - `dotnet csharpier` is a per-repo local tool (.config/dotnet-tools.json);
 #     `dotnet tool restore` runs from the dotnet-build/test commands so the
 #     manifest is hydrated on first push as well.
+#   - dotnet commands prefer `/usr/local/share/dotnet/dotnet` when present
+#     because Homebrew's `dotnet` formula can shadow the official .NET 10 SDK
+#     with a 9.x SDK on macOS.
 #   - `uvx ruff` / `uvx pyright` use uv's ephemeral tool cache; matches the
 #     verified contributor command set documented in AGENTS.md.
 #   - `uv run --project client --extra test` runs pytest with the hotrepl
@@ -27,7 +30,10 @@ pre-commit:
   commands:
     csharpier:
       glob: "*.cs"
-      run: dotnet csharpier format {staged_files}
+      run: |
+        dotnet_bin=dotnet
+        if [ -x /usr/local/share/dotnet/dotnet ]; then dotnet_bin=/usr/local/share/dotnet/dotnet; fi
+        "$dotnet_bin" csharpier format {staged_files}
       stage_fixed: true
     ruff-fix:
       glob: "*.py"
@@ -68,8 +74,16 @@ pre-push:
     actionlint:
       run: actionlint
     dotnet-build:
-      run: dotnet tool restore && dotnet build src/HotRepl.Core/HotRepl.Core.csproj --nologo -v q
+      run: |
+        dotnet_bin=dotnet
+        if [ -x /usr/local/share/dotnet/dotnet ]; then dotnet_bin=/usr/local/share/dotnet/dotnet; fi
+        "$dotnet_bin" tool restore
+        "$dotnet_bin" build src/HotRepl.Core/HotRepl.Core.csproj --nologo -v q
     dotnet-test:
-      run: dotnet tool restore && dotnet test tests/HotRepl.Tests/HotRepl.Tests.csproj --nologo -v q
+      run: |
+        dotnet_bin=dotnet
+        if [ -x /usr/local/share/dotnet/dotnet ]; then dotnet_bin=/usr/local/share/dotnet/dotnet; fi
+        "$dotnet_bin" tool restore
+        "$dotnet_bin" test tests/HotRepl.Tests/HotRepl.Tests.csproj --nologo -v q
     pytest:
       run: uv run --project client --extra test pytest client/tests/ -v --tb=short
