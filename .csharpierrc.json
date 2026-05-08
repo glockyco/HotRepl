@@ -1,0 +1,7 @@
+{
+  "$schema": "https://csharpier.com/schemas/config-schema.json",
+  "printWidth": 100,
+  "useTabs": false,
+  "tabWidth": 4,
+  "endOfLine": "lf"
+}
