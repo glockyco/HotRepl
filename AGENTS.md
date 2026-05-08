@@ -4,12 +4,9 @@ HotRepl: runtime C# REPL over WebSocket for Unity games through BepInEx/Mono or 
 This file is for agents working **on** this repo. For agents using HotRepl to inspect a running
 game, see the skill at `.claude/skills/hotrepl/SKILL.md`.
 
-## Build & Test
+## Commands
 
-All tooling is local-first and version-pinned. The lefthook gate catches at least everything CI
-catches; CI explicitly runs `lefthook run pre-push` in a `hooks-parity` job to keep the invariant.
-
-### Bootstrap (one-time, per machine)
+Bootstrap once per machine:
 
 ```bash
 brew install lefthook dprint actionlint commitlint typos
@@ -17,140 +14,87 @@ dotnet tool restore
 lefthook install
 ```
 
-`dotnet 10.x` is required: `HotRepl.Tests` targets `net10.0`. The brew formula for `commitlint`
-resolves the canonical `@commitlint/cli`. Versions are pinned in `.config/dotnet-tools.json`,
-`commitlint.config.js`, `dprint.json`, and `lefthook.yml`.
+`dotnet 10.x` is required because `HotRepl.Tests` targets `net10.0`.
 
-### C# (always available, no game required)
+Common local checks:
 
 ```bash
-dotnet build src/HotRepl.Core/ --nologo -v q       # core; CI gate
-dotnet build src/HotRepl.BepInEx/ --nologo -v q    # adapter; requires Unity DLLs in lib/
-dotnet test  tests/HotRepl.Tests/ --nologo -v q    # unit tests
-dotnet csharpier check src/ tests/                 # standalone format check
-dotnet csharpier format src/ tests/                # auto-fix formatting
+dotnet build src/HotRepl.Core/ --nologo -v q
+dotnet test tests/HotRepl.Tests/ --nologo -v q
+uvx ruff check
+uvx ruff format --check
+uvx pyright
+dprint check
+typos
+actionlint
 ```
 
-`TreatWarningsAsErrors=true` is unconditional via `Directory.Build.props`. CSharpier.MsBuild runs
-during every build, so an unformatted `.cs` file fails `dotnet build` directly — the standalone
-`csharpier check` is only for editor scripting and CI fast-feedback.
-
-### Python (no game required)
+Use lefthook for repo gates:
 
 ```bash
-uvx ruff check                                          # lint
-uvx ruff format --check                                 # format check
-uvx pyright                                             # strict type check
-uv run --project client --extra test pytest client/tests/ -v
+lefthook run pre-commit --all-files
+lefthook run pre-push
 ```
 
-Pyright runs in strict mode against `client/src`, `client/tests`, and `scripts`. Ruff config covers
-the same tree from the repo-root `pyproject.toml`.
+`pre-commit` auto-fixes staged C# / Python / docs formatting. `pre-push` mirrors the full CI gate;
+CI also runs `lefthook run pre-push` in `hooks-parity`.
 
-### Cross-language
+## Targeted checks
+
+### C# projects
 
 ```bash
-dprint check        # md / json / yaml / toml
-typos               # spell check (excludes lib/, lockfiles, caches)
-actionlint          # GitHub Actions workflows
-lefthook run pre-commit --all-files   # mirror everything pre-commit checks
-lefthook run pre-push                 # mirror the full CI gate locally
+dotnet build src/HotRepl.Core/ --nologo -v q
+dotnet build src/HotRepl.BepInEx/ --nologo -v q     # requires Unity DLLs in lib/
+dotnet build src/HotRepl.Host.MelonLoader/HotRepl.Host.MelonLoader.csproj \
+  -p:MelonLoaderPath="/path/to/Game/MelonLoader" \
+  -p:Il2CppAssembliesPath="/path/to/Game/MelonLoader/Il2CppAssemblies"
+dotnet test tests/HotRepl.Tests/ --nologo -v q
 ```
 
-### MelonLoader host
-
-`src/HotRepl.Host.MelonLoader` is not built in CI because it requires game-local MelonLoader and
-IL2CPP assemblies. On this workstation, pass `MelonLoaderPath` and `Il2CppAssembliesPath` from the
-target game's install. Do not hard-code Ancient Kingdoms paths in HotRepl source files. The strict
-analyzer / TreatWarningsAsErrors policy applies to these projects automatically when someone with a
-game install builds them.
+`TreatWarningsAsErrors=true` is unconditional. CSharpier.MsBuild runs during every build, so
+unformatted C# fails `dotnet build`.
 
 ### Python smoke tests against a running game
 
 ```bash
 cd client
 uv pip install -e '.[test]'
-hotrepl ping                        # verify server is up
-hotrepl test                        # full protocol smoke suite
-hotrepl test --url ws://host:port   # against a remote endpoint
+hotrepl ping
+hotrepl test
+hotrepl test --url ws://host:port
 ```
 
-Smoke tests skip automatically when no server is reachable. They exercise the full protocol surface:
-eval, errors, state persistence, reset, ping, autocomplete, subscriptions, and edge cases. Read
-`client/tests/` to understand protocol contracts.
+Smoke tests skip automatically when no server is reachable. They exercise eval, errors, state
+persistence, reset, ping, autocomplete, subscriptions, and edge cases.
 
-## Toolchain
+## Verification expectations
 
-Established, single-purpose, version-pinned. Each tool either replaces multiple older tools, catches
-a class of bugs none of the others cover, or is load-bearing for the local≥CI invariant. See
-`docs/plans/lint-format-overhaul.md` for the full decision log.
-
-| Concern             | Tool                                                       | Pinned in                          |
-| ------------------- | ---------------------------------------------------------- | ---------------------------------- |
-| C# format           | CSharpier (dotnet local tool + MSBuild check)              | `.config/dotnet-tools.json`        |
-| C# analyzers        | NetAnalyzers + Meziantou.Analyzer + xunit.analyzers (test) | `Directory.Packages.props`         |
-| Package versions    | Central Package Management (`Directory.Packages.props`)    | `Directory.Packages.props`         |
-| Python lint+format  | Ruff                                                       | repo-root `pyproject.toml`         |
-| Python type check   | pyright (strict)                                           | repo-root `pyproject.toml`         |
-| md/json/yaml/toml   | dprint with pinned WASM plugins                            | `dprint.json`                      |
-| Spell check         | typos (crate-ci)                                           | `_typos.toml`                      |
-| Actions YAML        | actionlint                                                 | `.github/workflows/ci.yml` install |
-| Hooks orchestrator  | lefthook                                                   | `lefthook.yml`                     |
-| Commit messages     | `@commitlint/cli` with inline Conventional Commits ruleset | `commitlint.config.js`             |
-| Whitespace baseline | `.editorconfig` (slimmed; CSharpier owns C# layout)        | `.editorconfig`                    |
-
-Policies:
-
-- `TreatWarningsAsErrors=true` is unconditional — Debug, Release, IDE, CI.
-- No suppression baseline. Targeted, justified `[SuppressMessage]` per call site only when
-  semantically required; broad `dotnet_diagnostic.*` overrides are limited to the test project's
-  `tests/.editorconfig` with documented reasons.
-- The lefthook gate (pre-commit + pre-push) catches everything CI catches. The `hooks-parity` CI job
-  runs `lefthook run pre-push` directly so drift is impossible.
-- Conventional Commits is enforced by the `commit-msg` hook locally and the `commit-lint` PR job in
-  CI. The type enum is `build, chore, ci, docs, feat, fix, perf, refactor, revert, style, test`.
-
-## Project Structure
-
-See the Architecture section of README.md for the full directory tree.
+- Run the narrowest command that covers the change before yielding.
+- For protocol/client behavior, update or add coverage in `client/tests/`.
+- For C# behavior, prefer xUnit coverage under `tests/HotRepl.Tests/`.
+- Before claiming branch-level completion, run `lefthook run pre-push`.
 
 ## Architecture Invariants
 
-Do not break these without understanding all consequences:
+These are non-discoverable requirements; do not "simplify" them away:
 
-- **Threading**: Fleck threads only enqueue to `ConcurrentQueue`s. The main thread (via `Tick()`) is
-  the sole executor. Never call `_evaluator.Evaluate()` from a Fleck thread.
-- **Tick drain order**: (1) cancel drain, (2) command queue, (3) at most one eval, (4)
-  subscriptions. Do not reorder — cancel must precede eval dequeue so cancels issued this frame
-  pre-empt queued jobs.
-- **`IReplHost` is the sole platform boundary**: Core must never import BepInEx, UnityEngine, or any
-  game-specific type. All game coupling flows through `IReplHost`.
-- **Control plane remains game-agnostic**: core may define typed command, job, lease, and artifact
-  envelopes, but game-specific export behavior belongs in host command handlers.
-- **Global control registry stays game-agnostic**: the registry stores `IControlCommandHandler`
-  instances only. Do not add game-specific types, command names, or export policy to HotRepl.
-- **BepInEx ships `HotRepl.Core.dll` and Core dependencies side-by-side**: do not
-  ILRepack/internalize Core, Fleck, or Newtonsoft.Json into `HotRepl.BepInEx.dll`. Separate game
-  plugins compiled against Core must share the exact same assembly identity for
-  `GlobalControlCommandRegistry.Instance`, and Core must be able to load its runtime dependencies.
-- **Control handlers execute through the main-thread tick path**: Fleck threads enqueue only. Do not
-  execute control handlers directly from WebSocket callbacks.
-- **Mutating control commands require a lease**: descriptors with `MutatesState` must reject calls
-  without a valid exclusive control lease.
-- **Control response ownership is strict**: addressed control responses must be delivered only to
-  the originating connection and must not fall back to a replacement client.
-- **Artifacts are references, not bulk payloads**: return metadata (`uri`, `path`, `sha256`,
-  `byteSize`, `finalized`) and let external orchestrators verify files.
-- **Evaluator timeout is capability-driven**: `TimeoutMode.HardAbort` may abort the main thread;
-  `TimeoutMode.Cooperative` cancels a token and cannot preempt every runtime loop. Do not claim all
-  evaluators have hard timeouts.
-- **Core has no compiler stack**: Mono.CSharp and Roslyn live in evaluator projects. Core must not
-  reference `mcs.dll`, Roslyn packages, UnityEngine, BepInEx, MelonLoader, or Il2CppInterop.
-- **C# 7.x in Mono.CSharp evaluated code**: Mono.CSharp evaluates C# 7. Host projects can target
-  newer frameworks/languages, but evaluated user code is limited to C# 7 under Mono.CSharp. Do not
-  attempt to raise this without replacing the evaluator; it is a compiler version pin.
-- **`mcs.dll`**: do not update without running the full smoke test suite. The compiler version
-  determines what features Mono.CSharp users can evaluate.
+- Fleck/WebSocket callbacks enqueue only. The main thread `Tick()` is the sole executor.
+- Tick drain order is fixed: cancels, command queue, at most one eval, subscriptions.
+- `IReplHost` is the only platform boundary. Core must not import BepInEx, UnityEngine, MelonLoader,
+  Il2CppInterop, game-specific types, `mcs.dll`, or Roslyn packages.
+- Control handlers execute through the main-thread tick path, never directly from WebSocket
+  callbacks.
+- Mutating control commands require a valid exclusive lease.
+- Addressed control responses go only to the originating connection; never fall back to a
+  replacement client.
+- Artifacts are references (`uri`, `path`, `sha256`, `byteSize`, `finalized`), not bulk payloads.
+- BepInEx ships `HotRepl.Core.dll` and Core dependencies side-by-side; do not ILRepack/internalize
+  Core, Fleck, or Newtonsoft.Json into `HotRepl.BepInEx.dll`.
+- Evaluator timeout is capability-driven. `HardAbort` may abort the main thread; `Cooperative`
+  cannot preempt every runtime loop.
+- Mono.CSharp evaluates user code as C# 7.x. Do not raise this without replacing the evaluator.
+- Do not update `mcs.dll` without running the full smoke test suite.
 
 ## Domain Constraints Agents Often Get Wrong
 
@@ -184,6 +128,8 @@ Do not break these without understanding all consequences:
 - XML doc comments on all public symbols in `IReplHost.cs`, `ReplEngine.cs`, `ReplConfig.cs`.
 - CSharpier formats every `.cs` file. CSharpier.MsBuild fails the build on unformatted code; the
   `pre-commit` hook auto-fixes staged C# before each commit.
+- No broad suppression baselines. Use targeted `[SuppressMessage]` with justification when a
+  suppression is semantically required.
 
 ## Commit Guidelines
 

@@ -42,8 +42,8 @@ leases for automation clients.
 ## Protocol
 
 All messages are UTF-8 JSON with a `type` discriminant; `id` is caller-assigned and echoed verbatim.
-See [`src/HotRepl.Core/Protocol/Messages.cs`](src/HotRepl.Core/Protocol/Messages.cs) for the full
-schema.
+Protocol constants, serializers, and message records live under
+[`src/HotRepl.Core/Protocol/`](src/HotRepl.Core/Protocol/).
 
 HotRepl also exposes a control plane for typed commands, cooperative jobs, artifact references,
 auth, and exclusive controller leases. See
@@ -165,11 +165,7 @@ Use a game-local wrapper type for the last two commands; HotRepl itself remains 
 
 ## Contributing
 
-The repo is local-first and version-pinned: every formatter, linter, type-checker, and analyzer is
-the same locally as in CI. The `lefthook` gate catches at least everything CI catches, and CI runs
-`lefthook run pre-push` directly in a `hooks-parity` job to keep the invariant.
-
-Bootstrap once per machine:
+Install contributor tools once:
 
 ```bash
 brew install lefthook dprint actionlint commitlint typos
@@ -177,21 +173,6 @@ dotnet tool restore
 lefthook install
 ```
 
-Then commit normally. The `pre-commit` hook auto-fixes formatting (CSharpier, Ruff, dprint), the
-`commit-msg` hook validates Conventional Commits via `commitlint`, and the `pre-push` hook runs the
-full repo gate (build, test, lint, type-check, smoke). Run any stage manually:
-
-```bash
-lefthook run pre-commit --all-files   # auto-fix everything
-lefthook run pre-push                 # mirror the full CI gate
-```
-
-Policies that bind:
-
-- `TreatWarningsAsErrors=true` is unconditional — Debug, Release, IDE, CI.
-- No suppression baseline. Targeted, justified `[SuppressMessage]` per call site only when
-  semantically required.
-- Commit messages follow Conventional Commits with the type enum
-  `build, chore, ci, docs, feat, fix, perf, refactor, revert, style, test`.
-
-See `AGENTS.md` for the full toolchain table and contributor-facing conventions.
+Use `lefthook run pre-push` before pushing; it mirrors the CI gate. Commit messages follow
+Conventional Commits and are checked by the local `commit-msg` hook. See `AGENTS.md` for exact
+commands, verification expectations, and agent-specific constraints.
