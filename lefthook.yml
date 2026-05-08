@@ -1,0 +1,75 @@
+# Lefthook configuration: local hook gate.
+#
+# Invariant: this gate must catch >= what CI catches. CI mirrors these
+# pre-push commands; the `hooks-parity` CI job runs `lefthook run pre-push`
+# directly so drift is impossible.
+#
+# pre-commit operates on staged files only and auto-stages tool fixes
+# (CSharpier, ruff, dprint). pre-push runs the full repository gate
+# without scoping to changed files.
+#
+# Tool wrappers:
+#   - `dotnet csharpier` is a per-repo local tool (.config/dotnet-tools.json);
+#     `dotnet tool restore` runs from the dotnet-build/test commands so the
+#     manifest is hydrated on first push as well.
+#   - `uvx ruff` / `uvx pyright` use uv's ephemeral tool cache; matches the
+#     verified contributor command set documented in AGENTS.md.
+#   - `uv run --project client --extra test` runs pytest with the hotrepl
+#     client installed in a managed venv. The smoke tests skip themselves
+#     when no HotRepl server is reachable, so this is fast offline.
+#
+# Why pre-push omits a standalone CSharpier check: CSharpier.MsBuild runs
+# inside `dotnet build` (Directory.Build.props sets CSharpier_Check=true),
+# so the dotnet-build command already fails on unformatted C#.
+
+pre-commit:
+  parallel: true
+  commands:
+    csharpier:
+      glob: "*.cs"
+      run: dotnet csharpier format {staged_files}
+      stage_fixed: true
+    ruff-fix:
+      glob: "*.py"
+      run: uvx ruff check --fix {staged_files}
+      stage_fixed: true
+    ruff-format:
+      glob: "*.py"
+      run: uvx ruff format {staged_files}
+      stage_fixed: true
+    dprint:
+      glob: "*.{md,json,jsonc,json5,yml,yaml,toml}"
+      run: dprint fmt {staged_files}
+      stage_fixed: true
+    typos:
+      run: typos
+    actionlint:
+      glob: ".github/workflows/*.{yml,yaml}"
+      run: actionlint
+
+commit-msg:
+  commands:
+    commitlint:
+      run: commitlint --edit {1}
+
+pre-push:
+  parallel: true
+  commands:
+    ruff-check:
+      run: uvx ruff check
+    ruff-format-check:
+      run: uvx ruff format --check
+    pyright:
+      run: uvx pyright
+    dprint-check:
+      run: dprint check
+    typos:
+      run: typos
+    actionlint:
+      run: actionlint
+    dotnet-build:
+      run: dotnet tool restore && dotnet build src/HotRepl.Core/HotRepl.Core.csproj --nologo -v q
+    dotnet-test:
+      run: dotnet tool restore && dotnet test tests/HotRepl.Tests/HotRepl.Tests.csproj --nologo -v q
+    pytest:
+      run: uv run --project client --extra test pytest client/tests/ -v --tb=short
