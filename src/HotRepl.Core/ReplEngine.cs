@@ -100,10 +100,10 @@ public sealed class ReplEngine : IDisposable
             _controlJobs
         );
 
-        _wsServer.ClientConnected += OnClientConnected;
-        _wsServer.ClientDisconnected += _clients.OnDisconnected;
-        _wsServer.ClientDisconnected += _controlSessions.OnDisconnected;
-        _wsServer.MessageReceived += _router.HandleMessage;
+        _wsServer.ClientConnected += (_, e) => OnClientConnected(e.ConnectionId, e.Connection);
+        _wsServer.ClientDisconnected += (_, e) => _clients.OnDisconnected(e.ConnectionId);
+        _wsServer.ClientDisconnected += (_, e) => _controlSessions.OnDisconnected(e.ConnectionId);
+        _wsServer.MessageReceived += (_, e) => _router.HandleMessage(e.ConnectionId, e.RawJson);
 
         _wsServer.Start(_host.Config.Port, _host.Config.BindHost);
         _host.LogInfo($"[HotRepl] Engine started on port {_host.Config.Port}.");

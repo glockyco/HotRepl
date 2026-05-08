@@ -14,13 +14,13 @@ internal sealed class ReplWebSocketServer : IDisposable
     private Fleck.WebSocketServer? _server;
 
     /// <summary>Fires on Fleck thread when a client successfully opens a connection.</summary>
-    public event Action<Guid, IWebSocketConnection>? ClientConnected;
+    public event EventHandler<ClientConnectedEventArgs>? ClientConnected;
 
     /// <summary>Fires on Fleck thread when a client disconnects or errors out.</summary>
-    public event Action<Guid>? ClientDisconnected;
+    public event EventHandler<ClientDisconnectedEventArgs>? ClientDisconnected;
 
     /// <summary>Fires on Fleck thread for each inbound text frame.</summary>
-    public event Action<Guid, string>? MessageReceived;
+    public event EventHandler<MessageReceivedEventArgs>? MessageReceived;
 
     public ReplWebSocketServer(Action<string> log) => _log = log;
 
@@ -78,13 +78,16 @@ internal sealed class ReplWebSocketServer : IDisposable
     {
         var id = socket.ConnectionInfo.Id;
 
-        socket.OnOpen = () => ClientConnected?.Invoke(id, socket);
-        socket.OnClose = () => ClientDisconnected?.Invoke(id);
-        socket.OnMessage = raw => MessageReceived?.Invoke(id, raw);
+        socket.OnOpen = () =>
+            ClientConnected?.Invoke(this, new ClientConnectedEventArgs(id, socket));
+        socket.OnClose = () =>
+            ClientDisconnected?.Invoke(this, new ClientDisconnectedEventArgs(id));
+        socket.OnMessage = raw =>
+            MessageReceived?.Invoke(this, new MessageReceivedEventArgs(id, raw));
         socket.OnError = ex =>
         {
             _log($"[HotRepl] Socket error ({id}): {ex.Message}");
-            ClientDisconnected?.Invoke(id);
+            ClientDisconnected?.Invoke(this, new ClientDisconnectedEventArgs(id));
         };
     }
 }
