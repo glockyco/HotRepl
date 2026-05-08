@@ -6,6 +6,7 @@ obj/
 *.DotSettings.user
 lib/Mono.CSharp.dll
 src/HotRepl.BepInEx/lib/
+Local.props
 
 
 # Python

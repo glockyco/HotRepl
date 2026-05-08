@@ -71,9 +71,21 @@ internal sealed class BepInExHost : IReplHost
 
     public ICodeEvaluator CreateEvaluator(string evaluatorName)
     {
-        if (evaluatorName == MonoCSharpEvaluator.MonoCapabilities.Name)
+        if (
+            string.Equals(
+                evaluatorName,
+                MonoCSharpEvaluator.MonoCapabilities.Name,
+                StringComparison.Ordinal
+            )
+        )
             return new MonoCSharpEvaluator(this);
-        if (evaluatorName == RoslynScriptEvaluator.ScriptCapabilities.Name)
+        if (
+            string.Equals(
+                evaluatorName,
+                RoslynScriptEvaluator.ScriptCapabilities.Name,
+                StringComparison.Ordinal
+            )
+        )
             return RoslynEvaluatorFactory.Create(evaluatorName, this);
 
         throw new NotSupportedException(

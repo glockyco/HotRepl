@@ -84,7 +84,9 @@ public static class Il2CppHelpers
             .GetType()
             .GetMethods(BindingFlags.Public | BindingFlags.Instance)
             .FirstOrDefault(m =>
-                m.Name == "TryCast" && m.IsGenericMethodDefinition && m.GetParameters().Length == 0
+                string.Equals(m.Name, "TryCast", StringComparison.Ordinal)
+                && m.IsGenericMethodDefinition
+                && m.GetParameters().Length == 0
             );
         if (method == null)
             return value as T;
@@ -115,7 +117,7 @@ public static class Il2CppHelpers
         var method = typeof(Il2CppType)
             .GetMethods(BindingFlags.Public | BindingFlags.Static)
             .First(m =>
-                m.Name == nameof(Il2CppType.Of)
+                string.Equals(m.Name, nameof(Il2CppType.Of), StringComparison.Ordinal)
                 && m.IsGenericMethodDefinition
                 && m.GetParameters().Length == 0
             );

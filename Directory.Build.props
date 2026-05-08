@@ -1,5 +1,17 @@
 <Project>
   <!--
+    Optional per-machine overrides for game-local DLL paths
+    (HotRepl.Host.MelonLoader, HotRepl.Helpers.Il2Cpp). Local.props is
+    git-ignored; copy Local.props.example to start. Any csproj that does
+    not reference these paths is unaffected.
+  -->
+  <Import Project="Local.props" Condition="Exists('Local.props')" />
+  <PropertyGroup Condition="'$(GAME_ROOT)' != ''">
+    <MelonLoaderPath Condition="'$(MelonLoaderPath)' == ''">$(GAME_ROOT)/MelonLoader</MelonLoaderPath>
+    <Il2CppAssembliesPath Condition="'$(Il2CppAssembliesPath)' == ''">$(MelonLoaderPath)/Il2CppAssemblies</Il2CppAssembliesPath>
+  </PropertyGroup>
+
+  <!--
     Solution-wide MSBuild policy. Applies to every csproj before its own
     PropertyGroup is read; csprojs may still override any property locally,
     but should not.

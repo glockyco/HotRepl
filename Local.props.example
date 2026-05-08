@@ -1,0 +1,21 @@
+<Project>
+  <!--
+    Per-machine paths for building HotRepl.Host.MelonLoader and
+    HotRepl.Helpers.Il2Cpp. These projects link against game-local
+    DLLs that ship with the target game's MelonLoader install.
+
+    Copy this file to Local.props and edit the paths to match your
+    install. Local.props is git-ignored.
+
+    The Directory.Build.props file consumes MelonLoaderPath and
+    Il2CppAssembliesPath. Either set both, or set GAME_ROOT and let
+    the defaults derive the rest.
+
+    Example for Ancient Kingdoms via Steam under CrossOver on macOS:
+
+      <GAME_ROOT>/path/to/Steam/steamapps/common/Ancient Kingdoms</GAME_ROOT>
+  -->
+  <PropertyGroup>
+    <GAME_ROOT>REPLACE_ME</GAME_ROOT>
+  </PropertyGroup>
+</Project>

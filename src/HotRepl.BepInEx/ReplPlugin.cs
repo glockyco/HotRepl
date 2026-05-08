@@ -17,6 +17,12 @@ namespace HotRepl.BepInEx;
 ///            very first call (deferred from Awake for startup speed).
 /// </summary>
 [BepInPlugin(PluginInfo.GUID, PluginInfo.Name, PluginInfo.Version)]
+[System.Diagnostics.CodeAnalysis.SuppressMessage(
+    "Design",
+    "CA1001:Types that own disposable fields should be disposable",
+    Justification = "BepInEx MonoBehaviour lifecycle: cleanup belongs in OnDestroy, not IDisposable. "
+        + "Unity does not call IDisposable on MonoBehaviours, and BaseUnityPlugin does not implement IDisposable."
+)]
 public sealed class ReplPlugin : BaseUnityPlugin
 {
     private ReplEngine? _engine;

@@ -235,7 +235,7 @@ public static class UnityHelpers
 
         var goLayer = LayerMask.LayerToName(go.layer);
         bool nameMatch =
-            filter == null || go.name.IndexOf(filter, StringComparison.OrdinalIgnoreCase) >= 0;
+            filter == null || go.name.Contains(filter, StringComparison.OrdinalIgnoreCase);
         bool layerMatch =
             layer == null || string.Equals(goLayer, layer, StringComparison.OrdinalIgnoreCase);
 
@@ -264,7 +264,7 @@ public static class UnityHelpers
             return null;
 
         count++;
-        return new System.Collections.Generic.Dictionary<string, object>
+        return new System.Collections.Generic.Dictionary<string, object>(StringComparer.Ordinal)
         {
             ["name"] = go.name,
             ["layer"] = goLayer,
