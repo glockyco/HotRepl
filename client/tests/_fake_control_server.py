@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 import json
 from collections.abc import AsyncGenerator, Awaitable, Callable
 from contextlib import asynccontextmanager
@@ -31,7 +32,7 @@ async def fake_control_server(
             messages.append(message)
             handler = handlers[message["type"]]
             response = handler(message)
-            if hasattr(response, "__await__"):
+            if inspect.isawaitable(response):
                 response = await response
             await websocket.send(json.dumps(response))
 

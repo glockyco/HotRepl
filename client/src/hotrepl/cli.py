@@ -11,7 +11,7 @@ import subprocess
 import sys
 from dataclasses import asdict, is_dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from hotrepl._client import DEFAULT_URL, Client, ControlCommandError, EvalError
 
@@ -124,27 +124,29 @@ def _parse_json_object(raw: str) -> dict[str, Any]:
     parsed = json.loads(raw)
     if not isinstance(parsed, dict):
         raise SystemExit("control command args must be a JSON object")
-    return parsed
+    return cast("dict[str, Any]", parsed)
 
 
 def _print_json(value: Any) -> None:
     print(json.dumps(_jsonable(value), indent=2))
 
 
-def _jsonable(value: Any) -> Any:
+def _jsonable(value: object) -> object:
     if is_dataclass(value) and not isinstance(value, type):
         return asdict(value)
     if isinstance(value, list):
-        return [_jsonable(item) for item in value]
+        items = cast("list[object]", value)
+        return [_jsonable(item) for item in items]
     if isinstance(value, dict):
-        return {key: _jsonable(item) for key, item in value.items()}
+        mapping = cast("dict[str, object]", value)
+        return {key: _jsonable(item) for key, item in mapping.items()}
     return value
 
 
 def _format_info(handshake: dict[str, Any]) -> str:
-    evaluator = handshake.get("evaluator") or {}
-    host = handshake.get("host") or {}
-    available = handshake.get("availableEvaluators") or []
+    evaluator = cast("dict[str, Any]", handshake.get("evaluator") or {})
+    host = cast("dict[str, Any]", handshake.get("host") or {})
+    available = cast("list[str]", handshake.get("availableEvaluators") or [])
     language = evaluator.get("languageVersion", handshake.get("csharpVersion", "unknown"))
     return "\n".join(
         [
@@ -212,7 +214,8 @@ def _cmd_test(args: argparse.Namespace) -> None:
     sys.exit(result.returncode)
 
 
-def _build_parser() -> argparse.ArgumentParser:
+def build_parser() -> argparse.ArgumentParser:
+    """Build the top-level argparse parser for the hotrepl CLI."""
     parser = argparse.ArgumentParser(
         prog="hotrepl",
         description="HotRepl C# REPL client",
@@ -297,7 +300,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
 def main() -> None:
     """Dispatch the parsed CLI command to its handler."""
-    parser = _build_parser()
+    parser = build_parser()
     args = parser.parse_args()
 
     dispatch = {

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 from hotrepl import Client
-from hotrepl.cli import _build_parser
+from hotrepl.cli import build_parser
 
 from ._fake_control_server import fake_control_server
 
@@ -68,7 +68,7 @@ async def test_call_sends_command_call_and_parses_result() -> None:
 
 
 def test_cli_control_subcommands_parse() -> None:
-    parser = _build_parser()
+    parser = build_parser()
 
     describe = parser.parse_args(["control", "describe"])
     call = parser.parse_args(["control", "call", "archive.preflight", "{}"])

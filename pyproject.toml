@@ -78,3 +78,36 @@ convention = "google"
 "client/tests/**" = ["S101", "S105", "S106", "ARG", "PLR2004", "D"]
 "client/src/hotrepl/cli.py" = ["T201"] # CLI legitimately prints
 "scripts/**" = ["T201", "D", "S603", "S607", "PLR2004"]
+
+[tool.pyright]
+include = ["client/src", "client/tests", "scripts"]
+exclude = [
+  "**/.venv",
+  "**/.mypy_cache",
+  "**/.ruff_cache",
+  "**/.pytest_cache",
+  "**/__pycache__",
+  "**/node_modules",
+]
+venvPath = "client"
+venv = ".venv"
+pythonVersion = "3.11"
+typeCheckingMode = "strict"
+reportImplicitOverride = "error"
+reportMissingTypeStubs = "warning"
+# Strict mode covers the rest. Anything not strict-by-default and not
+# overridden above is intentional.
+
+# Tests probe untyped JSON responses by string keys. Modeling every protocol
+# message as a TypedDict adds a refactor surface without catching real bugs:
+# pyright would still need a runtime cast at the json.loads boundary, and the
+# field-name typo class is already covered by the smoke tests themselves.
+# Disable only the four "Unknown-cascade" rules in tests; everything else
+# (import errors, return-type mismatches, signature mismatches, private-usage)
+# remains active.
+[[tool.pyright.executionEnvironments]]
+root = "client/tests"
+reportUnknownMemberType = "none"
+reportUnknownArgumentType = "none"
+reportUnknownVariableType = "none"
+reportMissingTypeArgument = "none"

@@ -15,7 +15,7 @@ dependencies = [
 
 [project.optional-dependencies]
 test = ["pytest>=8.0", "pytest-asyncio>=0.24"]
-dev = ["pytest>=8.0", "pytest-asyncio>=0.24", "mypy>=1.10", "ruff>=0.4"]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.24", "pyright>=1.1.380", "ruff>=0.4"]
 
 [project.scripts]
 hotrepl = "hotrepl.cli:main"
@@ -29,7 +29,3 @@ testpaths = ["tests"]
 markers = [
   "no_hotrepl_server: test uses an in-process fake HotRepl server",
 ]
-
-[tool.mypy]
-python_version = "3.11"
-strict = true

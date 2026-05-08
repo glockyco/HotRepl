@@ -6,7 +6,7 @@ import asyncio
 import json
 import logging
 import time
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
@@ -94,8 +94,9 @@ class Client:
 
         ws = self._require_ws()
         raw = await asyncio.wait_for(ws.recv(), timeout=CLIENT_TIMEOUT_S)
-        self.handshake = json.loads(raw)
-        return self.handshake
+        handshake: dict[str, Any] = json.loads(raw)
+        self.handshake = handshake
+        return handshake
 
     async def close(self) -> None:
         if self._ws is not None:
@@ -389,7 +390,7 @@ class Client:
                 return resp
 
 
-def _parse_control_error(data: Any) -> ControlError:
+def _parse_control_error(data: object) -> ControlError:
     if not isinstance(data, dict):
         return ControlError(
             "internal",
@@ -397,12 +398,13 @@ def _parse_control_error(data: Any) -> ControlError:
             "Control command failed without error details.",
             False,
         )
+    payload = cast("dict[str, Any]", data)
     return ControlError(
-        kind=str(data.get("kind", "")),
-        code=str(data.get("code", "")),
-        message=str(data.get("message", "")),
-        retryable=bool(data.get("retryable", False)),
-        details=data.get("details"),
+        kind=str(payload.get("kind", "")),
+        code=str(payload.get("code", "")),
+        message=str(payload.get("message", "")),
+        retryable=bool(payload.get("retryable", False)),
+        details=payload.get("details"),
     )
 
 
