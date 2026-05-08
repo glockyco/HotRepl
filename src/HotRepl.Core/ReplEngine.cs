@@ -44,7 +44,6 @@ public sealed class ReplEngine : IDisposable
     private MessageRouter? _router;
     private ICodeEvaluator? _evaluator;
     private SubscriptionManager? _subscriptions;
-    private IResultSerializer? _serializer;
     private HistoryTracker? _history;
     private ControlCommandRouter? _controlRouter;
     private ControlSessionManager? _controlSessions;
@@ -85,7 +84,6 @@ public sealed class ReplEngine : IDisposable
         _mainThread = Thread.CurrentThread;
 
         _history = new HistoryTracker();
-        _serializer = new JsonResultSerializer();
         _subscriptions = new SubscriptionManager(_host.Config);
         _evaluator = CreateEvaluator(_host.DefaultEvaluatorName);
 
@@ -147,6 +145,23 @@ public sealed class ReplEngine : IDisposable
             HandleHotReload();
 
         // 3. At most one eval per Tick.
+        DrainOneEval();
+
+        // 4. Subscriptions.
+        _subscriptions!.Tick(
+            (id, code, timeoutMs) => GuardedEvaluate(id, code, timeoutMs),
+            (connId, json) => _clients!.SendTo(connId, json)
+        );
+
+        // 5. Drain stale cancel IDs. Any cancel received during this Tick has
+        //    already preempted a queued eval or aborted the running one.
+        //    Leftover entries are for evals that finished or never existed.
+        if (!_cancelledIds.IsEmpty)
+            _cancelledIds.Clear();
+    }
+
+    private void DrainOneEval()
+    {
         while (_evalQueue.TryDequeue(out var job))
         {
             if (_cancelledIds.TryRemove(job.Id, out _))
@@ -169,21 +184,8 @@ public sealed class ReplEngine : IDisposable
                 continue; // try next in queue — but only process one non-cancelled eval
             }
             ExecuteEval(job);
-            break;
+            return;
         }
-
-        // 4. Subscriptions.
-        _subscriptions!.Tick(
-            (id, code, timeoutMs) => GuardedEvaluate(id, code, timeoutMs),
-            (connId, json) => _clients!.SendTo(connId, json),
-            _serializer!
-        );
-
-        // 5. Drain stale cancel IDs. Any cancel received during this Tick has
-        //    already preempted a queued eval or aborted the running one.
-        //    Leftover entries are for evals that finished or never existed.
-        if (!_cancelledIds.IsEmpty)
-            _cancelledIds.Clear();
     }
 
     public void Dispose()
@@ -292,32 +294,10 @@ public sealed class ReplEngine : IDisposable
         _timedOut = false;
 
         var sw = Stopwatch.StartNew();
-        Timer? watchdog = null;
+        using var watchdog = StartTimeoutWatchdog(timeoutMs, gen, cancellation);
 
         try
         {
-            watchdog = new Timer(
-                _ =>
-                {
-                    lock (_abortLock)
-                    {
-                        if (_evalInProgress && _currentGeneration == gen)
-                        {
-                            _timedOut = true;
-                            if (_evaluator!.Capabilities.TimeoutMode == TimeoutMode.HardAbort)
-#pragma warning disable MA0035 // HardAbort timeout mode is the documented design — see AGENTS.md "Evaluator timeout is capability-driven".
-                                _mainThread?.Abort();
-#pragma warning restore MA0035
-                            else if (_evaluator.Capabilities.TimeoutMode == TimeoutMode.Cooperative)
-                                cancellation.Cancel();
-                        }
-                    }
-                },
-                null,
-                timeoutMs,
-                Timeout.Infinite
-            );
-
             var outcome = _evaluator!.Evaluate(code, cancellation.Token);
 
             // Evaluate() catches ThreadAbortException internally, calls ResetAbort(),
@@ -334,9 +314,8 @@ public sealed class ReplEngine : IDisposable
         }
         finally
         {
-            // Dispose watchdog before clearing _evalInProgress so a late-firing
-            // timer can't race with a subsequent eval's setup.
-            watchdog?.Dispose();
+            // The `using var watchdog` above disposes before we enter this block,
+            // so a late-firing timer cannot race with a subsequent eval's setup.
             lock (_abortLock)
             {
                 _evalInProgress = false;
@@ -344,6 +323,35 @@ public sealed class ReplEngine : IDisposable
                 _currentCancellation = null;
             }
         }
+    }
+
+    private Timer StartTimeoutWatchdog(
+        int timeoutMs,
+        long gen,
+        CancellationTokenSource cancellation
+    )
+    {
+        return new Timer(
+            _ =>
+            {
+                lock (_abortLock)
+                {
+                    if (_evalInProgress && _currentGeneration == gen)
+                    {
+                        _timedOut = true;
+                        if (_evaluator!.Capabilities.TimeoutMode == TimeoutMode.HardAbort)
+#pragma warning disable MA0035 // HardAbort timeout mode is the documented design — see AGENTS.md "Evaluator timeout is capability-driven".
+                            _mainThread?.Abort();
+#pragma warning restore MA0035
+                        else if (_evaluator.Capabilities.TimeoutMode == TimeoutMode.Cooperative)
+                            cancellation.Cancel();
+                    }
+                }
+            },
+            null,
+            timeoutMs,
+            Timeout.Infinite
+        );
     }
 
     // ── Private: command handling ─────────────────────────────────────────────
@@ -526,22 +534,52 @@ public sealed class ReplEngine : IDisposable
             )
         )
         {
-            _clients!.SendTo(
-                cmd.ConnectionId,
-                MessageSerializer.Serialize(
-                    new SelectEvaluatorErrorMessage
-                    {
-                        Id = cmd.Id,
-                        ErrorKind = ErrorKind.Unsupported,
-                        Message =
-                            $"Evaluator '{cmd.Evaluator}' is not available. Available: "
-                            + string.Join(", ", _host.AvailableEvaluators.Select(e => e.Name)),
-                    }
-                )
-            );
+            SendUnsupportedEvaluatorError(cmd);
             return;
         }
 
+        CancelInflightForEvaluatorSwap();
+
+        _evaluator?.Dispose();
+        _evaluator = CreateEvaluator(cmd.Evaluator);
+        _evaluatorReady = false;
+        InitializeEvaluator();
+        _evaluatorReady = true;
+
+        _clients!.SendTo(
+            cmd.ConnectionId,
+            MessageSerializer.Serialize(
+                new SelectEvaluatorResultMessage
+                {
+                    Id = cmd.Id,
+                    Success = true,
+                    Evaluator = _evaluator.Capabilities.Name,
+                }
+            )
+        );
+
+        _host.LogInfo($"[HotRepl] Evaluator selected: {_evaluator.Capabilities.Name}.");
+    }
+
+    private void SendUnsupportedEvaluatorError(SelectEvaluatorCmd cmd)
+    {
+        _clients!.SendTo(
+            cmd.ConnectionId,
+            MessageSerializer.Serialize(
+                new SelectEvaluatorErrorMessage
+                {
+                    Id = cmd.Id,
+                    ErrorKind = ErrorKind.Unsupported,
+                    Message =
+                        $"Evaluator '{cmd.Evaluator}' is not available. Available: "
+                        + string.Join(", ", _host.AvailableEvaluators.Select(e => e.Name)),
+                }
+            )
+        );
+    }
+
+    private void CancelInflightForEvaluatorSwap()
+    {
         foreach (var sub in GetAllSubscriptions())
         {
             _clients!.SendTo(
@@ -577,26 +615,6 @@ public sealed class ReplEngine : IDisposable
                 );
             }
         }
-
-        _evaluator?.Dispose();
-        _evaluator = CreateEvaluator(cmd.Evaluator);
-        _evaluatorReady = false;
-        InitializeEvaluator();
-        _evaluatorReady = true;
-
-        _clients!.SendTo(
-            cmd.ConnectionId,
-            MessageSerializer.Serialize(
-                new SelectEvaluatorResultMessage
-                {
-                    Id = cmd.Id,
-                    Success = true,
-                    Evaluator = _evaluator.Capabilities.Name,
-                }
-            )
-        );
-
-        _host.LogInfo($"[HotRepl] Evaluator selected: {_evaluator.Capabilities.Name}.");
     }
 
     private void HandleHotReload()
@@ -679,8 +697,8 @@ public sealed class ReplEngine : IDisposable
             string? serializedValue = null;
             if (outcome.Success && outcome.HasValue && outcome.Value != null)
             {
-                serializedValue = _serializer!.Serialize(outcome.Value, _host.Config);
-                serializedValue = _serializer.Truncate(
+                serializedValue = JsonResultSerializer.Serialize(outcome.Value, _host.Config);
+                serializedValue = JsonResultSerializer.Truncate(
                     serializedValue,
                     _host.Config.MaxResultLength
                 );
@@ -707,8 +725,11 @@ public sealed class ReplEngine : IDisposable
             string? serialized = null;
             if (outcome.HasValue && outcome.Value != null)
             {
-                serialized = _serializer!.Serialize(outcome.Value, _host.Config);
-                serialized = _serializer.Truncate(serialized, _host.Config.MaxResultLength);
+                serialized = JsonResultSerializer.Serialize(outcome.Value, _host.Config);
+                serialized = JsonResultSerializer.Truncate(
+                    serialized,
+                    _host.Config.MaxResultLength
+                );
             }
             json = MessageSerializer.Serialize(
                 new EvalResultMessage

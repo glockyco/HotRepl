@@ -153,50 +153,72 @@ public static class Repl
 
         // Circular reference guard (reference types only).
         if (!type.IsValueType && !visited.Add(obj))
-            return new Dictionary<string, object?>(StringComparer.Ordinal)
-            {
-                ["_type"] = type.FullName,
-                ["_circular"] = true,
-            };
+            return TypeMarker(type, "_circular");
 
         if (depth <= 0)
-            return new Dictionary<string, object?>(StringComparer.Ordinal)
-            {
-                ["_type"] = type.FullName,
-                ["_truncated"] = true,
-            };
+            return TypeMarker(type, "_truncated");
 
         var result = new Dictionary<string, object?>(StringComparer.Ordinal)
         {
             ["_type"] = type.FullName,
         };
+        result["_value"] = SafeToString(obj);
 
-        try
-        {
-            result["_value"] = obj.ToString();
-        }
-        catch (Exception ex)
-        {
-            result["_value"] = $"<ToString error: {ex.Message}>";
-        }
-
-        // IEnumerable — enumerate up to maxChildren.
         if (obj is IEnumerable enumerable && obj is not string)
         {
-            var items = new List<object?>();
-            int count = 0;
-            foreach (var item in enumerable)
-            {
-                if (count++ >= maxChildren)
-                    break;
-                items.Add(InspectCore(item, depth - 1, maxChildren, visited));
-            }
-            result["_items"] = items;
-            result["_count"] = count;
+            InspectEnumerable(enumerable, depth, maxChildren, visited, result);
             return result;
         }
 
-        // Reflect public instance properties.
+        var childCount = InspectProperties(obj, type, depth, maxChildren, visited, result);
+        InspectFields(obj, type, depth, maxChildren, visited, result, childCount);
+        return result;
+    }
+
+    private static Dictionary<string, object?> TypeMarker(Type type, string flag) =>
+        new(StringComparer.Ordinal) { ["_type"] = type.FullName, [flag] = true };
+
+    private static string SafeToString(object obj)
+    {
+        try
+        {
+            return obj.ToString() ?? string.Empty;
+        }
+        catch (Exception ex)
+        {
+            return $"<ToString error: {ex.Message}>";
+        }
+    }
+
+    private static void InspectEnumerable(
+        IEnumerable enumerable,
+        int depth,
+        int maxChildren,
+        HashSet<object> visited,
+        Dictionary<string, object?> result
+    )
+    {
+        var items = new List<object?>();
+        int count = 0;
+        foreach (var item in enumerable)
+        {
+            if (count++ >= maxChildren)
+                break;
+            items.Add(InspectCore(item, depth - 1, maxChildren, visited));
+        }
+        result["_items"] = items;
+        result["_count"] = count;
+    }
+
+    private static int InspectProperties(
+        object obj,
+        Type type,
+        int depth,
+        int maxChildren,
+        HashSet<object> visited,
+        Dictionary<string, object?> result
+    )
+    {
         int childCount = 0;
         foreach (var prop in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
         {
@@ -212,7 +234,6 @@ public static class Repl
                     maxChildren,
                     visited
                 );
-                childCount++;
             }
             catch (Exception ex)
             {
@@ -220,11 +241,22 @@ public static class Repl
                 {
                     ["_error"] = ex.Message,
                 };
-                childCount++;
             }
+            childCount++;
         }
+        return childCount;
+    }
 
-        // Reflect public instance fields (skip if property already covered the name).
+    private static void InspectFields(
+        object obj,
+        Type type,
+        int depth,
+        int maxChildren,
+        HashSet<object> visited,
+        Dictionary<string, object?> result,
+        int childCount
+    )
+    {
         foreach (var field in type.GetFields(BindingFlags.Public | BindingFlags.Instance))
         {
             if (childCount >= maxChildren)
@@ -239,7 +271,6 @@ public static class Repl
                     maxChildren,
                     visited
                 );
-                childCount++;
             }
             catch (Exception ex)
             {
@@ -247,11 +278,9 @@ public static class Repl
                 {
                     ["_error"] = ex.Message,
                 };
-                childCount++;
             }
+            childCount++;
         }
-
-        return result;
     }
 
     private static string FormatSignature(MethodInfo m)

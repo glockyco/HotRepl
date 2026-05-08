@@ -11,9 +11,9 @@ namespace HotRepl.Serialization;
 /// to MaxResultLength and appends a diagnostic marker.
 /// Never throws — serialization failures are returned as a JSON error object.
 /// </summary>
-internal sealed class JsonResultSerializer : IResultSerializer
+internal static class JsonResultSerializer
 {
-    public string Serialize(object? value, ReplConfig config)
+    public static string Serialize(object? value, ReplConfig config)
     {
         if (value == null)
             return "null";
@@ -49,7 +49,7 @@ internal sealed class JsonResultSerializer : IResultSerializer
         }
     }
 
-    public string Truncate(string serialized, int maxLength)
+    public static string Truncate(string serialized, int maxLength)
     {
         if (serialized.Length <= maxLength)
             return serialized;

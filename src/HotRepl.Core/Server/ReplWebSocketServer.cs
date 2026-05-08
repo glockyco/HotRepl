@@ -1,4 +1,6 @@
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 using Fleck;
 
 namespace HotRepl.Server;
@@ -54,20 +56,28 @@ internal sealed class ReplWebSocketServer : IDisposable
 
     /// <summary>
     /// Sends <paramref name="json"/> to <paramref name="socket"/> if it is still available.
-    /// Fire-and-forget; any send failure is logged.
+    /// Fire-and-forget; both synchronous and asynchronous send failures are logged.
     /// </summary>
     public void Send(IWebSocketConnection socket, string json)
     {
         if (!socket.IsAvailable)
             return;
+        Task sendTask;
         try
         {
-            socket.Send(json);
+            sendTask = socket.Send(json);
         }
         catch (Exception ex)
         {
             _log($"[HotRepl] Send failed: {ex.Message}");
+            return;
         }
+        _ = sendTask.ContinueWith(
+            t => _log($"[HotRepl] Send failed: {t.Exception?.GetBaseException().Message}"),
+            CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default
+        );
     }
 
     public void Dispose() => _server?.Dispose();

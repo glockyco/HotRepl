@@ -64,48 +64,54 @@ internal sealed class ControlCommandRouter
             );
         }
 
-        if (handler.Descriptor.Kind == ControlCommandKind.Job)
+        return handler.Descriptor.Kind switch
         {
-            if (_jobs == null)
-                return CommandError(
-                    message.Id,
-                    "unsupported_operation",
-                    "jobsUnavailable",
-                    "Control jobs are not available.",
-                    retryable: false
-                );
-
-            var timeout =
-                message.TimeoutMs > 0
-                    ? TimeSpan.FromMilliseconds(message.TimeoutMs)
-                    : (TimeSpan?)null;
-            var job = _jobs.StartJob(
-                message.Id,
-                message.LeaseId,
-                message.IdempotencyKey,
-                (context, token) =>
-                    handler.ExecuteAsync(context.ToCommandContext(timeout), message.Args, token)
-            );
-
-            return new CommandAcceptedMessage
-            {
-                Id = message.Id,
-                JobId = job.JobId,
-                State = job.State,
-            };
-        }
-
-        if (handler.Descriptor.Kind != ControlCommandKind.Synchronous)
-        {
-            return CommandError(
+            ControlCommandKind.Job => StartJob(message, handler),
+            ControlCommandKind.Synchronous => ExecuteSynchronous(message, handler),
+            _ => CommandError(
                 message.Id,
                 "unsupported_operation",
                 "unsupportedCommandKind",
                 $"Command '{message.Name}' has unsupported kind '{handler.Descriptor.Kind}'.",
                 retryable: false
-            );
-        }
+            ),
+        };
+    }
 
+    private object StartJob(CommandCallMessage message, IControlCommandHandler handler)
+    {
+        if (_jobs == null)
+            return CommandError(
+                message.Id,
+                "unsupported_operation",
+                "jobsUnavailable",
+                "Control jobs are not available.",
+                retryable: false
+            );
+
+        var timeout =
+            message.TimeoutMs > 0 ? TimeSpan.FromMilliseconds(message.TimeoutMs) : (TimeSpan?)null;
+        var job = _jobs.StartJob(
+            message.Id,
+            message.LeaseId,
+            message.IdempotencyKey,
+            (context, token) =>
+                handler.ExecuteAsync(context.ToCommandContext(timeout), message.Args, token)
+        );
+
+        return new CommandAcceptedMessage
+        {
+            Id = message.Id,
+            JobId = job.JobId,
+            State = job.State,
+        };
+    }
+
+    private static object ExecuteSynchronous(
+        CommandCallMessage message,
+        IControlCommandHandler handler
+    )
+    {
         try
         {
             var timeout =

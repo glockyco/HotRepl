@@ -66,8 +66,7 @@ internal sealed class SubscriptionManager
     /// </summary>
     public void Tick(
         Func<string, string, int, EvalOutcome> guardedEvaluate,
-        Action<Guid, string> send,
-        IResultSerializer serializer
+        Action<Guid, string> send
     )
     {
         if (_subscriptions.Count == 0)
@@ -77,86 +76,104 @@ internal sealed class SubscriptionManager
 
         foreach (var kvp in _subscriptions)
         {
-            var sub = kvp.Value;
-            if (!sub.Active)
+            if (!ShouldRunThisTick(kvp.Value))
                 continue;
-
-            sub.FramesSinceLast++;
-            if (sub.FramesSinceLast < sub.IntervalFrames)
-                continue;
-            sub.FramesSinceLast = 0;
-
-            var outcome = guardedEvaluate(sub.Id, sub.Code, sub.TimeoutMs);
-
-            if (outcome.Success)
-            {
-                sub.ConsecutiveErrors = 0;
-
-                string? serialized = null;
-                if (outcome.HasValue && outcome.Value != null)
-                {
-                    serialized = serializer.Serialize(outcome.Value, _config);
-                    serialized = serializer.Truncate(serialized, _config.MaxResultLength);
-                }
-
-                // onChange: suppress if value hasn't changed since last delivery.
-                if (
-                    sub.OnChange
-                    && string.Equals(serialized, sub.LastValue, StringComparison.Ordinal)
-                )
-                    continue;
-
-                sub.LastValue = serialized;
-                sub.Seq++;
-                sub.DeliveryCount++;
-                bool isFinal = sub.Limit > 0 && sub.DeliveryCount >= sub.Limit;
-
-                send(
-                    sub.ConnectionId,
-                    MessageSerializer.Serialize(
-                        new SubscribeResultMessage
-                        {
-                            Id = sub.Id,
-                            Seq = sub.Seq,
-                            HasValue = outcome.HasValue,
-                            Value = serialized,
-                            ValueType = outcome.ValueType,
-                            DurationMs = outcome.DurationMs,
-                            Final = isFinal,
-                        }
-                    )
-                );
-
-                if (isFinal)
-                    (toRemove ??= new List<string>()).Add(sub.Id);
-            }
-            else
-            {
-                sub.Seq++;
-                sub.ConsecutiveErrors++;
-                bool isFinal = sub.ConsecutiveErrors >= MaxConsecutiveErrors;
-
-                send(
-                    sub.ConnectionId,
-                    MessageSerializer.Serialize(
-                        new SubscribeErrorMessage
-                        {
-                            Id = sub.Id,
-                            Seq = sub.Seq,
-                            ErrorKind = outcome.ErrorKind ?? Protocol.ErrorKind.Runtime,
-                            Message = outcome.ErrorMessage ?? "Unknown error",
-                            Final = isFinal,
-                        }
-                    )
-                );
-
-                if (isFinal)
-                    (toRemove ??= new List<string>()).Add(sub.Id);
-            }
+            if (TickOne(kvp.Value, guardedEvaluate, send))
+                (toRemove ??= new List<string>()).Add(kvp.Value.Id);
         }
 
         if (toRemove != null)
             foreach (var id in toRemove)
                 _subscriptions.Remove(id);
+    }
+
+    private static bool ShouldRunThisTick(SubscriptionState sub)
+    {
+        if (!sub.Active)
+            return false;
+        sub.FramesSinceLast++;
+        if (sub.FramesSinceLast < sub.IntervalFrames)
+            return false;
+        sub.FramesSinceLast = 0;
+        return true;
+    }
+
+    /// <summary>Returns true when the subscription has terminated and should be removed.</summary>
+    private bool TickOne(
+        SubscriptionState sub,
+        Func<string, string, int, EvalOutcome> guardedEvaluate,
+        Action<Guid, string> send
+    )
+    {
+        var outcome = guardedEvaluate(sub.Id, sub.Code, sub.TimeoutMs);
+        return outcome.Success
+            ? DeliverValue(sub, outcome, send)
+            : DeliverError(sub, outcome, send);
+    }
+
+    private bool DeliverValue(SubscriptionState sub, EvalOutcome outcome, Action<Guid, string> send)
+    {
+        sub.ConsecutiveErrors = 0;
+
+        string? serialized = null;
+        if (outcome.HasValue && outcome.Value != null)
+        {
+            serialized = JsonResultSerializer.Serialize(outcome.Value, _config);
+            serialized = JsonResultSerializer.Truncate(serialized, _config.MaxResultLength);
+        }
+
+        // onChange: suppress if value hasn't changed since last delivery.
+        if (sub.OnChange && string.Equals(serialized, sub.LastValue, StringComparison.Ordinal))
+            return false;
+
+        sub.LastValue = serialized;
+        sub.Seq++;
+        sub.DeliveryCount++;
+        bool isFinal = sub.Limit > 0 && sub.DeliveryCount >= sub.Limit;
+
+        send(
+            sub.ConnectionId,
+            MessageSerializer.Serialize(
+                new SubscribeResultMessage
+                {
+                    Id = sub.Id,
+                    Seq = sub.Seq,
+                    HasValue = outcome.HasValue,
+                    Value = serialized,
+                    ValueType = outcome.ValueType,
+                    DurationMs = outcome.DurationMs,
+                    Final = isFinal,
+                }
+            )
+        );
+
+        return isFinal;
+    }
+
+    private static bool DeliverError(
+        SubscriptionState sub,
+        EvalOutcome outcome,
+        Action<Guid, string> send
+    )
+    {
+        sub.Seq++;
+        sub.ConsecutiveErrors++;
+        bool isFinal = sub.ConsecutiveErrors >= MaxConsecutiveErrors;
+
+        send(
+            sub.ConnectionId,
+            MessageSerializer.Serialize(
+                new SubscribeErrorMessage
+                {
+                    Id = sub.Id,
+                    Seq = sub.Seq,
+                    ErrorKind = outcome.ErrorKind ?? Protocol.ErrorKind.Runtime,
+                    Message = outcome.ErrorMessage ?? "Unknown error",
+                    Final = isFinal,
+                }
+            )
+        );
+
+        return isFinal;
     }
 }

@@ -17,7 +17,6 @@ namespace HotRepl.Tests.Unit;
 /// </summary>
 public class ResultSerializerTests
 {
-    private readonly JsonResultSerializer _sut = new();
     private readonly ReplConfig _defaults = new();
 
     // ── Serialize ─────────────────────────────────────────────────────────────
@@ -25,7 +24,7 @@ public class ResultSerializerTests
     [Fact]
     public void Null_ProducesJsonNull()
     {
-        Assert.Equal("null", _sut.Serialize(null, _defaults));
+        Assert.Equal("null", JsonResultSerializer.Serialize(null, _defaults));
     }
 
     [Fact]
@@ -33,19 +32,19 @@ public class ResultSerializerTests
     {
         // Strings round-trip through JSON — the client json.loads the value field
         // to recover the original string without quotes.
-        Assert.Equal("\"hello\"", _sut.Serialize("hello", _defaults));
+        Assert.Equal("\"hello\"", JsonResultSerializer.Serialize("hello", _defaults));
     }
 
     [Fact]
     public void Int_ProducesJsonNumber()
     {
-        Assert.Equal("42", _sut.Serialize(42, _defaults));
+        Assert.Equal("42", JsonResultSerializer.Serialize(42, _defaults));
     }
 
     [Fact]
     public void Double_UsesInvariantDecimalSeparator()
     {
-        var result = _sut.Serialize(3.14, _defaults);
+        var result = JsonResultSerializer.Serialize(3.14, _defaults);
         Assert.NotNull(result);
         Assert.Contains(".", result);
         Assert.DoesNotContain(",", result);
@@ -54,14 +53,14 @@ public class ResultSerializerTests
     [Fact]
     public void Bool_ProducesLowercaseJsonBoolean()
     {
-        Assert.Equal("true", _sut.Serialize(true, _defaults));
-        Assert.Equal("false", _sut.Serialize(false, _defaults));
+        Assert.Equal("true", JsonResultSerializer.Serialize(true, _defaults));
+        Assert.Equal("false", JsonResultSerializer.Serialize(false, _defaults));
     }
 
     [Fact]
     public void Type_ProducesJsonString()
     {
-        var result = _sut.Serialize(typeof(string), _defaults);
+        var result = JsonResultSerializer.Serialize(typeof(string), _defaults);
         Assert.NotNull(result);
         // Parsed back: should contain the type name
         var parsed = JsonConvert.DeserializeObject<string>(result);
@@ -71,7 +70,7 @@ public class ResultSerializerTests
     [Fact]
     public void IntArray_ProducesJsonArray()
     {
-        var result = _sut.Serialize(new[] { 1, 2, 3 }, _defaults);
+        var result = JsonResultSerializer.Serialize(new[] { 1, 2, 3 }, _defaults);
         var token = JToken.Parse(result);
         Assert.Equal(JTokenType.Array, token.Type);
         Assert.Equal(new[] { 1, 2, 3 }, token.ToObject<int[]>());
@@ -82,7 +81,7 @@ public class ResultSerializerTests
     {
         // Json.NET serializes byte[] as base64, not as [1, 2, 3].
         // This is correct — byte arrays are binary blobs, not number lists.
-        var result = _sut.Serialize(new byte[] { 1, 2, 3 }, _defaults);
+        var result = JsonResultSerializer.Serialize(new byte[] { 1, 2, 3 }, _defaults);
         var token = JToken.Parse(result);
         Assert.Equal(JTokenType.String, token.Type); // base64 string
     }
@@ -90,7 +89,7 @@ public class ResultSerializerTests
     [Fact]
     public void EmptyEnumerable_ProducesEmptyJsonArray()
     {
-        var result = _sut.Serialize(new int[0], _defaults);
+        var result = JsonResultSerializer.Serialize(new int[0], _defaults);
         Assert.Equal("[]", result);
     }
 
@@ -98,7 +97,7 @@ public class ResultSerializerTests
     public void Enumerable_CappedAtMaxElements()
     {
         var config = new ReplConfig { MaxEnumerableElements = 5 };
-        var result = _sut.Serialize(Enumerable.Range(0, 200), config);
+        var result = JsonResultSerializer.Serialize(Enumerable.Range(0, 200), config);
         var array = JArray.Parse(result);
         Assert.Equal(5, array.Count);
         Assert.Equal(0, array[0].Value<int>());
@@ -109,7 +108,7 @@ public class ResultSerializerTests
     public void NestedEnumerable_SerializesCorrectly()
     {
         var nested = new List<int[]> { new[] { 1, 2 }, new[] { 3, 4 } };
-        var result = _sut.Serialize(nested, _defaults);
+        var result = JsonResultSerializer.Serialize(nested, _defaults);
         var outer = JArray.Parse(result);
         Assert.Equal(2, outer.Count);
         Assert.Equal(new[] { 1, 2 }, outer[0].ToObject<int[]>());
@@ -119,7 +118,7 @@ public class ResultSerializerTests
     [Fact]
     public void AnonymousType_ProducesJsonObject()
     {
-        var result = _sut.Serialize(new { X = 1, Y = "hello" }, _defaults);
+        var result = JsonResultSerializer.Serialize(new { X = 1, Y = "hello" }, _defaults);
         var obj = JObject.Parse(result);
         Assert.Equal(1, obj["X"]!.Value<int>());
         Assert.Equal("hello", obj["Y"]!.Value<string>());
@@ -130,7 +129,7 @@ public class ResultSerializerTests
     {
         // Even on unexpected failures the contract is: never throw.
         // (Covered implicitly by all tests above — none wrap in try/catch.)
-        Assert.NotNull(_sut.Serialize(new ThrowingToString(), _defaults));
+        Assert.NotNull(JsonResultSerializer.Serialize(new ThrowingToString(), _defaults));
     }
 
     // ── Truncate ──────────────────────────────────────────────────────────────
@@ -139,14 +138,14 @@ public class ResultSerializerTests
     public void Truncate_WithinLimit_ReturnsUnchanged()
     {
         var s = "hello";
-        Assert.Equal(s, _sut.Truncate(s, 100));
+        Assert.Equal(s, JsonResultSerializer.Truncate(s, 100));
     }
 
     [Fact]
     public void Truncate_ExceedsLimit_CutsAndAppendsDiagnostic()
     {
         var s = new string('x', 200);
-        var result = _sut.Truncate(s, 10);
+        var result = JsonResultSerializer.Truncate(s, 10);
 
         Assert.StartsWith(new string('x', 10), result);
         Assert.Contains("200", result); // original length visible for diagnosis
@@ -156,7 +155,7 @@ public class ResultSerializerTests
     public void Truncate_ExactLimit_ReturnsUnchanged()
     {
         var s = new string('x', 50);
-        Assert.Equal(s, _sut.Truncate(s, 50));
+        Assert.Equal(s, JsonResultSerializer.Truncate(s, 50));
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
