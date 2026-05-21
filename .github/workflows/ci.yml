@@ -105,7 +105,7 @@ jobs:
           enable-cache: true
 
       - name: Pyright (strict)
-        run: uvx --quiet pyright
+        run: uv run --quiet --project client --extra dev pyright
 
       # The smoke suite skips every test when no HotRepl server is reachable;
       # this run validates that the suite *imports* and that test collection
@@ -195,5 +195,8 @@ jobs:
       - name: Restore CSharpier
         run: dotnet tool restore
 
+      # Use --force so the gate runs even when there's nothing ahead of
+      # origin/HEAD. Without it, lefthook 2.x silently skips every command
+      # with "no matching push files", making this job vacuously pass.
       - name: lefthook run pre-push
-        run: lefthook run pre-push
+        run: lefthook run pre-push --force

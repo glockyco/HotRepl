@@ -23,7 +23,7 @@ dotnet build src/HotRepl.Core/ --nologo -v q
 dotnet test tests/HotRepl.Tests/ --nologo -v q
 uvx ruff check
 uvx ruff format --check
-uvx pyright
+uv run --project client --extra dev pyright
 dprint check
 typos
 actionlint
@@ -33,11 +33,16 @@ Use lefthook for repo gates:
 
 ```bash
 lefthook run pre-commit --all-files
-lefthook run pre-push
+lefthook run pre-push --force
 ```
 
 `pre-commit` auto-fixes staged C# / Python / docs formatting. `pre-push` mirrors the full CI gate;
-CI also runs `lefthook run pre-push` in `hooks-parity`.
+CI also runs `lefthook run pre-push --force` in `hooks-parity`.
+
+`--force` is required when no commits are ahead of `origin/HEAD` (e.g., a fresh checkout on `main`,
+or manually validating before pushing). Without it, lefthook 2.x silently skips every command with
+"no matching push files" and the gate passes vacuously. `git push` itself triggers the hook with
+push refs and does not need `--force`.
 
 ## Targeted checks
 

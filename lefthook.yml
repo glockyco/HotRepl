@@ -15,8 +15,13 @@
 #   - dotnet commands prefer `/usr/local/share/dotnet/dotnet` when present
 #     because Homebrew's `dotnet` formula can shadow the official .NET 10 SDK
 #     with a 9.x SDK on macOS.
-#   - `uvx ruff` / `uvx pyright` use uv's ephemeral tool cache; matches the
-#     verified contributor command set documented in AGENTS.md.
+#   - `uvx ruff` runs ruff from uv's ephemeral tool cache; ruff doesn't import
+#     project code, so an isolated env is correct.
+#   - `uv run --project client --extra dev pyright` syncs `client/.venv` with
+#     project deps + pyright, then runs pyright against it. `uvx pyright`
+#     would launch in an isolated env where imports like `websockets` and
+#     `hotrepl` are unresolvable, regardless of `venvPath` in pyproject.toml.
+#     See microsoft/pyright discussion #10975.
 #   - `uv run --project client --extra test` runs pytest with the hotrepl
 #     client installed in a managed venv. The smoke tests skip themselves
 #     when no HotRepl server is reachable, so this is fast offline.
@@ -66,7 +71,7 @@ pre-push:
     ruff-format-check:
       run: uvx ruff format --check
     pyright:
-      run: uvx pyright
+      run: uv run --quiet --project client --extra dev pyright
     dprint-check:
       run: dprint check
     typos:
