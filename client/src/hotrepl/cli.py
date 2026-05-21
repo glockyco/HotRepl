@@ -22,11 +22,18 @@ from hotrepl._client import (
     ServerUnreachableError,
 )
 from hotrepl._discovery import discover_instances
-from hotrepl._output import CliError, emit_json_error, emit_json_success, emit_jsonl_event
+from hotrepl._output import (
+    CliError,
+    emit_json_error,
+    emit_json_success,
+    emit_jsonl_event,
+    exit_code_for_error,
+)
 from hotrepl._profiles import AuthSource, Profile, ProfileStore, default_profile_path
+from hotrepl._types import ControlError
 
 if TYPE_CHECKING:
-    from hotrepl._types import ControlError, ControlRunTerminal
+    from hotrepl._types import ControlRunTerminal
 
 
 def _get_url(args: argparse.Namespace) -> str:
@@ -208,7 +215,7 @@ async def _cmd_control_run(args: argparse.Namespace) -> None:
                     error=error,
                     diagnostics=exc.diagnostics,
                 )
-                raise SystemExit(7) from None
+                raise SystemExit(exit_code_for_error(error)) from None
             raise SystemExit(emit_json_error("hotrepl.control.run", error)) from None
 
     if args.jsonl:
@@ -391,6 +398,9 @@ async def _cmd_wait(args: argparse.Namespace) -> None:
                         raise SystemExit(emit_json_success("hotrepl.wait", data))
                     _print_readiness(data)
                     raise SystemExit(0)
+                blocking_error = data.get("error")
+                if isinstance(blocking_error, CliError):
+                    raise SystemExit(emit_json_error("hotrepl.wait", blocking_error))
                 if time.monotonic() >= deadline:
                     error = CliError(
                         "timeout",
@@ -453,7 +463,16 @@ async def _collect_readiness(
                     ),
                 ]
             )
-            return _readiness_payload(checks)
+            error = _cli_error_from_control(
+                auth.error
+                or ControlError(
+                    "auth_failed",
+                    "authFailed",
+                    "Control authentication failed.",
+                    False,
+                )
+            )
+            return _readiness_payload(checks, error=error)
     checks.append(
         _check(
             "control.auth",
@@ -487,7 +506,16 @@ async def _collect_readiness(
                         acquires_lease=True,
                     )
                 )
-                return _readiness_payload(checks)
+                error = _cli_error_from_control(
+                    lease.error
+                    or ControlError(
+                        "lease_conflict",
+                        "leaseAcquisitionFailed",
+                        "Control lease acquisition failed.",
+                        True,
+                    )
+                )
+                return _readiness_payload(checks, error=error)
         checks.append(
             _check(
                 "control.lease",
@@ -520,12 +548,17 @@ def _commands_check(commands: list[Any], required_commands: list[str]) -> dict[s
     )
 
 
-def _readiness_payload(checks: list[dict[str, object]]) -> dict[str, object]:
-    return {
+def _readiness_payload(
+    checks: list[dict[str, object]], *, error: CliError | None = None
+) -> dict[str, object]:
+    payload: dict[str, object] = {
         "ready": all(check["status"] == "pass" for check in checks),
         "connectionImpact": _connection_impact(False),
         "checks": checks,
     }
+    if error is not None:
+        payload["error"] = error
+    return payload
 
 
 def _unreachable_readiness(message: str, required_commands: list[str]) -> dict[str, object]:
@@ -597,7 +630,12 @@ def _print_readiness(data: dict[str, object]) -> None:
 
 async def _cmd_discover(args: argparse.Namespace) -> None:
     roots = [args.instances_dir] if args.instances_dir else None
-    result = discover_instances(roots, host=args.host)
+    profile = _load_profile(args)
+    result = discover_instances(
+        roots,
+        host=args.host,
+        instance_filter=profile.instance if profile is not None else None,
+    )
     payload = result.to_json()
     if args.profile:
         payload["profile"] = args.profile
@@ -616,6 +654,7 @@ def _add_discover_parser(sub: Any) -> None:
     p_discover = sub.add_parser("discover", help="Discover local HotRepl instance documents")
     p_discover.add_argument("--host", default=None, help="Filter by host adapter name")
     p_discover.add_argument("--profile", default=None, help="Profile name for instance filters")
+    p_discover.add_argument("--profile-file", default=None, help="HotRepl profile JSON file")
     p_discover.add_argument(
         "--instances-dir", default=None, help="Override instance document directory"
     )

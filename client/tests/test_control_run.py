@@ -131,6 +131,101 @@ async def test_control_run_wait_jsonl_uses_one_connection_and_emits_one_terminal
 
 
 @pytest.mark.asyncio
+async def test_run_control_job_translates_failed_job_result_command_error() -> None:
+    async with fake_control_server(
+        {
+            "command_call": lambda message: {
+                "type": "command_accepted",
+                "id": message["id"],
+                "jobId": "job-1",
+                "state": "accepted",
+            },
+            "job_status": lambda message: {
+                "type": "job_status_result",
+                "id": message["id"],
+                "jobId": message["jobId"],
+                "state": "failed",
+            },
+            "job_result": lambda message: {
+                "type": "command_error",
+                "id": message["id"],
+                "status": "failed",
+                "error": {
+                    "kind": "command_failed",
+                    "code": "jobFailed",
+                    "message": "Job failed.",
+                    "retryable": False,
+                },
+                "diagnostics": [],
+            },
+        }
+    ) as (url, _messages):
+        client = Client(url)
+        await client.connect()
+
+        terminal = await client.run_control_job(
+            "export.batch",
+            {},
+            wait=True,
+            poll_interval_s=0,
+            mutates_state=True,
+        )
+
+        assert terminal.status == "failed"
+        assert terminal.error is not None
+        assert terminal.error.code == "jobFailed"
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_control_run_jsonl_preserves_auth_failure_exit_code(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    async with fake_control_server(
+        {
+            "control_auth": lambda message: {
+                "type": "control_auth_result",
+                "id": message["id"],
+                "ok": False,
+                "error": {
+                    "kind": "auth_failed",
+                    "code": "invalidToken",
+                    "message": "Control-plane authentication failed.",
+                    "retryable": False,
+                },
+            }
+        },
+        handshake={
+            "type": "handshake",
+            "version": "1.0",
+            "controlPlane": {"supported": True, "protocolVersion": 1, "authRequired": True},
+        },
+    ) as (url, _messages):
+        args = build_parser().parse_args(
+            [
+                "--url",
+                url,
+                "control",
+                "run",
+                "export.batch",
+                "{}",
+                "--jsonl",
+                "--token",
+                "bad-token",
+            ]
+        )
+
+        with pytest.raises(SystemExit) as exc:
+            await _invoke_handler("_cmd_control", args)
+
+        assert exc.value.code == 4
+        event = json.loads(capsys.readouterr().out)
+        assert event["phase"] == "complete"
+        assert event["status"] == "failed"
+        assert event["error"]["kind"] == "auth_failed"
+
+
+@pytest.mark.asyncio
 async def test_run_control_job_cancellation_confirms_terminal_cancelled_state() -> None:
     first_status_seen = asyncio.Event()
     cancelled = False

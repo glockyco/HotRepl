@@ -94,7 +94,10 @@ def default_instance_roots() -> list[Path]:
 
 
 def discover_instances(
-    roots: list[str | Path] | None = None, *, host: str | None = None
+    roots: list[str | Path] | None = None,
+    *,
+    host: str | None = None,
+    instance_filter: dict[str, Any] | None = None,
 ) -> DiscoveryResult:
     """Read candidate instance documents without opening a WebSocket."""
     selected_roots = (
@@ -122,6 +125,8 @@ def discover_instances(
                 )
                 continue
             if host is not None and instance.host.get("name") != host:
+                continue
+            if not _matches_filter(instance, instance_filter):
                 continue
             instances.append(instance)
     return DiscoveryResult(instances, diagnostics)
@@ -158,6 +163,22 @@ def _object(value: object) -> dict[str, Any]:
     if isinstance(value, dict):
         return cast("dict[str, Any]", value)
     return {}
+
+
+def _matches_filter(instance: InstanceDocument, instance_filter: dict[str, Any] | None) -> bool:
+    if not instance_filter:
+        return True
+    instance_id = instance_filter.get("instanceId")
+    if instance_id is not None and str(instance_id) != instance.instance_id:
+        return False
+    host = instance_filter.get("host") or instance_filter.get("hostName")
+    if host is not None and str(host) != str(instance.host.get("name", "")):
+        return False
+    port = instance_filter.get("port")
+    if port is not None and _int_value(port) != instance.port:
+        return False
+    url = instance_filter.get("url")
+    return not (url is not None and str(url) != instance.url)
 
 
 def _int_value(value: object) -> int:

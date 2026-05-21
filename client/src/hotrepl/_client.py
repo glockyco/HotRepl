@@ -421,7 +421,16 @@ class Client:
         while True:
             status = await self.job_status(job_id)
             if status.state in _TERMINAL_JOB_STATES:
-                result = await self.job_result(job_id)
+                try:
+                    result = await self.job_result(job_id)
+                except ControlCommandError as exc:
+                    return ControlRunTerminal(
+                        status=status.state,
+                        result={},
+                        artifacts=[],
+                        diagnostics=exc.diagnostics,
+                        error=exc.error,
+                    )
                 return _terminal_from_result(status.state, result)
             if on_progress is not None:
                 on_progress(status)

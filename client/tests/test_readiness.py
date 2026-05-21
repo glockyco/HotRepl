@@ -249,3 +249,115 @@ async def test_wait_retries_until_commands_visible_before_acquiring_lease(
             "lease_acquire",
         ]
         assert messages[-1]["sessionId"] == "session-1"
+
+
+@pytest.mark.asyncio
+async def test_wait_exits_immediately_on_auth_failure(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    async with fake_control_server(
+        {
+            "control_auth": lambda message: {
+                "type": "control_auth_result",
+                "id": message["id"],
+                "ok": False,
+                "error": {
+                    "kind": "auth_failed",
+                    "code": "invalidToken",
+                    "message": "Control-plane authentication failed.",
+                    "retryable": False,
+                },
+            }
+        },
+        handshake={
+            "type": "handshake",
+            "version": "1.0",
+            "controlPlane": {"supported": True, "protocolVersion": 1, "authRequired": True},
+        },
+    ) as (url, messages):
+        args = build_parser().parse_args(
+            [
+                "--url",
+                url,
+                "wait",
+                "--timeout",
+                "30",
+                "--interval",
+                "0",
+                "--json",
+                "--token",
+                "bad-token",
+            ]
+        )
+
+        with pytest.raises(SystemExit) as exc:
+            await _invoke_handler("_cmd_wait", args)
+
+        assert exc.value.code == 4
+        payload = json.loads(capsys.readouterr().err)
+        assert payload["error"]["kind"] == "auth_failed"
+        assert [message["type"] for message in messages] == ["control_auth"]
+
+
+@pytest.mark.asyncio
+async def test_wait_exits_immediately_on_lease_failure(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    async with fake_control_server(
+        {
+            "command_describe": lambda message: {
+                "type": "command_describe_result",
+                "id": message["id"],
+                "commands": [_descriptor("run.begin", mutates=True)],
+            },
+            "control_auth": lambda message: {
+                "type": "control_auth_result",
+                "id": message["id"],
+                "ok": True,
+                "sessionId": "session-1",
+            },
+            "lease_acquire": lambda message: {
+                "type": "lease_acquire_result",
+                "id": message["id"],
+                "ok": False,
+                "error": {
+                    "kind": "lease_conflict",
+                    "code": "leaseAlreadyHeld",
+                    "message": "Another client holds the control lease.",
+                    "retryable": True,
+                },
+            },
+        },
+        handshake={
+            "type": "handshake",
+            "version": "1.0",
+            "controlPlane": {"supported": True, "protocolVersion": 1, "leaseRequired": True},
+        },
+    ) as (url, messages):
+        args = build_parser().parse_args(
+            [
+                "--url",
+                url,
+                "wait",
+                "--lease",
+                "--commands",
+                "run.begin",
+                "--timeout",
+                "30",
+                "--interval",
+                "0",
+                "--json",
+            ]
+        )
+
+        with pytest.raises(SystemExit) as exc:
+            await _invoke_handler("_cmd_wait", args)
+
+        assert exc.value.code == 5
+        payload = json.loads(capsys.readouterr().err)
+        assert payload["error"]["kind"] == "lease_conflict"
+        assert [message["type"] for message in messages] == [
+            "command_describe",
+            "control_auth",
+            "lease_acquire",
+        ]
