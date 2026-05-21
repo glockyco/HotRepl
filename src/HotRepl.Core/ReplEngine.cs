@@ -386,7 +386,7 @@ public sealed class ReplEngine : IDisposable
                 break;
             case CommandCallCmd c:
             {
-                var response = _controlRouter!.Execute(c.Message);
+                var response = _controlRouter!.Execute(c.Message, c.ConnectionId);
                 _clients!.SendControlTo(c.ConnectionId, MessageSerializer.Serialize(response));
                 if (response is CommandAcceptedMessage accepted)
                     _jobRunQueue.Enqueue(accepted.JobId);
@@ -399,22 +399,13 @@ public sealed class ReplEngine : IDisposable
                 HandleLeaseAcquire(c);
                 break;
             case JobStatusCmd c:
-                _clients!.SendControlTo(
-                    c.ConnectionId,
-                    MessageSerializer.Serialize(_controlRouter!.GetJobStatus(c.Message))
-                );
+                HandleJobStatus(c);
                 break;
             case JobResultCmd c:
-                _clients!.SendControlTo(
-                    c.ConnectionId,
-                    MessageSerializer.Serialize(_controlRouter!.GetJobResult(c.Message))
-                );
+                HandleJobResult(c);
                 break;
             case JobCancelCmd c:
-                _clients!.SendControlTo(
-                    c.ConnectionId,
-                    MessageSerializer.Serialize(_controlRouter!.CancelJob(c.Message))
-                );
+                HandleJobCancel(c);
                 break;
         }
     }
@@ -438,7 +429,11 @@ public sealed class ReplEngine : IDisposable
 
     private void HandleLeaseAcquire(LeaseAcquireCmd cmd)
     {
-        var result = _controlSessions!.AcquireLease(cmd.SessionId, cmd.ClientName);
+        var result = _controlSessions!.AcquireLease(
+            cmd.ConnectionId,
+            cmd.SessionId,
+            cmd.ClientName
+        );
         _clients!.SendControlTo(
             cmd.ConnectionId,
             MessageSerializer.Serialize(
@@ -451,6 +446,24 @@ public sealed class ReplEngine : IDisposable
                 }
             )
         );
+    }
+
+    private void HandleJobStatus(JobStatusCmd cmd)
+    {
+        var response = _controlRouter!.GetJobStatus(cmd.Message, cmd.ConnectionId);
+        _clients!.SendControlTo(cmd.ConnectionId, MessageSerializer.Serialize(response));
+    }
+
+    private void HandleJobResult(JobResultCmd cmd)
+    {
+        var response = _controlRouter!.GetJobResult(cmd.Message, cmd.ConnectionId);
+        _clients!.SendControlTo(cmd.ConnectionId, MessageSerializer.Serialize(response));
+    }
+
+    private void HandleJobCancel(JobCancelCmd cmd)
+    {
+        var response = _controlRouter!.CancelJob(cmd.Message, cmd.ConnectionId);
+        _clients!.SendControlTo(cmd.ConnectionId, MessageSerializer.Serialize(response));
     }
 
     private static ControlErrorMessage ToControlErrorMessage(ControlCommandError error) =>
@@ -792,9 +805,10 @@ public sealed class ReplEngine : IDisposable
                             Supported = true,
                             ProtocolVersion = 1,
                             AuthRequired = _host.Config.RequireControlAuth,
-                            LeaseRequired = true,
+                            LeaseRequired = _host.Config.RequireControlLease,
                             ArtifactRefsSupported = true,
-                            JobEventsSupported = true,
+                            JobEventsSupported = false,
+                            JobEventReplaySupported = false,
                             Limits = new ControlPlaneLimits
                             {
                                 MaxMessageBytes = _host.Config.MaxControlMessageBytes,

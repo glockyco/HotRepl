@@ -67,6 +67,62 @@ public class ControlRoutingTests
     }
 
     [Fact]
+    public void Execute_MutatingCommandRejectsReplayedLeaseFromDifferentConnection()
+    {
+        var sessions = new ControlSessionManager(new ReplConfig { RequireControlLease = true });
+        var ownerConnection = Guid.NewGuid();
+        var attackerConnection = Guid.NewGuid();
+        var auth = sessions.Authenticate(ownerConnection, token: null);
+        var lease = sessions.AcquireLease(ownerConnection, auth.SessionId!, "owner");
+        var router = new ControlCommandRouter(
+            new FakeRegistry(new MutatingEchoHandler()),
+            sessions
+        );
+
+        var result = router.Execute(
+            new CommandCallMessage
+            {
+                Id = "cmd-1",
+                Name = "archive.mutate",
+                LeaseId = lease.LeaseId,
+                Args = JObject.Parse("{\"value\":\"ok\"}"),
+            },
+            attackerConnection
+        );
+
+        var error = Assert.IsType<CommandErrorMessage>(result);
+        Assert.Equal("lease_required", error.Error.Kind);
+        Assert.Equal("missingOrInvalidLease", error.Error.Code);
+    }
+
+    [Fact]
+    public void Execute_MutatingCommandAcceptsLeaseOwnedByConnection()
+    {
+        var sessions = new ControlSessionManager(new ReplConfig { RequireControlLease = true });
+        var ownerConnection = Guid.NewGuid();
+        var auth = sessions.Authenticate(ownerConnection, token: null);
+        var lease = sessions.AcquireLease(ownerConnection, auth.SessionId!, "owner");
+        var router = new ControlCommandRouter(
+            new FakeRegistry(new MutatingEchoHandler()),
+            sessions
+        );
+
+        var result = router.Execute(
+            new CommandCallMessage
+            {
+                Id = "cmd-1",
+                Name = "archive.mutate",
+                LeaseId = lease.LeaseId,
+                Args = JObject.Parse("{\"value\":\"ok\"}"),
+            },
+            ownerConnection
+        );
+
+        var ok = Assert.IsType<CommandResultMessage>(result);
+        Assert.Equal("ok", ok.Result["value"]!.Value<string>());
+    }
+
+    [Fact]
     public void Execute_HandlerException_ReturnsInternalCommandError()
     {
         var router = new ControlCommandRouter(new FakeRegistry(new ThrowingHandler()));
@@ -241,6 +297,34 @@ public class ControlRoutingTests
             JObject args,
             CancellationToken cancellationToken
         ) => throw new InvalidOperationException("boom");
+    }
+
+    private sealed class MutatingEchoHandler : IControlCommandHandler
+    {
+        public ControlCommandDescriptor Descriptor { get; } =
+            new(
+                "archive.mutate",
+                1,
+                ControlCommandKind.Synchronous,
+                mutatesState: true,
+                argsSchema: JObject.Parse("{\"type\":\"object\"}"),
+                resultSchema: JObject.Parse("{\"type\":\"object\"}")
+            );
+
+        public ValueTask<ControlCommandResult> ExecuteAsync(
+            ControlCommandContext context,
+            JObject args,
+            CancellationToken cancellationToken
+        )
+        {
+            return ValueTask.FromResult(
+                new ControlCommandResult(
+                    new JObject { ["value"] = args["value"]?.Value<string>() ?? "" },
+                    Array.Empty<ArtifactRef>(),
+                    Array.Empty<ControlCommandError>()
+                )
+            );
+        }
     }
 
     private sealed class JobHandler : IControlCommandHandler

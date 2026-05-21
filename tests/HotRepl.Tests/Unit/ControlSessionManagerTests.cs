@@ -39,6 +39,20 @@ public class ControlSessionManagerTests
     }
 
     [Fact]
+    public void Authenticate_RejectsSecondAuthOnSameConnection()
+    {
+        var manager = new ControlSessionManager(new ReplConfig());
+        var connection = Guid.NewGuid();
+        Assert.True(manager.Authenticate(connection, token: null).Ok);
+
+        var second = manager.Authenticate(connection, token: null);
+
+        Assert.False(second.Ok);
+        Assert.Equal("conflict", second.Error!.Kind);
+        Assert.Equal("alreadyAuthenticated", second.Error.Code);
+    }
+
+    [Fact]
     public void AcquireLease_SucceedsForAuthenticatedSession()
     {
         var manager = new ControlSessionManager(new ReplConfig());
@@ -48,6 +62,20 @@ public class ControlSessionManagerTests
 
         Assert.True(lease.Ok);
         Assert.False(string.IsNullOrWhiteSpace(lease.LeaseId));
+    }
+
+    [Fact]
+    public void IsLeaseValidForConnection_RejectsLeaseReplayFromDifferentConnection()
+    {
+        var manager = new ControlSessionManager(new ReplConfig { RequireControlLease = true });
+        var ownerConnection = Guid.NewGuid();
+        var attackerConnection = Guid.NewGuid();
+        var owner = manager.Authenticate(ownerConnection, token: null);
+        var lease = manager.AcquireLease(ownerConnection, owner.SessionId!, "owner");
+
+        Assert.True(lease.Ok);
+        Assert.False(manager.IsLeaseValidForConnection(attackerConnection, lease.LeaseId));
+        Assert.True(manager.IsLeaseValidForConnection(ownerConnection, lease.LeaseId));
     }
 
     [Fact]

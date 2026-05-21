@@ -24,13 +24,21 @@ internal sealed class ControlJobManager
         string? leaseId,
         string? idempotencyKey,
         Func<ControlJobExecutionContext, CancellationToken, ValueTask<ControlCommandResult>> execute
+    ) => StartJob(Guid.Empty, requestId, leaseId, idempotencyKey, execute);
+
+    public ControlJob StartJob(
+        Guid connectionId,
+        string requestId,
+        string? leaseId,
+        string? idempotencyKey,
+        Func<ControlJobExecutionContext, CancellationToken, ValueTask<ControlCommandResult>> execute
     )
     {
         if (execute == null)
             throw new ArgumentNullException(nameof(execute));
 
         var jobId = Guid.NewGuid().ToString("N");
-        var state = new JobState(jobId, requestId, leaseId, idempotencyKey, execute);
+        var state = new JobState(jobId, connectionId, requestId, leaseId, idempotencyKey, execute);
         lock (_sync)
         {
             _jobs.Add(jobId, state);
@@ -145,6 +153,15 @@ internal sealed class ControlJobManager
         }
     }
 
+    public bool IsOwnedByConnection(string jobId, Guid connectionId)
+    {
+        lock (_sync)
+        {
+            var state = RequireJob(jobId);
+            return state.ConnectionId == connectionId;
+        }
+    }
+
     private static ControlJob Snapshot(JobState state) =>
         new(state.JobId, state.RequestId, state.LeaseId, state.IdempotencyKey, state.State);
 
@@ -185,6 +202,7 @@ internal sealed class ControlJobManager
     {
         public JobState(
             string jobId,
+            Guid connectionId,
             string requestId,
             string? leaseId,
             string? idempotencyKey,
@@ -196,6 +214,7 @@ internal sealed class ControlJobManager
         )
         {
             JobId = jobId;
+            ConnectionId = connectionId;
             RequestId = requestId;
             LeaseId = leaseId;
             IdempotencyKey = idempotencyKey;
@@ -203,6 +222,7 @@ internal sealed class ControlJobManager
         }
 
         public string JobId { get; }
+        public Guid ConnectionId { get; }
         public string RequestId { get; }
         public string? LeaseId { get; }
         public string? IdempotencyKey { get; }

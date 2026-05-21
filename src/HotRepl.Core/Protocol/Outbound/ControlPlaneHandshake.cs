@@ -22,6 +22,9 @@ internal sealed class ControlPlaneHandshake
     [JsonProperty("jobEventsSupported")]
     public bool JobEventsSupported { get; set; }
 
+    [JsonProperty("jobEventReplaySupported")]
+    public bool JobEventReplaySupported { get; set; }
+
     [JsonProperty("limits")]
     public ControlPlaneLimits? Limits { get; set; }
 }

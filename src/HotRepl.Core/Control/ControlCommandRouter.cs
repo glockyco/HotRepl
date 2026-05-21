@@ -36,7 +36,9 @@ internal sealed class ControlCommandRouter
         };
     }
 
-    public object Execute(CommandCallMessage message)
+    public object Execute(CommandCallMessage message) => Execute(message, Guid.Empty);
+
+    public object Execute(CommandCallMessage message, Guid connectionId)
     {
         if (!_registry.TryGet(message.Name, out var handler))
         {
@@ -52,21 +54,21 @@ internal sealed class ControlCommandRouter
         if (
             handler.Descriptor.MutatesState
             && _sessions is { } sessions
-            && !sessions.IsLeaseValid(message.LeaseId)
+            && !sessions.IsLeaseValidForConnection(connectionId, message.LeaseId)
         )
         {
             return CommandError(
                 message.Id,
                 "lease_required",
                 "missingOrInvalidLease",
-                "A valid control lease is required for this command.",
+                "A valid control lease owned by this connection is required for this command.",
                 retryable: true
             );
         }
 
         return handler.Descriptor.Kind switch
         {
-            ControlCommandKind.Job => StartJob(message, handler),
+            ControlCommandKind.Job => StartJob(message, handler, connectionId),
             ControlCommandKind.Synchronous => ExecuteSynchronous(message, handler),
             _ => CommandError(
                 message.Id,
@@ -78,7 +80,11 @@ internal sealed class ControlCommandRouter
         };
     }
 
-    private object StartJob(CommandCallMessage message, IControlCommandHandler handler)
+    private object StartJob(
+        CommandCallMessage message,
+        IControlCommandHandler handler,
+        Guid connectionId
+    )
     {
         if (_jobs == null)
             return CommandError(
@@ -92,6 +98,7 @@ internal sealed class ControlCommandRouter
         var timeout =
             message.TimeoutMs > 0 ? TimeSpan.FromMilliseconds(message.TimeoutMs) : (TimeSpan?)null;
         var job = _jobs.StartJob(
+            connectionId,
             message.Id,
             message.LeaseId,
             message.IdempotencyKey,
@@ -157,9 +164,16 @@ internal sealed class ControlCommandRouter
         return _jobs.RunAsync(jobId);
     }
 
-    public JobStatusResultMessage GetJobStatus(JobStatusMessage message)
+    public JobStatusResultMessage GetJobStatus(JobStatusMessage message) =>
+        GetJobStatus(message, Guid.Empty) as JobStatusResultMessage
+        ?? throw new InvalidOperationException("Expected job status result.");
+
+    public object GetJobStatus(JobStatusMessage message, Guid connectionId)
     {
-        var status = _jobs!.GetStatus(message.JobId);
+        if (!_jobs!.IsOwnedByConnection(message.JobId, connectionId))
+            return JobOwnershipError(message.Id, message.JobId);
+
+        var status = _jobs.GetStatus(message.JobId);
         return new JobStatusResultMessage
         {
             Id = message.Id,
@@ -169,9 +183,15 @@ internal sealed class ControlCommandRouter
         };
     }
 
-    public object GetJobResult(JobResultRequestMessage message)
+    public object GetJobResult(JobResultRequestMessage message) =>
+        GetJobResult(message, Guid.Empty);
+
+    public object GetJobResult(JobResultRequestMessage message, Guid connectionId)
     {
-        var status = _jobs!.GetStatus(message.JobId);
+        if (!_jobs!.IsOwnedByConnection(message.JobId, connectionId))
+            return JobOwnershipError(message.Id, message.JobId);
+
+        var status = _jobs.GetStatus(message.JobId);
         if (
             status.State
             is ControlJobStates.Accepted
@@ -229,9 +249,16 @@ internal sealed class ControlCommandRouter
         };
     }
 
-    public JobCancelResultMessage CancelJob(JobCancelMessage message)
+    public JobCancelResultMessage CancelJob(JobCancelMessage message) =>
+        CancelJob(message, Guid.Empty) as JobCancelResultMessage
+        ?? throw new InvalidOperationException("Expected job cancel result.");
+
+    public object CancelJob(JobCancelMessage message, Guid connectionId)
     {
-        var accepted = _jobs!.Cancel(message.JobId);
+        if (!_jobs!.IsOwnedByConnection(message.JobId, connectionId))
+            return JobOwnershipError(message.Id, message.JobId);
+
+        var accepted = _jobs.Cancel(message.JobId);
         var status = _jobs.GetStatus(message.JobId);
         return new JobCancelResultMessage
         {
@@ -273,6 +300,15 @@ internal sealed class ControlCommandRouter
             Retryable = error.Retryable,
             Details = error.Details,
         };
+
+    private static CommandErrorMessage JobOwnershipError(string id, string jobId) =>
+        CommandError(
+            id,
+            "auth_failed",
+            "jobNotOwnedByConnection",
+            $"Job '{jobId}' is not owned by this connection.",
+            retryable: false
+        );
 
     private static CommandErrorMessage CommandError(
         string id,

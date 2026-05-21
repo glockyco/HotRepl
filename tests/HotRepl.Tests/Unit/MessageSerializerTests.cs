@@ -166,6 +166,7 @@ public class MessageSerializerTests
                 LeaseRequired = true,
                 ArtifactRefsSupported = true,
                 JobEventsSupported = true,
+                JobEventReplaySupported = false,
                 Limits = new ControlPlaneLimits
                 {
                     MaxMessageBytes = 1024,
@@ -186,6 +187,7 @@ public class MessageSerializerTests
         Assert.True(back.ControlPlane.LeaseRequired);
         Assert.True(back.ControlPlane.ArtifactRefsSupported);
         Assert.True(back.ControlPlane.JobEventsSupported);
+        Assert.False(back.ControlPlane.JobEventReplaySupported);
         Assert.Equal(1024, back.ControlPlane.Limits!.MaxMessageBytes);
         Assert.Equal(32, back.ControlPlane.Limits.MaxQueuedCommands);
     }
