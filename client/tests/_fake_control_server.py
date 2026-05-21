@@ -14,13 +14,16 @@ ResponseHandler = Callable[[dict[str, Any]], dict[str, Any] | Awaitable[dict[str
 @asynccontextmanager
 async def fake_control_server(
     handlers: dict[str, ResponseHandler],
+    *,
+    handshake: dict[str, Any] | None = None,
 ) -> AsyncGenerator[tuple[str, list[dict[str, Any]]], None]:
     messages: list[dict[str, Any]] = []
 
     async def handle(websocket: websockets.ServerConnection) -> None:
         await websocket.send(
             json.dumps(
-                {
+                handshake
+                or {
                     "type": "handshake",
                     "version": "1.0",
                     "controlPlane": {"supported": True, "protocolVersion": 1},

@@ -37,7 +37,9 @@ def test_profile_resolves_env_token_without_exposing_secret(
     assert profile.url == "ws://127.0.0.1:18590"
     assert profile.resolve_token() == "env-secret"
     assert "env-secret" not in json.dumps(profile.to_safe_json())
-    assert profile.to_safe_json()["auth"]["source"] == "env"
+    auth = profile.to_safe_json()["auth"]
+    assert isinstance(auth, dict)
+    assert auth["source"] == "env"
 
 
 def test_profile_resolves_token_file(tmp_path: Path) -> None:

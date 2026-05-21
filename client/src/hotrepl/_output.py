@@ -133,9 +133,11 @@ def _jsonable(value: object) -> object:
     if is_dataclass(value) and not isinstance(value, type):
         return _jsonable(asdict(value))
     if isinstance(value, list):
-        return [_jsonable(item) for item in value]
+        items = cast("list[object]", value)
+        return [_jsonable(item) for item in items]
     if isinstance(value, tuple):
-        return [_jsonable(item) for item in value]
+        items = cast("tuple[object, ...]", value)
+        return [_jsonable(item) for item in items]
     if isinstance(value, dict):
         mapping = cast("dict[object, object]", value)
         return {str(key): _jsonable(item) for key, item in mapping.items()}

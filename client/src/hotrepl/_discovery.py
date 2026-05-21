@@ -34,7 +34,7 @@ class InstanceDocument:
             instance_id=str(mapping.get("instanceId", path.stem)),
             url=str(mapping.get("url", "")),
             bind_host=str(mapping.get("bindHost", "")),
-            port=int(mapping.get("port", 0)),
+            port=_int_value(mapping.get("port")),
             host=_object(mapping.get("host")),
             control_plane=_object(mapping.get("controlPlane")),
             auth=_object(mapping.get("auth")),
@@ -158,3 +158,11 @@ def _object(value: object) -> dict[str, Any]:
     if isinstance(value, dict):
         return cast("dict[str, Any]", value)
     return {}
+
+
+def _int_value(value: object) -> int:
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float | str):
+        return int(value)
+    return 0

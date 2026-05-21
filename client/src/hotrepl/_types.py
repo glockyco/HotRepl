@@ -38,6 +38,7 @@ class ControlPlaneMetadata(TypedDict, total=False):
     leaseRequired: bool
     artifactRefsSupported: bool
     jobEventsSupported: bool
+    jobEventReplaySupported: bool
     limits: ControlPlaneLimits
 
 
@@ -133,6 +134,13 @@ class LeaseResult:
 
 
 @dataclass(frozen=True)
+class PreparedControl:
+    auth: AuthResult | None
+    lease: LeaseResult | None
+    commands: list[ControlCommandDescriptor]
+
+
+@dataclass(frozen=True)
 class ControlCommandDescriptor:
     name: str
     version: int
@@ -159,6 +167,16 @@ class CommandResult:
     result: dict[str, Any]
     artifacts: list[ArtifactRef]
     diagnostics: list[ControlError]
+    state: str | None = None
+
+
+@dataclass(frozen=True)
+class ControlRunTerminal:
+    status: str
+    result: dict[str, Any] | None = None
+    artifacts: list[ArtifactRef] | None = None
+    diagnostics: list[ControlError] | None = None
+    error: ControlError | None = None
 
 
 @dataclass(frozen=True)

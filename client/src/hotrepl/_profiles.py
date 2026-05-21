@@ -5,9 +5,24 @@ from __future__ import annotations
 import configparser
 import json
 import os
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Self, cast
+
+
+def default_profile_path() -> Path:
+    """Return the platform default HotRepl profile file path."""
+    override = os.environ.get("HOTREPL_PROFILE_FILE")
+    if override:
+        return Path(override).expanduser()
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / "HotRepl" / "profiles.json"
+    if os.name == "nt":
+        local_app_data = os.environ.get("LOCALAPPDATA")
+        if local_app_data:
+            return Path(local_app_data) / "HotRepl" / "profiles.json"
+    return Path.home() / ".config" / "hotrepl" / "profiles.json"
 
 
 @dataclass(frozen=True)
@@ -92,11 +107,12 @@ class Profile:
         if not isinstance(data, dict):
             raise TypeError(f"Profile '{name}' must be a JSON object.")
         mapping = cast("dict[str, object]", data)
-        instance = mapping.get("instance") if isinstance(mapping.get("instance"), dict) else {}
+        instance_obj = mapping.get("instance")
+        instance = cast("dict[str, Any]", instance_obj) if isinstance(instance_obj, dict) else {}
         return cls(
             name=name,
             url=_optional_str(mapping.get("url")),
-            instance=cast("dict[str, Any]", instance),
+            instance=instance,
             auth=AuthSource.from_json(mapping.get("auth")),
         )
 
@@ -123,15 +139,17 @@ class ProfileStore:
     @classmethod
     def load(cls, path: str | Path) -> Self:
         raw = Path(path).expanduser().read_text(encoding="utf-8")
-        data = json.loads(raw)
+        data = cast("object", json.loads(raw))
         if not isinstance(data, dict):
             raise TypeError("Profile file must contain a JSON object.")
-        profiles_obj = data.get("profiles")
+        mapping = cast("dict[str, object]", data)
+        profiles_obj = mapping.get("profiles")
         if not isinstance(profiles_obj, dict):
             raise TypeError("Profile file must contain a profiles object.")
+        profiles_mapping = cast("dict[str, object]", profiles_obj)
         profiles = {
             str(name): Profile.from_json(str(name), profile_data)
-            for name, profile_data in profiles_obj.items()
+            for name, profile_data in profiles_mapping.items()
         }
         return cls(profiles)
 
