@@ -7,6 +7,7 @@ using System.Threading;
 using Fleck;
 using HotRepl.Control;
 using HotRepl.Control.Jobs;
+using HotRepl.Discovery;
 using HotRepl.Engine.Commands;
 using HotRepl.Evaluator;
 using HotRepl.Helpers;
@@ -48,6 +49,7 @@ public sealed class ReplEngine : IDisposable
     private ControlCommandRouter? _controlRouter;
     private ControlSessionManager? _controlSessions;
     private ControlJobManager? _controlJobs;
+    private InstanceDocumentWriter? _instanceDocument;
 
     // ── Queues — written by Fleck threads, drained by Tick() ──────────────────
     private readonly ConcurrentQueue<EvalJob> _evalQueue = new();
@@ -105,6 +107,14 @@ public sealed class ReplEngine : IDisposable
 
         _wsServer.Start(_host.Config.Port, _host.Config.BindHost);
         _host.LogInfo($"[HotRepl] Engine started on port {_host.Config.Port}.");
+        try
+        {
+            _instanceDocument = InstanceDocumentWriter.Write(_host.Config, _host.HostInfo);
+        }
+        catch (Exception ex)
+        {
+            _host.LogInfo($"[HotRepl] Failed to write instance discovery document: {ex.Message}");
+        }
     }
 
     /// <summary>
@@ -195,6 +205,7 @@ public sealed class ReplEngine : IDisposable
         _disposed = true;
 
         _wsServer?.Dispose();
+        _instanceDocument?.Dispose();
         _evaluator?.Dispose();
     }
 
