@@ -14,6 +14,8 @@ from pathlib import Path
 from typing import Any, cast
 
 from hotrepl._client import DEFAULT_URL, Client, ControlCommandError, EvalError
+from hotrepl._discovery import discover_instances
+from hotrepl._output import emit_json_error, emit_json_success
 
 
 def _get_url(args: argparse.Namespace) -> str:
@@ -196,6 +198,57 @@ def _print_subscribe_msg(msg: dict[str, Any]) -> None:
         print(f"[{msg.get('seq', '?')}] (void)")
 
 
+async def _cmd_discover(args: argparse.Namespace) -> None:
+    roots = [args.instances_dir] if args.instances_dir else None
+    result = discover_instances(roots, host=args.host)
+    payload = result.to_json()
+    if args.profile:
+        payload["profile"] = args.profile
+    if args.json:
+        raise SystemExit(emit_json_success("hotrepl.discover", payload))
+
+    for instance in result.instances:
+        print(f"{instance.instance_id} {instance.url}")
+    for diagnostic in result.diagnostics:
+        print(diagnostic.message, file=sys.stderr)
+    if not result.instances and result.diagnostics:
+        raise SystemExit(emit_json_error("hotrepl.discover", result.diagnostics[0]))
+
+
+def _add_discover_parser(sub: Any) -> None:
+    p_discover = sub.add_parser("discover", help="Discover local HotRepl instance documents")
+    p_discover.add_argument("--host", default=None, help="Filter by host adapter name")
+    p_discover.add_argument("--profile", default=None, help="Profile name for instance filters")
+    p_discover.add_argument(
+        "--instances-dir", default=None, help="Override instance document directory"
+    )
+    p_discover.add_argument("--json", action="store_true", help="Output JSON envelope")
+
+
+def _add_control_parser(sub: Any) -> None:
+    p_control = sub.add_parser("control", help="Typed control-plane commands")
+    control_sub = p_control.add_subparsers(dest="control_command", required=True)
+
+    control_sub.add_parser("describe", help="List registered control commands")
+
+    p_control_call = control_sub.add_parser("call", help="Call a synchronous control command")
+    p_control_call.add_argument("name", help="Control command name")
+    p_control_call.add_argument("args_json", help="Command args JSON object")
+
+    p_control_start = control_sub.add_parser("start-job", help="Start a job control command")
+    p_control_start.add_argument("name", help="Control command name")
+    p_control_start.add_argument("args_json", help="Command args JSON object")
+
+    p_control_status = control_sub.add_parser("job-status", help="Get job status")
+    p_control_status.add_argument("job_id", help="Job id")
+
+    p_control_result = control_sub.add_parser("job-result", help="Get terminal job result")
+    p_control_result.add_argument("job_id", help="Job id")
+
+    p_control_cancel = control_sub.add_parser("cancel", help="Cancel a job")
+    p_control_cancel.add_argument("job_id", help="Job id")
+
+
 def _cmd_test(args: argparse.Namespace) -> None:
     """Invoke pytest against the bundled smoke tests."""
     tests_dir = Path(__file__).resolve().parent.parent.parent / "tests"
@@ -267,28 +320,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_watch.add_argument("--timeout", "-t", type=int, default=10000, help="Timeout per eval in ms")
     p_watch.add_argument("--json", action="store_true", help="Output raw JSON")
 
-    # control
-    p_control = sub.add_parser("control", help="Typed control-plane commands")
-    control_sub = p_control.add_subparsers(dest="control_command", required=True)
-
-    control_sub.add_parser("describe", help="List registered control commands")
-
-    p_control_call = control_sub.add_parser("call", help="Call a synchronous control command")
-    p_control_call.add_argument("name", help="Control command name")
-    p_control_call.add_argument("args_json", help="Command args JSON object")
-
-    p_control_start = control_sub.add_parser("start-job", help="Start a job control command")
-    p_control_start.add_argument("name", help="Control command name")
-    p_control_start.add_argument("args_json", help="Command args JSON object")
-
-    p_control_status = control_sub.add_parser("job-status", help="Get job status")
-    p_control_status.add_argument("job_id", help="Job id")
-
-    p_control_result = control_sub.add_parser("job-result", help="Get terminal job result")
-    p_control_result.add_argument("job_id", help="Job id")
-
-    p_control_cancel = control_sub.add_parser("cancel", help="Cancel a job")
-    p_control_cancel.add_argument("job_id", help="Job id")
+    _add_discover_parser(sub)
+    _add_control_parser(sub)
 
     # test
     p_test = sub.add_parser("test", help="Run smoke tests via pytest")
@@ -311,6 +344,7 @@ def main() -> None:
         "watch": _cmd_watch,
         "info": _cmd_info,
         "select-evaluator": _cmd_select_evaluator,
+        "discover": _cmd_discover,
         "control": _cmd_control,
     }
 
