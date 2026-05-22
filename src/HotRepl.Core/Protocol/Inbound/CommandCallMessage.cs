@@ -11,7 +11,7 @@ internal sealed class CommandCallMessage
     [JsonProperty("id")]
     public string Id { get; set; } = string.Empty;
 
-    [JsonProperty("leaseId")]
+    [JsonIgnore]
     public string? LeaseId { get; set; }
 
     [JsonProperty("name")]
@@ -23,6 +23,6 @@ internal sealed class CommandCallMessage
     [JsonProperty("timeoutMs")]
     public int TimeoutMs { get; set; }
 
-    [JsonProperty("idempotencyKey")]
+    [JsonIgnore]
     public string? IdempotencyKey { get; set; }
 }

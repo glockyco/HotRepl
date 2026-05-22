@@ -10,12 +10,28 @@ internal sealed class EvalErrorMessage
     [JsonProperty("id")]
     public string Id { get; set; } = string.Empty;
 
-    [JsonProperty("errorKind")]
-    public string ErrorKind { get; set; } = string.Empty;
+    [JsonProperty("error")]
+    public ControlErrorMessage Error { get; set; } = new();
 
-    [JsonProperty("message")]
-    public string Message { get; set; } = string.Empty;
+    [JsonIgnore]
+    public string ErrorKind
+    {
+        get => Error.Kind;
+        set => Error.Kind = value;
+    }
 
-    [JsonProperty("stackTrace")]
+    [JsonIgnore]
+    public string Message
+    {
+        get => Error.Message;
+        set
+        {
+            Error.Message = value;
+            if (string.IsNullOrEmpty(Error.Code))
+                Error.Code = "evalFailed";
+        }
+    }
+
+    [JsonIgnore]
     public string? StackTrace { get; set; }
 }

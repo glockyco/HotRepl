@@ -503,40 +503,113 @@ git commit -m "feat(runtime): cut over to protocol v2"
 
 ---
 
-## Task 3B: Runtime protocol record cleanup
+## Task 3B: Runtime v2 wire-shape cleanup
 
 **Files:**
 
-- Modify: `src/HotRepl.Core/ReplEngine.cs`
-- Modify: `src/HotRepl.Core/Server/MessageRouter.cs`
 - Modify: `src/HotRepl.Core/Control/ControlCommandRouter.cs`
-- Delete or retire: `src/HotRepl.Core/Protocol/**` v1 message records that duplicate
-  `src/HotRepl.Protocol`
+- Modify: `src/HotRepl.Core/Protocol/Inbound/CommandCallMessage.cs`
+- Modify: `src/HotRepl.Core/Protocol/Inbound/JobCancelMessage.cs`
+- Modify: `src/HotRepl.Core/Protocol/Inbound/JobStatusMessage.cs`
+- Modify: `src/HotRepl.Core/Protocol/Outbound/CommandResultMessage.cs`
+- Modify: `src/HotRepl.Core/Protocol/Outbound/EvalErrorMessage.cs`
+- Modify: `src/HotRepl.Core/Protocol/Outbound/JobResultMessage.cs`
 - Test: `tests/HotRepl.Tests/Unit/MessageSerializerTests.cs`
 - Test: `tests/HotRepl.Tests/Unit/ControlMessageSerializerTests.cs`
 - Test: `tests/HotRepl.Tests/Unit/ControlRoutingTests.cs`
+- Test: `tests/HotRepl.Tests/Unit/ProtocolV2CleanupTests.cs`
 
-- [ ] **Step 1: Write failing cleanup tests**
+- [x] **Step 1: Write failing cleanup tests**
 
 Assert eval errors use the universal error envelope, sync/job command results expose `output` plus a
 named artifact map, and no serialized runtime response contains `diagnostics`, `result`,
-`command_accepted`, `control_auth`, `lease_acquire`, `leaseId`, `sessionId`, or `idempotencyKey`.
+`command_accepted`, `leaseId`, or `idempotencyKey`.
+
+- [x] **Step 2: Run red tests**
+
+Run:
+
+```sh
+FILTER="FullyQualifiedName~ProtocolV2CleanupTests|\
+FullyQualifiedName~MessageSerializerTests|\
+FullyQualifiedName~ControlMessageSerializerTests|\
+FullyQualifiedName~ControlRoutingTests"
+dotnet test tests/HotRepl.Tests/ --nologo -v q --filter "$FILTER"
+```
+
+Expected: FAIL while Core-local v1 records are still serialized.
+
+- [x] **Step 3: Strip v1 fields from serialized runtime records**
+
+Keep this commit focused on wire shape: `command_result` and `job_result` serialize `output` plus
+named artifact maps, eval errors serialize the universal `error` envelope, and legacy
+`leaseId`/`idempotencyKey` fields remain internal compatibility properties only.
+
+The public `HotRepl.Protocol` ownership move is Task 3C. Splitting it keeps the wire-shape fix
+reviewable instead of bundling it with the larger command inventory migration.
+
+- [x] **Step 4: Run green verification**
+
+Run the filtered command from Step 2, then:
+
+```sh
+dotnet test tests/HotRepl.Tests/ --nologo -v q
+dotnet build src/HotRepl.Core/ --nologo -v q
+```
+
+Expected: all C# tests and the Core build pass.
+
+- [x] **Step 5: Commit**
+
+```sh
+git add src/HotRepl.Core tests/HotRepl.Tests/Unit \
+  docs/superpowers/plans/2026-05-22-hotrepl-clean-architecture-implementation.md
+git commit -m "feat(runtime): strip v1 fields from responses"
+```
+
+---
+
+## Task 3C: Runtime public protocol ownership
+
+**Files:**
+
+- Modify: `src/HotRepl.Core/HotRepl.Core.csproj`
+- Modify: `src/HotRepl.Core/ReplEngine.cs`
+- Modify: `src/HotRepl.Core/Server/MessageRouter.cs`
+- Modify: `src/HotRepl.Core/Control/ControlCommandRouter.cs`
+- Modify: `src/HotRepl.Core/Subscriptions/SubscriptionManager.cs`
+- Delete or retire: `src/HotRepl.Core/Protocol/**` v1 message records replaced by
+  `src/HotRepl.Protocol`
+- Test: `tests/HotRepl.Tests/Unit/ProtocolV2CleanupTests.cs`
+- Test: `tests/HotRepl.Tests/Unit/ControlRoutingTests.cs`
+- Test: `tests/HotRepl.Tests/Unit/MessageRouterV2Tests.cs`
+
+- [ ] **Step 1: Write failing public protocol ownership tests**
+
+Assert the runtime handles `commands_list`, `command_describe { name }`, sync commands, job polling,
+eval/reset/complete/subscribe, and protocol errors through public `HotRepl.Protocol` records. Remove
+legacy serializer tests for `control_auth`, `lease_acquire`, `ping`, and `job_event`.
 
 - [ ] **Step 2: Run red tests**
 
 Run:
 
 ```sh
-dotnet test tests/HotRepl.Tests/ --nologo -v q --filter "FullyQualifiedName~MessageSerializerTests|FullyQualifiedName~ControlMessageSerializerTests|FullyQualifiedName~ControlRoutingTests"
+FILTER="FullyQualifiedName~ProtocolV2CleanupTests|\
+FullyQualifiedName~MessageRouterV2Tests|\
+FullyQualifiedName~ControlRoutingTests|\
+FullyQualifiedName~MessageSerializerTests|\
+FullyQualifiedName~ControlMessageSerializerTests"
+dotnet test tests/HotRepl.Tests/ --nologo -v q --filter "$FILTER"
 ```
 
-Expected: FAIL while Core-local v1 records are still serialized.
+Expected: FAIL while Core still relies on duplicate Core-local protocol records.
 
-- [ ] **Step 3: Route runtime responses through `HotRepl.Protocol`**
+- [ ] **Step 3: Route runtime through `HotRepl.Protocol`**
 
-Remove the Core-local v1 protocol records that overlap `HotRepl.Protocol`, remove the external alias
-from Core's project reference, and update ReplEngine/control routing to construct the public v2
-records directly.
+Remove the external alias from Core's project reference, delete duplicate Core-local records, use
+`ProtocolMessageSerializer` for runtime JSON, add `commands_list`, and keep debug-only evaluator
+selection as an explicit internal maintenance path outside the public CLI/MCP surface.
 
 - [ ] **Step 4: Run green verification**
 
@@ -544,15 +617,16 @@ Run the filtered command from Step 2, then:
 
 ```sh
 dotnet test tests/HotRepl.Tests/ --nologo -v q
+dotnet build src/HotRepl.Core/ --nologo -v q
 ```
 
-Expected: all C# tests pass.
+Expected: all C# tests and the Core build pass.
 
 - [ ] **Step 5: Commit**
 
 ```sh
 git add src/HotRepl.Core tests/HotRepl.Tests/Unit docs/superpowers/plans/2026-05-22-hotrepl-clean-architecture-implementation.md
-git commit -m "feat(runtime): route responses through protocol v2"
+git commit -m "feat(runtime): use public protocol v2 records"
 ```
 
 ---

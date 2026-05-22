@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using HotRepl.Protocol;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -123,11 +125,11 @@ public class ControlMessageSerializerTests
 
         Assert.Equal(MessageType.CommandCall, back.Type);
         Assert.Equal("cmd-1", back.Id);
-        Assert.Equal("lease-token", back.LeaseId);
+        Assert.Null(back.LeaseId);
         Assert.Equal("archive.preflight", back.Name);
         Assert.True(back.Args["verbose"]!.Value<bool>());
         Assert.Equal(5000, back.TimeoutMs);
-        Assert.Equal("run/preflight/1", back.IdempotencyKey);
+        Assert.Null(back.IdempotencyKey);
     }
 
     [Fact]
@@ -137,20 +139,21 @@ public class ControlMessageSerializerTests
         {
             Id = "cmd-1",
             Status = "ok",
-            Result = JObject.Parse("{\"passed\":true}"),
-            Artifacts = new[] { ExampleArtifact() },
-            Diagnostics = new[] { ExampleControlError("warning") },
+            Output = JObject.Parse("{\"passed\":true}"),
+            Artifacts = new Dictionary<string, ArtifactRefMessage>(StringComparer.Ordinal)
+            {
+                ["items"] = ExampleArtifact(),
+            },
         };
         var back = RoundTrip<CommandResultMessage>(msg);
 
         Assert.Equal(MessageType.CommandResult, back.Type);
         Assert.Equal("cmd-1", back.Id);
         Assert.Equal("ok", back.Status);
-        Assert.True(back.Result["passed"]!.Value<bool>());
-        Assert.Single(back.Artifacts);
-        Assert.Equal("items.json", back.Artifacts[0].LogicalName);
-        Assert.Single(back.Diagnostics);
-        Assert.Equal("warning", back.Diagnostics[0].Kind);
+        Assert.True(back.Output["passed"]!.Value<bool>());
+        var artifact = Assert.Single(back.Artifacts);
+        Assert.Equal("items", artifact.Key);
+        Assert.Equal("items.json", artifact.Value.LogicalName);
     }
 
     [Fact]
@@ -203,7 +206,7 @@ public class ControlMessageSerializerTests
 
         Assert.Equal(MessageType.JobStatus, back.Type);
         Assert.Equal("status-1", back.Id);
-        Assert.Equal("lease-token", back.LeaseId);
+        Assert.Null(back.LeaseId);
         Assert.Equal("job-1", back.JobId);
     }
 
@@ -235,9 +238,11 @@ public class ControlMessageSerializerTests
             JobId = "job-1",
             State = "done",
             Status = "ok",
-            Result = JObject.Parse("{\"done\":true}"),
-            Artifacts = new[] { ExampleArtifact() },
-            Diagnostics = new[] { ExampleControlError("info") },
+            Output = JObject.Parse("{\"done\":true}"),
+            Artifacts = new Dictionary<string, ArtifactRefMessage>(StringComparer.Ordinal)
+            {
+                ["items"] = ExampleArtifact(),
+            },
         };
         var back = RoundTrip<JobResultMessage>(msg);
 
@@ -246,7 +251,7 @@ public class ControlMessageSerializerTests
         Assert.Equal("job-1", back.JobId);
         Assert.Equal("done", back.State);
         Assert.Equal("ok", back.Status);
-        Assert.True(back.Result["done"]!.Value<bool>());
+        Assert.True(back.Output["done"]!.Value<bool>());
         Assert.Single(back.Artifacts);
     }
 
@@ -263,7 +268,7 @@ public class ControlMessageSerializerTests
 
         Assert.Equal(MessageType.JobCancel, back.Type);
         Assert.Equal("cancel-1", back.Id);
-        Assert.Equal("lease-token", back.LeaseId);
+        Assert.Null(back.LeaseId);
         Assert.Equal("job-1", back.JobId);
     }
 

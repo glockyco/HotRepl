@@ -220,16 +220,20 @@ public class MessageSerializerTests
         var msg = new EvalErrorMessage
         {
             Id = "t-3",
-            ErrorKind = "runtime",
-            Message = "NullRef",
-            StackTrace = null,
+            Error = new ControlErrorMessage
+            {
+                Kind = "runtime",
+                Code = "evalFailed",
+                Message = "NullRef",
+                Retryable = false,
+            },
         };
         var json = MessageSerializer.Serialize(msg);
         var back = MessageSerializer.Deserialize<EvalErrorMessage>(json);
 
-        Assert.Equal("runtime", back.ErrorKind);
-        Assert.Equal("NullRef", back.Message);
-        Assert.Null(back.StackTrace);
+        Assert.Equal("runtime", back.Error.Kind);
+        Assert.Equal("NullRef", back.Error.Message);
+        Assert.DoesNotContain("errorKind", json, StringComparison.Ordinal);
     }
 
     [Fact]

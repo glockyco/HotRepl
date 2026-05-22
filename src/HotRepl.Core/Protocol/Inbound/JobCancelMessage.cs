@@ -10,7 +10,7 @@ internal sealed class JobCancelMessage
     [JsonProperty("id")]
     public string Id { get; set; } = string.Empty;
 
-    [JsonProperty("leaseId")]
+    [JsonIgnore]
     public string? LeaseId { get; set; }
 
     [JsonProperty("jobId")]

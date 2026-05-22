@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -21,12 +22,23 @@ internal sealed class JobResultMessage
     [JsonProperty("status")]
     public string Status { get; set; } = string.Empty;
 
-    [JsonProperty("result")]
-    public JObject Result { get; set; } = new();
+    [JsonProperty("output")]
+    public JObject Output { get; set; } = new();
 
     [JsonProperty("artifacts")]
-    public ArtifactRefMessage[] Artifacts { get; set; } = Array.Empty<ArtifactRefMessage>();
+    public IDictionary<string, ArtifactRefMessage> Artifacts { get; set; } =
+        new Dictionary<string, ArtifactRefMessage>(StringComparer.Ordinal);
 
-    [JsonProperty("diagnostics")]
+    [JsonProperty("error")]
+    public ControlErrorMessage? Error { get; set; }
+
+    [JsonIgnore]
+    public JObject Result
+    {
+        get => Output;
+        set => Output = value;
+    }
+
+    [JsonIgnore]
     public ControlErrorMessage[] Diagnostics { get; set; } = Array.Empty<ControlErrorMessage>();
 }

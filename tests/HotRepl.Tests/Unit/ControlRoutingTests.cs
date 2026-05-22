@@ -200,8 +200,8 @@ public class ControlRoutingTests
         Assert.Equal("ok", ok.Status);
         Assert.Equal("done", ok.Result["value"]!.Value<string>());
         var artifact = Assert.Single(ok.Artifacts);
-        Assert.Equal("items", artifact.LogicalName);
-        Assert.Equal("sha", artifact.Sha256);
+        Assert.Equal("items", artifact.Key);
+        Assert.Equal("sha", artifact.Value.Sha256);
     }
 
     [Fact]

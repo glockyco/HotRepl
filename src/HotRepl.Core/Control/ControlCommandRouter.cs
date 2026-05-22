@@ -122,9 +122,8 @@ internal sealed class ControlCommandRouter
             {
                 Id = message.Id,
                 Status = "ok",
-                Result = result.Result,
-                Artifacts = result.Artifacts.Select(ToMessage).ToArray(),
-                Diagnostics = result.Diagnostics.Select(ToMessage).ToArray(),
+                Output = result.Result,
+                Artifacts = ToArtifactMap(result.Artifacts),
             };
         }
         catch (Exception ex)
@@ -220,9 +219,8 @@ internal sealed class ControlCommandRouter
             JobId = status.JobId,
             State = status.State,
             Status = "ok",
-            Result = status.Result ?? new JObject(),
-            Artifacts = status.Artifacts.Select(ToMessage).ToArray(),
-            Diagnostics = status.Diagnostics.Select(ToMessage).ToArray(),
+            Output = status.Result ?? new JObject(),
+            Artifacts = ToArtifactMap(status.Artifacts),
         };
     }
 
@@ -267,6 +265,11 @@ internal sealed class ControlCommandRouter
             Sha256 = artifact.Sha256,
             Finalized = artifact.Finalized,
         };
+
+    private static System.Collections.Generic.Dictionary<string, ArtifactRefMessage> ToArtifactMap(
+        System.Collections.Generic.IEnumerable<ArtifactRef> artifacts
+    ) =>
+        artifacts.ToDictionary(artifact => artifact.LogicalName, ToMessage, StringComparer.Ordinal);
 
     private static ControlErrorMessage ToMessage(ControlCommandError error) =>
         new()
