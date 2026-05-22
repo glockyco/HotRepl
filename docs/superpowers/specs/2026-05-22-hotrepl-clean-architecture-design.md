@@ -471,11 +471,17 @@ displacement once.
 Each consumer ships a thin typed facade. The wrapper imports `@hotrepl/sdk` and exposes domain
 methods. No protocol or choreography lives in the consumer.
 
+### Ardenfall Compendium (today's typed-command consumer)
+
+`ardenfall-compendium/controller` currently maintains its own 330-line WebSocket client at
+`controller/src/hotrepl-client.ts`. In v2 it depends only on `@hotrepl/sdk` and a thin
+`CompendiumClient` facade:
+
 ```ts
 // ardenfall-compendium/controller/src/compendium.ts
 import { type Session } from "@hotrepl/sdk";
 import type {
-  PreflightOutput, RunHandle, PlanOutput, ExportBatchOutput, FinalizeOutput
+  PreflightOutput, RunHandle, PlanOutput, ExportBatchOutput, FinalizeOutput,
 } from "./generated/compendium-types";
 
 export class CompendiumClient {
@@ -491,8 +497,63 @@ export class CompendiumClient {
 }
 ```
 
-This replaces the ~330-line custom WebSocket client currently in
-`ardenfall-compendium/controller/src/hotrepl-client.ts`.
+Outcome: the custom WebSocket client is deleted; the orchestrator becomes a sequence of typed
+`session.run(...)` calls against `CompendiumClient`; `waitForJob` and lease/auth bookkeeping
+disappear into the SDK.
+
+### Ancient Kingdoms mods (today's launch-flag exporter, migrating to typed commands)
+
+Ancient Kingdoms currently exports game data via `AutoExporter`/`DataExporter`: `build-tool export`
+launches the game with `--export-data`, the mod runs the export automatically once the game is
+ready, writes a `.exporter-result.json` sentinel, and quits. HotRepl is touched only for ad hoc
+inspection via the documented CLI.
+
+That model is restrictive: the export runs only at game startup, cannot be re-run without
+relaunching, cannot be parameterised at request time, returns results through a file sentinel that
+duplicates HotRepl's command/artifact contract, and offers no progress visibility.
+
+In v2 Ancient Kingdoms adopts the same shape as Ardenfall:
+
+- The mod registers typed `IControlCommandHandler`s with `GlobalControlCommandRegistry`. Working
+  command set, mirroring Ardenfall's vocabulary:
+  - `compendium.info` — sync, read-only, returns api/extractor/game versions.
+  - `compendium.preflight` — sync, read-only, returns `{ ready, checks }`.
+  - `compendium.continueFromMenu` — sync, mutating, dismisses the main menu.
+  - `data.export` — job, mutating, runs the existing `DataExporter` payload and returns named
+    artifacts (`items`, `monsters`, `manifest`, `images`, `screenshots`, `diagnostics`). The current
+    `--export-data`/`--export-screenshots` switch becomes
+    `data.export(args: { kinds: ["data" | "screenshots" | ...] })`.
+  - `data.exportStatus` — sync, read-only, returns progress for a running `data.export` job
+    (`{ phase, current, total, lastError? }`); supports cancellation-safe polling.
+  - `game.quit` — sync, mutating, calls `Application.Quit()`.
+
+- `build-tool` no longer launches the game with `--export-data`. Instead:
+  1. `build-tool deploy-host` (existing) deploys the HotRepl MelonLoader host and the AK mod.
+  2. `build-tool launch --wait` (existing) starts the game and waits for the MelonLoader banner.
+  3. `build-tool export` becomes a thin orchestrator that opens an SDK Session, calls
+     `compendium.preflight`, optionally `compendium.continueFromMenu`, then
+     `session.run("data.export", …, { wait: true })`, and writes outputs from the returned artifact
+     map.
+
+- `AutoExporter` and `--export-data` are removed in the same slice that introduces `data.export`. No
+  dual-stack. The `.exporter-result.json` sentinel goes with them; its information is now delivered
+  as `Result.output` plus typed artifacts.
+
+- `mods/DataExporter` keeps its extraction logic. Each existing exporter becomes one branch of the
+  `data.export` handler, dispatched by the `kinds` arg. The handler reports progress via
+  `ControlJobExecutionContext.Report(progress, message)` so the client can render per-exporter
+  status.
+
+- AK documentation that references the old flow is rewritten in the same slice. Concretely:
+  `README.md`, `CLAUDE.md`, `mods/CLAUDE.md`, the bootstrap-worktree skill, the
+  `hotrepl-runtime-inspection` skill, and the `2026-05-20-hotrepl-consumer-integration-design` spec
+  all switch from "launch with `--export-data`" to "run `build-tool export` (typed commands)". The
+  `ExitCodes.LeaseConflict` re-use for file-lock conflicts is renamed, since true HotRepl leases no
+  longer exist.
+
+The migration is the AK-side equivalent of replacing Ardenfall's TS WebSocket client: the build-tool
+becomes a thin SDK consumer; the mod becomes a typed-command registrant; documentation rewrites
+follow in the same change.
 
 ## Game-side conventions
 
@@ -653,6 +714,10 @@ A first-class testing story is what makes the architecture obvious to follow.
   `--lease` flag. `wait` and `doctor` are reintroduced at the new top level with simpler behavior.
   `discover`, `select-evaluator`, and low-level job verbs survive under `hotrepl debug`.
 - Python client. Repo retains `client/` only as historical reference, removed in cleanup.
+- Consumer-side, in `ancient-kingdoms-mods`: `AutoExporter` mod, the `--export-data` /
+  `--export-screenshots` launch flags, `.exporter-result.json` and `ExportResultReader`. Their
+  function moves to the typed `data.export` job and the SDK's artifact map. See the Ancient Kingdoms
+  subsection under "Consumer wrappers" above.
 
 ## What gets added (definitive list)
 
@@ -685,12 +750,16 @@ Big-bang rewrite, but staged within the rewrite to keep momentum:
    `eval/reset/complete/watch`, `journal`. Wire to `@hotrepl/testing` first; only then point at real
    runtime.
 4. **CLI and MCP.** Build on the SDK. Snapshot-test their text/JSON output.
-5. **Consumer migration.** Port `ardenfall-compendium/controller` from its TS WebSocket client to
-   `@hotrepl/sdk` + `CompendiumClient`. Port `ancient-kingdoms-mods/build-tool` from documenting
-   external `hotrepl` CLI use to embedding it as a dependency where appropriate.
-6. **Game-side schemas.** Per command, write real `*.json` schemas next to handlers. Update existing
-   handlers in `ardenfall-compendium/mod`.
-7. **Cleanup.** Delete `client/` (Python), `client/tests/`, `pyproject.toml`, and Python-only CI
+5. **Ardenfall migration.** Port `ardenfall-compendium/controller` from its TS WebSocket client to
+   `@hotrepl/sdk` + `CompendiumClient`. Delete the custom client.
+6. **Ancient Kingdoms migration.** In `ancient-kingdoms-mods`: add typed `IControlCommandHandler`s
+   (`compendium.{info,preflight,continueFromMenu}`, `data.{export,exportStatus}`, `game.quit`) to
+   the AK mod; rewrite `build-tool export` to drive them through `@hotrepl/sdk`; remove
+   `AutoExporter`, `--export-data`, and `.exporter-result.json`; rewrite the README/CLAUDE/skill/
+   spec text that documents the launch-flag flow.
+7. **Game-side schemas.** Per command, write real `*.json` schemas next to handlers. Update existing
+   handlers in `ardenfall-compendium/mod` and the new ones in `ancient-kingdoms-mods/mods`.
+8. **Cleanup.** Delete `client/` (Python), `client/tests/`, `pyproject.toml`, and Python-only CI
    surface. Update `AGENTS.md` and `.claude/skills/hotrepl/SKILL.md` to point at the TS SDK.
 
 Each step is independently mergeable; the v1 protocol is unsupported the moment step 2 lands. There
