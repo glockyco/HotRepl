@@ -91,7 +91,7 @@ public class RoslynScriptEvaluatorTests
         var result = evaluator.Evaluate("x", CancellationToken.None);
 
         Assert.False(result.Success);
-        Assert.Equal("compile", result.ErrorKind);
+        Assert.Equal("validation_failed", result.ErrorKind);
     }
 
     [Fact]
@@ -103,7 +103,7 @@ public class RoslynScriptEvaluatorTests
         var result = evaluator.Evaluate("int x = ;", CancellationToken.None);
 
         Assert.False(result.Success);
-        Assert.Equal("compile", result.ErrorKind);
+        Assert.Equal("validation_failed", result.ErrorKind);
         Assert.Contains("CS", result.ErrorMessage, StringComparison.Ordinal);
     }
 
@@ -119,7 +119,7 @@ public class RoslynScriptEvaluatorTests
         );
 
         Assert.False(result.Success);
-        Assert.Equal("runtime", result.ErrorKind);
+        Assert.Equal("internal", result.ErrorKind);
         Assert.Contains("boom", result.ErrorMessage, StringComparison.Ordinal);
     }
 }

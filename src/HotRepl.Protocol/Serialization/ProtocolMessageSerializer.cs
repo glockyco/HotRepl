@@ -30,4 +30,11 @@ public static class ProtocolMessageSerializer
 
         return token.Value<string>()!;
     }
+
+    /// <summary>Parses the optional correlation id without deserializing the full message.</summary>
+    public static string? ParseId(string json)
+    {
+        var obj = JObject.Parse(json);
+        return obj["id"]?.Value<string>();
+    }
 }

@@ -48,4 +48,23 @@ public class MessageRouterV2Tests
         Assert.Contains("\"kind\":\"invalid_request\"", json, StringComparison.Ordinal);
         Assert.Contains("\"code\":\"legacyMessageType\"", json, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void Router_RoutesCommandsListMessage()
+    {
+        var queued = new List<IEngineCommand>();
+        var router = MessageRouter.CreateForTests(
+            queued.Add,
+            _ => throw new InvalidOperationException("commands_list must not enqueue eval."),
+            _ => throw new InvalidOperationException("commands_list must not cancel."),
+            (_, _) => throw new InvalidOperationException("commands_list must not send error."),
+            new ReplConfig(),
+            () => 0
+        );
+
+        router.HandleMessage(Guid.NewGuid(), "{\"type\":\"commands_list\",\"id\":\"list-1\"}");
+
+        var command = Assert.IsType<CommandsListCmd>(Assert.Single(queued));
+        Assert.Equal("list-1", command.Id);
+    }
 }

@@ -1,11 +1,13 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using HotRepl.Control.Artifacts;
 using HotRepl.Control.Jobs;
 using HotRepl.Protocol;
 using Newtonsoft.Json.Linq;
+using ControlArtifactRef = HotRepl.Control.Artifacts.ArtifactRef;
+using ProtocolArtifactRef = HotRepl.Protocol.ArtifactRef;
 
 namespace HotRepl.Control;
 
@@ -13,7 +15,6 @@ namespace HotRepl.Control;
 internal sealed class ControlCommandRouter
 {
     private readonly IControlCommandRegistry _registry;
-    private readonly ControlSessionManager? _sessions;
     private readonly ControlJobManager? _jobs;
 
     public ControlCommandRouter(
@@ -23,16 +24,31 @@ internal sealed class ControlCommandRouter
     )
     {
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
-        _sessions = sessions;
         _jobs = jobs;
     }
 
-    public CommandDescribeResultMessage Describe(string id)
-    {
-        return new CommandDescribeResultMessage
+    public CommandsListResultMessage List(string id) =>
+        new()
         {
             Id = id,
-            Commands = _registry.Describe().Select(ToMessage).ToArray(),
+            Commands = _registry.Describe().Select(ToSummary).ToArray(),
+        };
+
+    public object Describe(CommandDescribeMessage message)
+    {
+        if (!_registry.TryGet(message.Name, out var handler))
+            return CommandError(
+                message.Id,
+                ErrorKind.UnknownCommand,
+                "unknownCommand",
+                $"Unknown control command '{message.Name}'.",
+                retryable: false
+            );
+
+        return new CommandDescribeResultMessage
+        {
+            Id = message.Id,
+            Descriptor = ToDescriptor(handler.Descriptor),
         };
     }
 
@@ -44,14 +60,12 @@ internal sealed class ControlCommandRouter
         {
             return CommandError(
                 message.Id,
-                "unknown_command",
+                ErrorKind.UnknownCommand,
                 "unknownCommand",
                 $"Unknown control command '{message.Name}'.",
                 retryable: false
             );
         }
-
-
 
         return handler.Descriptor.Kind switch
         {
@@ -59,7 +73,7 @@ internal sealed class ControlCommandRouter
             ControlCommandKind.Synchronous => ExecuteSynchronous(message, handler),
             _ => CommandError(
                 message.Id,
-                "unsupported_operation",
+                ErrorKind.UnsupportedOperation,
                 "unsupportedCommandKind",
                 $"Command '{message.Name}' has unsupported kind '{handler.Descriptor.Kind}'.",
                 retryable: false
@@ -76,14 +90,16 @@ internal sealed class ControlCommandRouter
         if (_jobs == null)
             return CommandError(
                 message.Id,
-                "unsupported_operation",
+                ErrorKind.UnsupportedOperation,
                 "jobsUnavailable",
                 "Control jobs are not available.",
                 retryable: false
             );
 
-        var timeout =
-            message.TimeoutMs > 0 ? TimeSpan.FromMilliseconds(message.TimeoutMs) : (TimeSpan?)null;
+        var requestedTimeout = message.TimeoutMs.GetValueOrDefault();
+        var timeout = requestedTimeout > 0
+            ? TimeSpan.FromMilliseconds(requestedTimeout)
+            : (TimeSpan?)null;
         var job = _jobs.StartJob(
             connectionId,
             message.Id,
@@ -93,7 +109,7 @@ internal sealed class ControlCommandRouter
                 handler.ExecuteAsync(context.ToCommandContext(timeout), message.Args, token)
         );
 
-        return new CommandAcceptedMessage
+        return new JobAcceptedMessage
         {
             Id = message.Id,
             JobId = job.JobId,
@@ -101,17 +117,17 @@ internal sealed class ControlCommandRouter
         };
     }
 
-    private static object ExecuteSynchronous(
+    private static CommandResultMessage ExecuteSynchronous(
         CommandCallMessage message,
         IControlCommandHandler handler
     )
     {
         try
         {
-            var timeout =
-                message.TimeoutMs > 0
-                    ? TimeSpan.FromMilliseconds(message.TimeoutMs)
-                    : (TimeSpan?)null;
+            var requestedTimeout = message.TimeoutMs.GetValueOrDefault();
+            var timeout = requestedTimeout > 0
+                ? TimeSpan.FromMilliseconds(requestedTimeout)
+                : (TimeSpan?)null;
             var context = new ControlCommandContext(message.Id, null, null, timeout);
             var result = handler
                 .ExecuteAsync(context, message.Args, CancellationToken.None)
@@ -130,7 +146,7 @@ internal sealed class ControlCommandRouter
         {
             return CommandError(
                 message.Id,
-                "internal",
+                ErrorKind.Internal,
                 "handlerException",
                 ex.Message,
                 retryable: false
@@ -155,6 +171,9 @@ internal sealed class ControlCommandRouter
             return JobOwnershipError(message.Id, message.JobId);
 
         var status = _jobs.GetStatus(message.JobId);
+        if (!string.Equals(status.State, ControlJobStates.Running, StringComparison.Ordinal))
+            return ToJobResult(message.Id, status);
+
         return new JobStatusResultMessage
         {
             Id = message.Id,
@@ -164,65 +183,6 @@ internal sealed class ControlCommandRouter
         };
     }
 
-    public object GetJobResult(JobResultRequestMessage message) =>
-        GetJobResult(message, Guid.Empty);
-
-    public object GetJobResult(JobResultRequestMessage message, Guid connectionId)
-    {
-        if (!_jobs!.IsOwnedByConnection(message.JobId, connectionId))
-            return JobOwnershipError(message.Id, message.JobId);
-
-        var status = _jobs.GetStatus(message.JobId);
-        if (string.Equals(status.State, ControlJobStates.Running, StringComparison.Ordinal))
-        {
-            return CommandError(
-                message.Id,
-                "busy",
-                "jobNotTerminal",
-                $"Job '{message.JobId}' is still {status.State}.",
-                retryable: true
-            );
-        }
-
-        if (string.Equals(status.State, ControlJobStates.Failed, StringComparison.Ordinal))
-        {
-            return new CommandErrorMessage
-            {
-                Id = message.Id,
-                Status = "failed",
-                Error = ToMessage(
-                    status.Error
-                        ?? new ControlCommandError(
-                            "internal",
-                            "missingJobError",
-                            "Job failed without an error.",
-                            Retryable: false,
-                            Details: new JObject()
-                        )
-                ),
-                Diagnostics = status.Diagnostics.Select(ToMessage).ToArray(),
-            };
-        }
-
-        if (string.Equals(status.State, ControlJobStates.Cancelled, StringComparison.Ordinal))
-            return CommandError(
-                message.Id,
-                "cancelled",
-                "jobCancelled",
-                $"Job '{message.JobId}' was cancelled.",
-                retryable: false
-            );
-
-        return new JobResultMessage
-        {
-            Id = message.Id,
-            JobId = status.JobId,
-            State = status.State,
-            Status = "ok",
-            Output = status.Result ?? new JObject(),
-            Artifacts = ToArtifactMap(status.Artifacts),
-        };
-    }
 
     public JobCancelResultMessage CancelJob(JobCancelMessage message) =>
         CancelJob(message, Guid.Empty) as JobCancelResultMessage
@@ -243,21 +203,30 @@ internal sealed class ControlCommandRouter
         };
     }
 
-    private static CommandDescriptorMessage ToMessage(ControlCommandDescriptor descriptor) =>
+    private static CommandSummary ToSummary(ControlCommandDescriptor descriptor) =>
         new()
         {
             Name = descriptor.Name,
-            Version = descriptor.Version,
+            MajorVersion = descriptor.Version,
             Kind = descriptor.Kind == ControlCommandKind.Synchronous ? "sync" : "job",
             MutatesState = descriptor.MutatesState,
-            ArgsSchema = descriptor.ArgsSchema,
-            ResultSchema = descriptor.ResultSchema,
         };
 
-    private static ArtifactRefMessage ToMessage(ArtifactRef artifact) =>
+    private static CommandDescriptor ToDescriptor(ControlCommandDescriptor descriptor) =>
         new()
         {
-            LogicalName = artifact.LogicalName,
+            Name = descriptor.Name,
+            MajorVersion = descriptor.Version,
+            Kind = descriptor.Kind == ControlCommandKind.Synchronous ? "sync" : "job",
+            MutatesState = descriptor.MutatesState,
+            InputSchema = descriptor.ArgsSchema,
+            OutputSchema = descriptor.ResultSchema,
+            ArtifactsSchema = EmptyObjectSchema(),
+        };
+
+    private static ProtocolArtifactRef ToMessage(ControlArtifactRef artifact) =>
+        new()
+        {
             Uri = artifact.Uri,
             Path = artifact.Path,
             ContentType = artifact.ContentType,
@@ -266,31 +235,24 @@ internal sealed class ControlCommandRouter
             Finalized = artifact.Finalized,
         };
 
-    private static System.Collections.Generic.Dictionary<string, ArtifactRefMessage> ToArtifactMap(
-        System.Collections.Generic.IEnumerable<ArtifactRef> artifacts
+    private static Dictionary<string, ProtocolArtifactRef> ToArtifactMap(
+        IEnumerable<ControlArtifactRef> artifacts
     ) =>
         artifacts.ToDictionary(artifact => artifact.LogicalName, ToMessage, StringComparer.Ordinal);
 
-    private static ControlErrorMessage ToMessage(ControlCommandError error) =>
-        new()
-        {
-            Kind = error.Kind,
-            Code = error.Code,
-            Message = error.Message,
-            Retryable = error.Retryable,
-            Details = error.Details,
-        };
+    private static HotReplErrorEnvelope ToMessage(ControlCommandError error) =>
+        new(error.Kind, error.Code, error.Message, error.Retryable, error.Details);
 
-    private static CommandErrorMessage JobOwnershipError(string id, string jobId) =>
+    private static CommandResultMessage JobOwnershipError(string id, string jobId) =>
         CommandError(
             id,
-            "conflict",
+            ErrorKind.Conflict,
             "jobNotOwnedByConnection",
             $"Job '{jobId}' is not owned by this connection.",
             retryable: false
         );
 
-    private static CommandErrorMessage CommandError(
+    private static CommandResultMessage CommandError(
         string id,
         string kind,
         string code,
@@ -301,13 +263,59 @@ internal sealed class ControlCommandRouter
         {
             Id = id,
             Status = "failed",
-            Error = new ControlErrorMessage
-            {
-                Kind = kind,
-                Code = code,
-                Message = message,
-                Retryable = retryable,
-                Details = new JObject(),
-            },
+            Error = new HotReplErrorEnvelope(kind, code, message, retryable, details: null),
         };
+
+    private static JobResultMessage ToJobResult(string id, ControlJobStatus status)
+    {
+        if (string.Equals(status.State, ControlJobStates.Completed, StringComparison.Ordinal))
+        {
+            return new JobResultMessage
+            {
+                Id = id,
+                JobId = status.JobId,
+                State = status.State,
+                Status = "ok",
+                Output = status.Result ?? new JObject(),
+                Artifacts = ToArtifactMap(status.Artifacts),
+            };
+        }
+
+        return new JobResultMessage
+        {
+            Id = id,
+            JobId = status.JobId,
+            State = status.State,
+            Status = "failed",
+            Error = ToTerminalJobError(status),
+            Output = status.Result,
+            Artifacts = ToArtifactMap(status.Artifacts),
+        };
+    }
+
+    private static HotReplErrorEnvelope ToTerminalJobError(ControlJobStatus status)
+    {
+        if (string.Equals(status.State, ControlJobStates.Cancelled, StringComparison.Ordinal))
+        {
+            return new HotReplErrorEnvelope(
+                ErrorKind.Cancelled,
+                "jobCancelled",
+                $"Job '{status.JobId}' was cancelled.",
+                retryable: false,
+                details: null
+            );
+        }
+
+        return status.Error == null
+            ? new HotReplErrorEnvelope(
+                ErrorKind.Internal,
+                "missingJobError",
+                "Job failed without an error.",
+                retryable: false,
+                details: null
+            )
+            : ToMessage(status.Error);
+    }
+
+    private static JObject EmptyObjectSchema() => JObject.Parse("{\"type\":\"object\"}");
 }

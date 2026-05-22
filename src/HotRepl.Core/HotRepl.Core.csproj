@@ -17,7 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../HotRepl.Protocol/HotRepl.Protocol.csproj" Aliases="HotReplProtocolV2" />
+    <ProjectReference Include="../HotRepl.Protocol/HotRepl.Protocol.csproj" />
   </ItemGroup>
 
   <ItemGroup>

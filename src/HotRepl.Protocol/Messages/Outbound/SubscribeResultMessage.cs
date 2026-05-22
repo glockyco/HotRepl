@@ -15,8 +15,17 @@ public sealed class SubscribeResultMessage
     [JsonProperty("seq")]
     public long Seq { get; set; }
 
+    [JsonProperty("hasValue")]
+    public bool HasValue { get; set; }
+
     [JsonProperty("value")]
     public JToken? Value { get; set; }
+
+    [JsonProperty("valueType")]
+    public string? ValueType { get; set; }
+
+    [JsonProperty("durationMs")]
+    public long DurationMs { get; set; }
 
     [JsonProperty("final")]
     public bool Final { get; set; }

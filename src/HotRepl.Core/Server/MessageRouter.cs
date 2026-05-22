@@ -1,12 +1,10 @@
-extern alias HotReplProtocolV2;
-
 using System;
 using System.Text;
 using HotRepl.Engine.Commands;
 using HotRepl.Evaluator;
 using HotRepl.Protocol;
-using ProtocolV2 = HotReplProtocolV2::HotRepl.Protocol;
-using ProtocolMessageSerializer = HotReplProtocolV2::HotRepl.Protocol.Serialization.ProtocolMessageSerializer;
+using HotRepl.Protocol.Serialization;
+using Newtonsoft.Json.Linq;
 
 namespace HotRepl.Server;
 
@@ -17,6 +15,11 @@ namespace HotRepl.Server;
 /// </summary>
 internal sealed class MessageRouter
 {
+    private const string ControlAuthMessageType = "control_auth";
+    private const string LeaseAcquireMessageType = "lease_acquire";
+    private const string PingMessageType = "ping";
+    private const string SelectEvaluatorMessageType = "select_evaluator";
+
     private readonly Action<IEngineCommand> _enqueueCommand;
     private readonly Action<EvalJob> _enqueueEval;
     private readonly Action<string> _cancelEval;
@@ -98,7 +101,7 @@ internal sealed class MessageRouter
         SendError(
             connectionId,
             id: null,
-            ProtocolV2.ErrorKind.InvalidRequest,
+            ErrorKind.InvalidRequest,
             "messageTooLarge",
             "Message exceeds maxMessageBytes.",
             retryable: false
@@ -110,7 +113,7 @@ internal sealed class MessageRouter
     {
         try
         {
-            type = MessageSerializer.ParseType(rawJson);
+            type = ProtocolMessageSerializer.ParseType(rawJson);
             return true;
         }
         catch (Exception ex)
@@ -119,7 +122,7 @@ internal sealed class MessageRouter
             SendError(
                 connectionId,
                 id: null,
-                ProtocolV2.ErrorKind.InvalidRequest,
+                ErrorKind.InvalidRequest,
                 "invalidJson",
                 ex.Message,
                 retryable: false
@@ -136,7 +139,7 @@ internal sealed class MessageRouter
         SendError(
             connectionId,
             ExtractId(rawJson),
-            ProtocolV2.ErrorKind.InvalidRequest,
+            ErrorKind.InvalidRequest,
             "legacyMessageType",
             $"Message type '{type}' is not supported by protocol v2.",
             retryable: false
@@ -156,7 +159,7 @@ internal sealed class MessageRouter
             SendError(
                 connectionId,
                 ExtractId(rawJson),
-                ProtocolV2.ErrorKind.InvalidRequest,
+                ErrorKind.InvalidRequest,
                 "invalidRequest",
                 ex.Message,
                 retryable: false
@@ -174,7 +177,7 @@ internal sealed class MessageRouter
             SendError(
                 connectionId,
                 ExtractId(rawJson),
-                ProtocolV2.ErrorKind.Busy,
+                ErrorKind.Busy,
                 "commandQueueFull",
                 "Command queue is full.",
                 retryable: true
@@ -200,7 +203,7 @@ internal sealed class MessageRouter
                     SendError(
                         connectionId,
                         ExtractId(rawJson),
-                        ProtocolV2.ErrorKind.Busy,
+                        ErrorKind.Busy,
                         "commandQueueFull",
                         "Command queue is full.",
                         retryable: true
@@ -216,14 +219,23 @@ internal sealed class MessageRouter
                 return new ResetCmd(De<ResetMessage>(rawJson).Id, connectionId);
             case MessageType.Complete:
                 var cmpl = De<CompleteMessage>(rawJson);
-                return new CompleteCmd(cmpl.Id, cmpl.Code, cmpl.CursorPos, connectionId);
+                return new CompleteCmd(
+                    cmpl.Id,
+                    cmpl.Code,
+                    cmpl.Cursor.GetValueOrDefault(cmpl.Code.Length),
+                    connectionId
+                );
             case MessageType.Subscribe:
                 return BuildSubscribeCmd(connectionId, De<SubscribeMessage>(rawJson));
-            case MessageType.SelectEvaluator:
-                var sel = De<SelectEvaluatorMessage>(rawJson);
+            case SelectEvaluatorMessageType:
+                var sel = ParseSelectEvaluator(rawJson);
                 return new SelectEvaluatorCmd(sel.Id, sel.Evaluator, connectionId);
+            case MessageType.CommandsList:
+                var list = De<CommandsListMessage>(rawJson);
+                return new CommandsListCmd(list.Id, list.Since, connectionId);
             case MessageType.CommandDescribe:
-                return new CommandDescribeCmd(De<CommandDescribeMessage>(rawJson).Id, connectionId);
+                var describe = De<CommandDescribeMessage>(rawJson);
+                return new CommandDescribeCmd(describe.Id, describe.Name, connectionId);
             case MessageType.CommandCall:
                 return new CommandCallCmd(De<CommandCallMessage>(rawJson), connectionId);
             case MessageType.JobStatus:
@@ -234,7 +246,7 @@ internal sealed class MessageRouter
                 SendError(
                     connectionId,
                     ExtractId(rawJson),
-                    ProtocolV2.ErrorKind.InvalidRequest,
+                    ErrorKind.InvalidRequest,
                     "unknownMessageType",
                     $"Unknown message type '{type}'.",
                     retryable: false
@@ -246,38 +258,54 @@ internal sealed class MessageRouter
     private void EnqueueEval(Guid connectionId, string rawJson)
     {
         var msg = De<EvalMessage>(rawJson);
-        var timeoutMs = msg.TimeoutMs > 0 ? msg.TimeoutMs : _config.DefaultTimeoutMs;
+        var requestedTimeout = msg.TimeoutMs.GetValueOrDefault();
+        var timeoutMs = requestedTimeout > 0 ? requestedTimeout : _config.DefaultTimeoutMs;
         _enqueueEval(new EvalJob(msg.Id, msg.Code, timeoutMs, connectionId));
     }
 
     private void CancelEval(string rawJson)
     {
         // Cancel is time-sensitive: skip the queue and abort directly.
-        _cancelEval(De<CancelMessage>(rawJson).Id);
+        _cancelEval(De<CancelMessage>(rawJson).TargetId);
     }
 
     private SubscribeCmd BuildSubscribeCmd(Guid connectionId, SubscribeMessage msg) =>
         new(
             msg.Id,
             msg.Code,
-            Math.Max(1, msg.IntervalFrames),
-            msg.OnChange,
-            msg.Limit,
-            msg.TimeoutMs > 0 ? msg.TimeoutMs : _config.DefaultTimeoutMs,
+            Math.Max(1, msg.IntervalFrames.GetValueOrDefault(1)),
+            msg.OnChange.GetValueOrDefault(),
+            msg.Limit.GetValueOrDefault(),
+            RequestedTimeoutOrDefault(msg.TimeoutMs),
             connectionId
         );
 
+    private int RequestedTimeoutOrDefault(int? timeoutMs)
+    {
+        var requested = timeoutMs.GetValueOrDefault();
+        return requested > 0 ? requested : _config.DefaultTimeoutMs;
+    }
+
+
+    private static (string Id, string Evaluator) ParseSelectEvaluator(string rawJson)
+    {
+        var obj = JObject.Parse(rawJson);
+        return (
+            obj["id"]?.Value<string>() ?? string.Empty,
+            obj["evaluator"]?.Value<string>() ?? string.Empty
+        );
+    }
     private static bool IsLegacyMessageType(string type) =>
-        string.Equals(type, MessageType.ControlAuth, StringComparison.Ordinal)
-        || string.Equals(type, MessageType.LeaseAcquire, StringComparison.Ordinal)
-        || string.Equals(type, MessageType.Ping, StringComparison.Ordinal)
+        string.Equals(type, ControlAuthMessageType, StringComparison.Ordinal)
+        || string.Equals(type, LeaseAcquireMessageType, StringComparison.Ordinal)
+        || string.Equals(type, PingMessageType, StringComparison.Ordinal)
         || string.Equals(type, MessageType.JobResult, StringComparison.Ordinal);
 
     private static string? ExtractId(string rawJson)
     {
         try
         {
-            return MessageSerializer.ParseId(rawJson);
+            return ProtocolMessageSerializer.ParseId(rawJson);
         }
         catch
         {
@@ -299,17 +327,11 @@ internal sealed class MessageRouter
             {
                 type = "error",
                 id,
-                error = new ProtocolV2.HotReplErrorEnvelope(
-                    kind,
-                    code,
-                    message,
-                    retryable,
-                    details: null
-                ),
+                error = new HotReplErrorEnvelope(kind, code, message, retryable, details: null),
             }
         );
         _sendProtocolError(connectionId, json);
     }
 
-    private static T De<T>(string rawJson) => MessageSerializer.Deserialize<T>(rawJson);
+    private static T De<T>(string rawJson) => ProtocolMessageSerializer.Deserialize<T>(rawJson);
 }

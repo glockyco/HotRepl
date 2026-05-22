@@ -53,7 +53,7 @@ public class EvalResultTests
         var result = EvalOutcome.CompileError("CS0001: syntax error", null, 2);
 
         Assert.False(result.Success);
-        Assert.Equal("compile", result.ErrorKind);
+        Assert.Equal("validation_failed", result.ErrorKind);
         Assert.NotNull(result.ErrorMessage);
         Assert.Contains("CS0001", result.ErrorMessage, StringComparison.Ordinal);
     }
@@ -64,7 +64,7 @@ public class EvalResultTests
         var result = EvalOutcome.RuntimeError("NullRef", "at Foo.Bar()", null, 10);
 
         Assert.False(result.Success);
-        Assert.Equal("runtime", result.ErrorKind);
+        Assert.Equal("internal", result.ErrorKind);
         Assert.NotNull(result.StackTrace);
         Assert.Equal("at Foo.Bar()", result.StackTrace);
     }

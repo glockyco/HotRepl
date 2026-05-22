@@ -1,10 +1,8 @@
-extern alias HotReplProtocolV2;
-
 using System;
 using System.Linq;
 using HotRepl.Evaluator;
-using ProtocolV2 = HotReplProtocolV2::HotRepl.Protocol;
-using ProtocolMessageSerializer = HotReplProtocolV2::HotRepl.Protocol.Serialization.ProtocolMessageSerializer;
+using HotRepl.Protocol;
+using HotRepl.Protocol.Serialization;
 
 namespace HotRepl.Server;
 
@@ -20,7 +18,7 @@ internal static class RuntimeHandshakeFactory
         string[] helpers
     ) => ProtocolMessageSerializer.Serialize(Create(config, host, evaluator, availableEvaluators, defaultUsings, helpers));
 
-    public static ProtocolV2.HandshakeMessage Create(
+    public static HandshakeMessage Create(
         ReplConfig config,
         HostInfo host,
         EvaluatorCapabilities evaluator,
@@ -31,13 +29,13 @@ internal static class RuntimeHandshakeFactory
         new()
         {
             ProtocolVersion = 2,
-            Host = new ProtocolV2.HostDescriptor
+            Host = new HostDescriptor
             {
                 Name = host.Name,
                 Version = host.Version,
                 Platform = host.Platform,
             },
-            Evaluator = new ProtocolV2.EvaluatorDescriptor
+            Evaluator = new EvaluatorDescriptor
             {
                 Name = evaluator.Name,
                 LanguageVersion = evaluator.LanguageVersion,
@@ -48,13 +46,13 @@ internal static class RuntimeHandshakeFactory
             AvailableEvaluators = availableEvaluators.ToArray(),
             DefaultUsings = defaultUsings.ToArray(),
             Helpers = helpers.ToArray(),
-            Control = new ProtocolV2.ControlCapabilities
+            Control = new ControlCapabilities
             {
                 Supported = config.ControlPlaneEnabled,
                 CommandsListChanged = false,
                 SchemaValidation = config.SchemaValidation,
             },
-            Limits = new ProtocolV2.RuntimeLimits
+            Limits = new RuntimeLimits
             {
                 MaxMessageBytes = config.MaxMessageBytes,
                 MaxQueuedCommands = config.MaxQueuedCommands,
@@ -63,7 +61,7 @@ internal static class RuntimeHandshakeFactory
                 DefaultEvalTimeoutMs = config.DefaultTimeoutMs,
                 MaxJobConcurrency = config.MaxJobConcurrency,
             },
-            Enforces = ProtocolV2.EnforcedLimit.Defaults,
+            Enforces = EnforcedLimit.Defaults,
         };
 
     private static string ToCancellation(TimeoutMode timeoutMode) =>

@@ -1,10 +1,8 @@
-extern alias HotReplProtocolV2;
-
 using System;
 using System.Collections.Concurrent;
 using Fleck;
-using ProtocolV2 = HotReplProtocolV2::HotRepl.Protocol;
-using ProtocolMessageSerializer = HotReplProtocolV2::HotRepl.Protocol.Serialization.ProtocolMessageSerializer;
+using HotRepl.Protocol;
+using HotRepl.Protocol.Serialization;
 
 namespace HotRepl.Server;
 
@@ -49,10 +47,10 @@ internal sealed class ClientRegistry
                 _send(
                     prev,
                     ProtocolMessageSerializer.Serialize(
-                        new ProtocolV2.SessionEvictedMessage
+                        new SessionEvictedMessage
                         {
                             Reason = "displaced",
-                            By = new ProtocolV2.SessionEvictedBy { ClientName = null },
+                            By = new SessionEvictedBy { ClientName = null },
                         }
                     )
                 );

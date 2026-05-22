@@ -47,7 +47,7 @@ public sealed class EvalOutcome
         new()
         {
             Success = false,
-            ErrorKind = Protocol.ErrorKind.Compile,
+            ErrorKind = Protocol.ErrorKind.ValidationFailed,
             ErrorMessage = message,
             Stdout = stdout,
             DurationMs = durationMs,
@@ -62,7 +62,7 @@ public sealed class EvalOutcome
         new()
         {
             Success = false,
-            ErrorKind = Protocol.ErrorKind.Runtime,
+            ErrorKind = Protocol.ErrorKind.Internal,
             ErrorMessage = message,
             StackTrace = stackTrace,
             Stdout = stdout,

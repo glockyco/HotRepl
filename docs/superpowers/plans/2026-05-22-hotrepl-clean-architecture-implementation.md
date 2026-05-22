@@ -578,19 +578,26 @@ git commit -m "feat(runtime): strip v1 fields from responses"
 - Modify: `src/HotRepl.Core/Server/MessageRouter.cs`
 - Modify: `src/HotRepl.Core/Control/ControlCommandRouter.cs`
 - Modify: `src/HotRepl.Core/Subscriptions/SubscriptionManager.cs`
+- Modify: `src/HotRepl.Core/Engine/Commands/**`
+- Modify: `src/HotRepl.Core/Evaluator/EvalOutcome.cs`
 - Delete or retire: `src/HotRepl.Core/Protocol/**` v1 message records replaced by
   `src/HotRepl.Protocol`
+- Modify: `src/HotRepl.Protocol/Serialization/ProtocolMessageSerializer.cs`
+- Modify: `src/HotRepl.Protocol/Messages/Outbound/SubscribeResultMessage.cs`
 - Test: `tests/HotRepl.Tests/Unit/ProtocolV2CleanupTests.cs`
 - Test: `tests/HotRepl.Tests/Unit/ControlRoutingTests.cs`
 - Test: `tests/HotRepl.Tests/Unit/MessageRouterV2Tests.cs`
+- Modify: `tests/HotRepl.Tests/HotRepl.Tests.csproj`
+- Modify: `tests/HotRepl.Tests/Unit/ProtocolV2MessageSerializerTests.cs`
+- Delete: stale v1 serializer tests in `tests/HotRepl.Tests/Unit/`
 
-- [ ] **Step 1: Write failing public protocol ownership tests**
+- [x] **Step 1: Write failing public protocol ownership tests**
 
 Assert the runtime handles `commands_list`, `command_describe { name }`, sync commands, job polling,
 eval/reset/complete/subscribe, and protocol errors through public `HotRepl.Protocol` records. Remove
 legacy serializer tests for `control_auth`, `lease_acquire`, `ping`, and `job_event`.
 
-- [ ] **Step 2: Run red tests**
+- [x] **Step 2: Run red tests**
 
 Run:
 
@@ -598,20 +605,19 @@ Run:
 FILTER="FullyQualifiedName~ProtocolV2CleanupTests|\
 FullyQualifiedName~MessageRouterV2Tests|\
 FullyQualifiedName~ControlRoutingTests|\
-FullyQualifiedName~MessageSerializerTests|\
-FullyQualifiedName~ControlMessageSerializerTests"
+FullyQualifiedName~ProtocolV2MessageSerializerTests"
 dotnet test tests/HotRepl.Tests/ --nologo -v q --filter "$FILTER"
 ```
 
 Expected: FAIL while Core still relies on duplicate Core-local protocol records.
 
-- [ ] **Step 3: Route runtime through `HotRepl.Protocol`**
+- [x] **Step 3: Route runtime through `HotRepl.Protocol`**
 
 Remove the external alias from Core's project reference, delete duplicate Core-local records, use
 `ProtocolMessageSerializer` for runtime JSON, add `commands_list`, and keep debug-only evaluator
 selection as an explicit internal maintenance path outside the public CLI/MCP surface.
 
-- [ ] **Step 4: Run green verification**
+- [x] **Step 4: Run green verification**
 
 Run the filtered command from Step 2, then:
 
@@ -622,10 +628,11 @@ dotnet build src/HotRepl.Core/ --nologo -v q
 
 Expected: all C# tests and the Core build pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```sh
-git add src/HotRepl.Core tests/HotRepl.Tests/Unit docs/superpowers/plans/2026-05-22-hotrepl-clean-architecture-implementation.md
+git add src/HotRepl.Core src/HotRepl.Protocol tests/HotRepl.Tests \
+  docs/superpowers/plans/2026-05-22-hotrepl-clean-architecture-implementation.md
 git commit -m "feat(runtime): use public protocol v2 records"
 ```
 

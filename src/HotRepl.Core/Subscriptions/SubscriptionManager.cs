@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using HotRepl.Evaluator;
 using HotRepl.Protocol;
+using HotRepl.Protocol.Serialization;
 using HotRepl.Serialization;
+using Newtonsoft.Json.Linq;
 
 namespace HotRepl.Subscriptions;
 
@@ -133,13 +135,13 @@ internal sealed class SubscriptionManager
 
         send(
             sub.ConnectionId,
-            MessageSerializer.Serialize(
+            ProtocolMessageSerializer.Serialize(
                 new SubscribeResultMessage
                 {
                     Id = sub.Id,
                     Seq = sub.Seq,
                     HasValue = outcome.HasValue,
-                    Value = serialized,
+                    Value = serialized == null ? null : JToken.FromObject(serialized),
                     ValueType = outcome.ValueType,
                     DurationMs = outcome.DurationMs,
                     Final = isFinal,
@@ -162,13 +164,18 @@ internal sealed class SubscriptionManager
 
         send(
             sub.ConnectionId,
-            MessageSerializer.Serialize(
+            ProtocolMessageSerializer.Serialize(
                 new SubscribeErrorMessage
                 {
                     Id = sub.Id,
                     Seq = sub.Seq,
-                    ErrorKind = outcome.ErrorKind ?? Protocol.ErrorKind.Runtime,
-                    Message = outcome.ErrorMessage ?? "Unknown error",
+                    Error = new HotReplErrorEnvelope(
+                        outcome.ErrorKind ?? ErrorKind.Internal,
+                        ToSubscriptionErrorCode(outcome.ErrorKind),
+                        outcome.ErrorMessage ?? "Unknown error",
+                        retryable: false,
+                        details: null
+                    ),
                     Final = isFinal,
                 }
             )
@@ -176,4 +183,13 @@ internal sealed class SubscriptionManager
 
         return isFinal;
     }
+
+    private static string ToSubscriptionErrorCode(string? kind) =>
+        kind switch
+        {
+            ErrorKind.ValidationFailed => "compileError",
+            ErrorKind.Timeout => "evalTimeout",
+            ErrorKind.Cancelled => "evalCancelled",
+            _ => "runtimeException",
+        };
 }

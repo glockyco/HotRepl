@@ -1,8 +1,6 @@
-extern alias HotReplProtocolV2;
-
 using System;
-using HotReplProtocolV2::HotRepl.Protocol;
-using HotReplProtocolV2::HotRepl.Protocol.Serialization;
+using HotRepl.Protocol;
+using HotRepl.Protocol.Serialization;
 using Xunit;
 
 namespace HotRepl.Tests.Unit;

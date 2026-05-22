@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using HotRepl.Control;
-using HotRepl.Control.Artifacts;
+using ControlArtifactRef = HotRepl.Control.Artifacts.ArtifactRef;
 using HotRepl.Control.Jobs;
 using HotRepl.Protocol;
 using Newtonsoft.Json.Linq;
@@ -13,19 +13,40 @@ namespace HotRepl.Tests.Unit;
 
 public class ControlRoutingTests
 {
+
     [Fact]
-    public void Describe_ReturnsDescriptorsFromRegistry()
+    public void List_ReturnsCommandSummariesFromRegistry()
     {
         var router = new ControlCommandRouter(new FakeRegistry(new EchoHandler()));
 
-        var result = router.Describe("describe-1");
+        var result = router.List("list-1");
+
+        Assert.Equal(MessageType.CommandsListResult, result.Type);
+        Assert.Equal("list-1", result.Id);
+        var summary = Assert.Single(result.Commands);
+        Assert.Equal("archive.echo", summary.Name);
+        Assert.Equal(1, summary.MajorVersion);
+        Assert.Equal("sync", summary.Kind);
+        Assert.False(summary.MutatesState);
+    }
+
+    [Fact]
+    public void Describe_ReturnsOneDescriptorByName()
+    {
+        var router = new ControlCommandRouter(new FakeRegistry(new EchoHandler()));
+
+        var result = Assert.IsType<CommandDescribeResultMessage>(router.Describe(new CommandDescribeMessage
+        {
+            Id = "describe-1",
+            Name = "archive.echo",
+        }));
 
         Assert.Equal(MessageType.CommandDescribeResult, result.Type);
         Assert.Equal("describe-1", result.Id);
-        var descriptor = Assert.Single(result.Commands);
-        Assert.Equal("archive.echo", descriptor.Name);
-        Assert.Equal(1, descriptor.Version);
-        Assert.Equal("sync", descriptor.Kind);
+        Assert.Equal("archive.echo", result.Descriptor.Name);
+        Assert.Equal(1, result.Descriptor.MajorVersion);
+        Assert.Equal("sync", result.Descriptor.Kind);
+        Assert.Equal("object", result.Descriptor.InputSchema["type"]!.Value<string>());
     }
 
     [Fact]
@@ -36,11 +57,11 @@ public class ControlRoutingTests
 
         var result = router.Execute(message);
 
-        var error = Assert.IsType<CommandErrorMessage>(result);
-        Assert.Equal(MessageType.CommandError, error.Type);
+        var error = Assert.IsType<CommandResultMessage>(result);
+        Assert.Equal(MessageType.CommandResult, error.Type);
         Assert.Equal("cmd-1", error.Id);
         Assert.Equal("failed", error.Status);
-        Assert.Equal("unknown_command", error.Error.Kind);
+        Assert.Equal(ErrorKind.UnknownCommand, error.Error!.Kind);
         Assert.False(error.Error.Retryable);
     }
 
@@ -54,7 +75,6 @@ public class ControlRoutingTests
             Name = "archive.echo",
             Args = JObject.Parse("{\"value\":\"ok\"}"),
             TimeoutMs = 5000,
-            IdempotencyKey = "run/echo/1",
         };
 
         var result = router.Execute(message);
@@ -63,7 +83,7 @@ public class ControlRoutingTests
         Assert.Equal(MessageType.CommandResult, ok.Type);
         Assert.Equal("cmd-1", ok.Id);
         Assert.Equal("ok", ok.Status);
-        Assert.Equal("ok", ok.Result["value"]!.Value<string>());
+        Assert.Equal("ok", ok.Output!["value"]!.Value<string>());
     }
 
     [Fact]
@@ -81,32 +101,9 @@ public class ControlRoutingTests
         );
 
         var ok = Assert.IsType<CommandResultMessage>(result);
-        Assert.Equal("ok", ok.Result["value"]!.Value<string>());
+        Assert.Equal("ok", ok.Output!["value"]!.Value<string>());
     }
 
-    [Fact]
-    public void Execute_MutatingCommandIgnoresLegacyLeaseFields()
-    {
-        var sessions = new ControlSessionManager(new ReplConfig { RequireControlLease = true });
-        var ownerConnection = Guid.NewGuid();
-        var attackerConnection = Guid.NewGuid();
-        var auth = sessions.Authenticate(ownerConnection, token: null);
-        var lease = sessions.AcquireLease(ownerConnection, auth.SessionId!, "owner");
-        var router = new ControlCommandRouter(new FakeRegistry(new MutatingEchoHandler()), sessions);
-        var result = router.Execute(
-            new CommandCallMessage
-            {
-                Id = "cmd-1",
-                Name = "archive.mutate",
-                LeaseId = lease.LeaseId,
-                Args = JObject.Parse("{\"value\":\"ok\"}"),
-            },
-            attackerConnection
-        );
-
-        var ok = Assert.IsType<CommandResultMessage>(result);
-        Assert.Equal("ok", ok.Result["value"]!.Value<string>());
-    }
 
     [Fact]
     public void Execute_HandlerException_ReturnsInternalCommandError()
@@ -116,9 +113,9 @@ public class ControlRoutingTests
 
         var result = router.Execute(message);
 
-        var error = Assert.IsType<CommandErrorMessage>(result);
+        var error = Assert.IsType<CommandResultMessage>(result);
         Assert.Equal("failed", error.Status);
-        Assert.Equal("internal", error.Error.Kind);
+        Assert.Equal(ErrorKind.Internal, error.Error!.Kind);
         Assert.Equal("handlerException", error.Error.Code);
         Assert.False(error.Error.Retryable);
         Assert.Contains("boom", error.Error.Message, StringComparison.Ordinal);
@@ -134,8 +131,8 @@ public class ControlRoutingTests
             new CommandCallMessage { Id = "cmd-1", Name = "archive.export" }
         );
 
-        var accepted = Assert.IsType<CommandAcceptedMessage>(result);
-        Assert.Equal(MessageType.CommandAccepted, accepted.Type);
+        var accepted = Assert.IsType<JobAcceptedMessage>(result);
+        Assert.Equal(MessageType.JobAccepted, accepted.Type);
         Assert.Equal("cmd-1", accepted.Id);
         Assert.Equal("running", accepted.State);
         Assert.Equal("running", jobs.GetStatus(accepted.JobId).State);
@@ -146,7 +143,7 @@ public class ControlRoutingTests
     {
         var jobs = new ControlJobManager(maxEventBuffer: 100);
         var router = new ControlCommandRouter(new FakeRegistry(new JobHandler()), jobs: jobs);
-        var accepted = Assert.IsType<CommandAcceptedMessage>(
+        var accepted = Assert.IsType<JobAcceptedMessage>(
             router.Execute(new CommandCallMessage { Id = "cmd-1", Name = "archive.export" })
         );
 
@@ -160,48 +157,27 @@ public class ControlRoutingTests
         Assert.Equal("running", status.State);
     }
 
-    [Fact]
-    public void JobResult_BeforeTerminalState_ReturnsBusyError()
-    {
-        var router = new ControlCommandRouter(
-            new FakeRegistry(new JobHandler()),
-            jobs: new ControlJobManager(maxEventBuffer: 100)
-        );
-        var accepted = Assert.IsType<CommandAcceptedMessage>(
-            router.Execute(new CommandCallMessage { Id = "cmd-1", Name = "archive.export" })
-        );
-
-        var result = router.GetJobResult(
-            new JobResultRequestMessage { Id = "result-1", JobId = accepted.JobId }
-        );
-
-        var error = Assert.IsType<CommandErrorMessage>(result);
-        Assert.Equal("busy", error.Error.Kind);
-        Assert.True(error.Error.Retryable);
-    }
 
     [Fact]
-    public async Task JobResult_AfterCompletion_ReturnsArtifactsAndResult()
+    public async Task JobStatus_AfterCompletion_ReturnsTerminalJobResult()
     {
         var jobs = new ControlJobManager(maxEventBuffer: 100);
         var router = new ControlCommandRouter(new FakeRegistry(new JobHandler()), jobs: jobs);
-        var accepted = Assert.IsType<CommandAcceptedMessage>(
+        var accepted = Assert.IsType<JobAcceptedMessage>(
             router.Execute(new CommandCallMessage { Id = "cmd-1", Name = "archive.export" })
         );
         await router.RunJobAsync(accepted.JobId);
 
-        var result = router.GetJobResult(
-            new JobResultRequestMessage { Id = "result-1", JobId = accepted.JobId }
+        var result = router.GetJobStatus(
+            new JobStatusMessage { Id = "status-1", JobId = accepted.JobId },
+            Guid.Empty
         );
 
         var ok = Assert.IsType<JobResultMessage>(result);
         Assert.Equal(MessageType.JobResult, ok.Type);
         Assert.Equal("done", ok.State);
         Assert.Equal("ok", ok.Status);
-        Assert.Equal("done", ok.Result["value"]!.Value<string>());
-        var artifact = Assert.Single(ok.Artifacts);
-        Assert.Equal("items", artifact.Key);
-        Assert.Equal("sha", artifact.Value.Sha256);
+        Assert.Equal("done", ok.Output!["value"]!.Value<string>());
     }
 
     [Fact]
@@ -209,7 +185,7 @@ public class ControlRoutingTests
     {
         var jobs = new ControlJobManager(maxEventBuffer: 100);
         var router = new ControlCommandRouter(new FakeRegistry(new JobHandler()), jobs: jobs);
-        var accepted = Assert.IsType<CommandAcceptedMessage>(
+        var accepted = Assert.IsType<JobAcceptedMessage>(
             router.Execute(new CommandCallMessage { Id = "cmd-1", Name = "archive.export" })
         );
 
@@ -306,7 +282,7 @@ public class ControlRoutingTests
             return ValueTask.FromResult(
                 new ControlCommandResult(
                     new JObject { ["value"] = args["value"]?.Value<string>() ?? "" },
-                    Array.Empty<ArtifactRef>(),
+                    Array.Empty<ControlArtifactRef>(),
                     Array.Empty<ControlCommandError>()
                 )
             );
@@ -336,7 +312,7 @@ public class ControlRoutingTests
                     new JObject { ["value"] = "done" },
                     new[]
                     {
-                        new ArtifactRef(
+                        new ControlArtifactRef(
                             "items",
                             "file:///tmp/items.json",
                             "/tmp/items.json",

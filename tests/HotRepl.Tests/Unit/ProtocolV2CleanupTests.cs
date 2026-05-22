@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using HotRepl.Protocol;
+using HotRepl.Protocol.Serialization;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -16,13 +17,13 @@ public class ProtocolV2CleanupTests
             Id = "cmd-1",
             Status = "ok",
             Output = JObject.Parse("{\"done\":true}"),
-            Artifacts = new Dictionary<string, ArtifactRefMessage>(StringComparer.Ordinal)
+            Artifacts = new Dictionary<string, ArtifactRef>(StringComparer.Ordinal)
             {
                 ["manifest"] = ExampleArtifact(),
             },
         };
 
-        var json = MessageSerializer.Serialize(message);
+        var json = ProtocolMessageSerializer.Serialize(message);
 
         Assert.Contains("\"output\"", json, StringComparison.Ordinal);
         Assert.Contains("\"manifest\"", json, StringComparison.Ordinal);
@@ -36,17 +37,16 @@ public class ProtocolV2CleanupTests
         var message = new EvalErrorMessage
         {
             Id = "eval-1",
-            Error = new ControlErrorMessage
-            {
-                Kind = "timeout",
-                Code = "evalTimeout",
-                Message = "Evaluation timed out.",
-                Retryable = false,
-                Details = new JObject(),
-            },
+            Error = new HotReplErrorEnvelope(
+                ErrorKind.Timeout,
+                "evalTimeout",
+                "Evaluation timed out.",
+                retryable: false,
+                details: new JObject()
+            ),
         };
 
-        var json = MessageSerializer.Serialize(message);
+        var json = ProtocolMessageSerializer.Serialize(message);
 
         Assert.Contains("\"error\"", json, StringComparison.Ordinal);
         Assert.Contains("\"kind\":\"timeout\"", json, StringComparison.Ordinal);
@@ -57,10 +57,10 @@ public class ProtocolV2CleanupTests
     [Fact]
     public void JobControlMessages_DoNotSerializeLeaseFields()
     {
-        var statusJson = MessageSerializer.Serialize(
+        var statusJson = ProtocolMessageSerializer.Serialize(
             new JobStatusMessage { Id = "status-1", JobId = "job-1" }
         );
-        var cancelJson = MessageSerializer.Serialize(
+        var cancelJson = ProtocolMessageSerializer.Serialize(
             new JobCancelMessage { Id = "cancel-1", JobId = "job-1" }
         );
 
@@ -71,8 +71,8 @@ public class ProtocolV2CleanupTests
     [Fact]
     public void CommandAccepted_UsesJobAcceptedWireType()
     {
-        var json = MessageSerializer.Serialize(
-            new CommandAcceptedMessage
+        var json = ProtocolMessageSerializer.Serialize(
+            new JobAcceptedMessage
             {
                 Id = "cmd-1",
                 JobId = "job-1",
@@ -84,10 +84,20 @@ public class ProtocolV2CleanupTests
         Assert.DoesNotContain("command_accepted", json, StringComparison.Ordinal);
     }
 
-    private static ArtifactRefMessage ExampleArtifact() =>
+    [Fact]
+    public void RuntimeMessageTypes_ComeFromPublicProtocolAssembly()
+    {
+        Assert.Equal("HotRepl.Protocol", typeof(CommandCallMessage).Assembly.GetName().Name);
+        Assert.Equal("HotRepl.Protocol", typeof(CommandResultMessage).Assembly.GetName().Name);
+        Assert.Equal("HotRepl.Protocol", typeof(EvalErrorMessage).Assembly.GetName().Name);
+        Assert.Equal("HotRepl.Protocol", typeof(JobResultMessage).Assembly.GetName().Name);
+        Assert.Equal("HotRepl.Protocol", typeof(ResetResultMessage).Assembly.GetName().Name);
+        Assert.Equal("HotRepl.Protocol", typeof(SubscribeErrorMessage).Assembly.GetName().Name);
+    }
+
+    private static ArtifactRef ExampleArtifact() =>
         new()
         {
-            LogicalName = "manifest",
             Uri = "hotrepl://artifact/manifest",
             Path = "/tmp/manifest.json",
             ContentType = "application/json",

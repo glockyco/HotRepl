@@ -12,9 +12,11 @@ using HotRepl.Engine.Commands;
 using HotRepl.Evaluator;
 using HotRepl.Helpers;
 using HotRepl.Protocol;
+using HotRepl.Protocol.Serialization;
 using HotRepl.Serialization;
 using HotRepl.Server;
 using HotRepl.Subscriptions;
+using Newtonsoft.Json.Linq;
 
 namespace HotRepl;
 
@@ -177,13 +179,13 @@ public sealed class ReplEngine : IDisposable
                     // Cancelled before it ever ran.
                     _clients!.SendTo(
                         job.ConnectionId,
-                        MessageSerializer.Serialize(
-                            new EvalErrorMessage
-                            {
-                                Id = job.Id,
-                                ErrorKind = ErrorKind.Cancelled,
-                                Message = "Evaluation cancelled.",
-                            }
+                        Serialize(
+                            EvalError(
+                                job.Id,
+                                ErrorKind.Cancelled,
+                                "evalCancelled",
+                                "Evaluation cancelled."
+                            )
                         )
                     );
                 }
@@ -375,12 +377,6 @@ public sealed class ReplEngine : IDisposable
             case ResetCmd r:
                 HandleReset(r);
                 break;
-            case PingCmd p:
-                _clients!.SendTo(
-                    p.ConnectionId,
-                    MessageSerializer.Serialize(new PongMessage { Id = p.Id })
-                );
-                break;
             case CompleteCmd c:
                 HandleComplete(c);
                 break;
@@ -390,31 +386,29 @@ public sealed class ReplEngine : IDisposable
             case SelectEvaluatorCmd s:
                 HandleSelectEvaluator(s);
                 break;
+            case CommandsListCmd c:
+                _clients!.SendControlTo(c.ConnectionId, Serialize(_controlRouter!.List(c.Id)));
+                break;
             case CommandDescribeCmd c:
                 _clients!.SendControlTo(
                     c.ConnectionId,
-                    MessageSerializer.Serialize(_controlRouter!.Describe(c.Id))
+                    Serialize(
+                        _controlRouter!.Describe(
+                            new CommandDescribeMessage { Id = c.Id, Name = c.Name }
+                        )
+                    )
                 );
                 break;
             case CommandCallCmd c:
             {
                 var response = _controlRouter!.Execute(c.Message, c.ConnectionId);
-                _clients!.SendControlTo(c.ConnectionId, MessageSerializer.Serialize(response));
-                if (response is CommandAcceptedMessage accepted)
+                _clients!.SendControlTo(c.ConnectionId, Serialize(response));
+                if (response is JobAcceptedMessage accepted)
                     _jobRunQueue.Enqueue(accepted.JobId);
                 break;
             }
-            case ControlAuthCmd c:
-                HandleControlAuth(c);
-                break;
-            case LeaseAcquireCmd c:
-                HandleLeaseAcquire(c);
-                break;
             case JobStatusCmd c:
                 HandleJobStatus(c);
-                break;
-            case JobResultCmd c:
-                HandleJobResult(c);
                 break;
             case JobCancelCmd c:
                 HandleJobCancel(c);
@@ -422,71 +416,17 @@ public sealed class ReplEngine : IDisposable
         }
     }
 
-    private void HandleControlAuth(ControlAuthCmd cmd)
-    {
-        var result = _controlSessions!.Authenticate(cmd.ConnectionId, cmd.Token);
-        _clients!.SendControlTo(
-            cmd.ConnectionId,
-            MessageSerializer.Serialize(
-                new ControlAuthResultMessage
-                {
-                    Id = cmd.Id,
-                    Ok = result.Ok,
-                    SessionId = result.SessionId,
-                    Error = result.Error == null ? null : ToControlErrorMessage(result.Error),
-                }
-            )
-        );
-    }
-
-    private void HandleLeaseAcquire(LeaseAcquireCmd cmd)
-    {
-        var result = _controlSessions!.AcquireLease(
-            cmd.ConnectionId,
-            cmd.SessionId,
-            cmd.ClientName
-        );
-        _clients!.SendControlTo(
-            cmd.ConnectionId,
-            MessageSerializer.Serialize(
-                new LeaseAcquireResultMessage
-                {
-                    Id = cmd.Id,
-                    Ok = result.Ok,
-                    LeaseId = result.LeaseId,
-                    Error = result.Error == null ? null : ToControlErrorMessage(result.Error),
-                }
-            )
-        );
-    }
-
     private void HandleJobStatus(JobStatusCmd cmd)
     {
         var response = _controlRouter!.GetJobStatus(cmd.Message, cmd.ConnectionId);
-        _clients!.SendControlTo(cmd.ConnectionId, MessageSerializer.Serialize(response));
-    }
-
-    private void HandleJobResult(JobResultCmd cmd)
-    {
-        var response = _controlRouter!.GetJobResult(cmd.Message, cmd.ConnectionId);
-        _clients!.SendControlTo(cmd.ConnectionId, MessageSerializer.Serialize(response));
+        _clients!.SendControlTo(cmd.ConnectionId, Serialize(response));
     }
 
     private void HandleJobCancel(JobCancelCmd cmd)
     {
         var response = _controlRouter!.CancelJob(cmd.Message, cmd.ConnectionId);
-        _clients!.SendControlTo(cmd.ConnectionId, MessageSerializer.Serialize(response));
+        _clients!.SendControlTo(cmd.ConnectionId, Serialize(response));
     }
-
-    private static ControlErrorMessage ToControlErrorMessage(ControlCommandError error) =>
-        new()
-        {
-            Kind = error.Kind,
-            Code = error.Code,
-            Message = error.Message,
-            Retryable = error.Retryable,
-            Details = error.Details,
-        };
 
     private void HandleReset(ResetCmd cmd)
     {
@@ -497,13 +437,8 @@ public sealed class ReplEngine : IDisposable
             {
                 _clients!.SendTo(
                     job.ConnectionId,
-                    MessageSerializer.Serialize(
-                        new EvalErrorMessage
-                        {
-                            Id = job.Id,
-                            ErrorKind = ErrorKind.Cancelled,
-                            Message = "Reset in progress.",
-                        }
+                    Serialize(
+                        EvalError(job.Id, ErrorKind.Cancelled, "evalCancelled", "Reset in progress.")
                     )
                 );
             }
@@ -513,15 +448,15 @@ public sealed class ReplEngine : IDisposable
         {
             _clients!.SendTo(
                 sub.ConnectionId,
-                MessageSerializer.Serialize(
-                    new SubscribeErrorMessage
-                    {
-                        Id = sub.Id,
-                        Seq = sub.Seq + 1,
-                        ErrorKind = ErrorKind.Cancelled,
-                        Message = "Reset in progress.",
-                        Final = true,
-                    }
+                Serialize(
+                    SubscriptionError(
+                        sub.Id,
+                        sub.Seq + 1,
+                        ErrorKind.Cancelled,
+                        "evalCancelled",
+                        "Reset in progress.",
+                        final: true
+                    )
                 )
             );
         }
@@ -539,7 +474,7 @@ public sealed class ReplEngine : IDisposable
             _host.LogError("[HotRepl] Evaluator reset failed.", ex);
             _clients!.SendTo(
                 cmd.ConnectionId,
-                MessageSerializer.Serialize(new ResetResultMessage { Id = cmd.Id, Success = false })
+                Serialize(new ResetResultMessage { Id = cmd.Id, Success = false })
             );
             return;
         }
@@ -547,7 +482,7 @@ public sealed class ReplEngine : IDisposable
         _host.LogInfo("[HotRepl] Evaluator reset.");
         _clients!.SendTo(
             cmd.ConnectionId,
-            MessageSerializer.Serialize(new ResetResultMessage { Id = cmd.Id, Success = true })
+            Serialize(new ResetResultMessage { Id = cmd.Id, Success = true })
         );
     }
 
@@ -573,12 +508,13 @@ public sealed class ReplEngine : IDisposable
 
         _clients!.SendTo(
             cmd.ConnectionId,
-            MessageSerializer.Serialize(
-                new SelectEvaluatorResultMessage
+            Serialize(
+                new
                 {
-                    Id = cmd.Id,
-                    Success = true,
-                    Evaluator = _evaluator.Capabilities.Name,
+                    type = "select_evaluator_result",
+                    id = cmd.Id,
+                    success = true,
+                    evaluator = _evaluator.Capabilities.Name,
                 }
             )
         );
@@ -590,14 +526,18 @@ public sealed class ReplEngine : IDisposable
     {
         _clients!.SendTo(
             cmd.ConnectionId,
-            MessageSerializer.Serialize(
-                new SelectEvaluatorErrorMessage
+            Serialize(
+                new
                 {
-                    Id = cmd.Id,
-                    ErrorKind = ErrorKind.Unsupported,
-                    Message =
+                    type = "select_evaluator_error",
+                    id = cmd.Id,
+                    error = Error(
+                        ErrorKind.UnsupportedOperation,
+                        "unsupportedEvaluator",
                         $"Evaluator '{cmd.Evaluator}' is not available. Available: "
-                        + string.Join(", ", _host.AvailableEvaluators.Select(e => e.Name)),
+                            + string.Join(", ", _host.AvailableEvaluators.Select(e => e.Name)),
+                        retryable: false
+                    ),
                 }
             )
         );
@@ -609,15 +549,15 @@ public sealed class ReplEngine : IDisposable
         {
             _clients!.SendTo(
                 sub.ConnectionId,
-                MessageSerializer.Serialize(
-                    new SubscribeErrorMessage
-                    {
-                        Id = sub.Id,
-                        Seq = sub.Seq + 1,
-                        ErrorKind = ErrorKind.Cancelled,
-                        Message = "Evaluator selection changed.",
-                        Final = true,
-                    }
+                Serialize(
+                    SubscriptionError(
+                        sub.Id,
+                        sub.Seq + 1,
+                        ErrorKind.Cancelled,
+                        "evalCancelled",
+                        "Evaluator selection changed.",
+                        final: true
+                    )
                 )
             );
         }
@@ -629,13 +569,13 @@ public sealed class ReplEngine : IDisposable
             {
                 _clients!.SendTo(
                     job.ConnectionId,
-                    MessageSerializer.Serialize(
-                        new EvalErrorMessage
-                        {
-                            Id = job.Id,
-                            ErrorKind = ErrorKind.Cancelled,
-                            Message = "Evaluator selection changed.",
-                        }
+                    Serialize(
+                        EvalError(
+                            job.Id,
+                            ErrorKind.Cancelled,
+                            "evalCancelled",
+                            "Evaluator selection changed."
+                        )
                     )
                 );
             }
@@ -652,7 +592,7 @@ public sealed class ReplEngine : IDisposable
             _host.LogInfo("[HotRepl] Evaluator auto-reset after hot reload.");
 
             _clients!.Send(
-                MessageSerializer.Serialize(
+                Serialize(
                     new AssemblyReloadMessage
                     {
                         Assembly = assembly,
@@ -672,7 +612,7 @@ public sealed class ReplEngine : IDisposable
         var result = _evaluator!.Complete(cmd.Code, cmd.CursorPos);
         _clients!.SendTo(
             cmd.ConnectionId,
-            MessageSerializer.Serialize(
+            Serialize(
                 new CompleteResultMessage
                 {
                     Id = cmd.Id,
@@ -699,15 +639,15 @@ public sealed class ReplEngine : IDisposable
         {
             _clients!.SendTo(
                 cmd.ConnectionId,
-                MessageSerializer.Serialize(
-                    new SubscribeErrorMessage
-                    {
-                        Id = cmd.Id,
-                        Seq = 0,
-                        ErrorKind = ErrorKind.Runtime,
-                        Message = error!,
-                        Final = true,
-                    }
+                Serialize(
+                    SubscriptionError(
+                        cmd.Id,
+                        0,
+                        ErrorKind.Internal,
+                        "subscriptionRejected",
+                        error!,
+                        final: true
+                    )
                 )
             );
         }
@@ -756,12 +696,12 @@ public sealed class ReplEngine : IDisposable
                     _host.Config.MaxResultLength
                 );
             }
-            json = MessageSerializer.Serialize(
+            json = Serialize(
                 new EvalResultMessage
                 {
                     Id = id,
                     HasValue = outcome.HasValue,
-                    Value = serialized,
+                    Value = serialized == null ? null : JToken.FromObject(serialized),
                     ValueType = outcome.ValueType,
                     Stdout = string.IsNullOrEmpty(outcome.Stdout) ? null : outcome.Stdout,
                     DurationMs = outcome.DurationMs,
@@ -770,21 +710,13 @@ public sealed class ReplEngine : IDisposable
         }
         else
         {
-            var errorKind = outcome.ErrorKind ?? ErrorKind.Runtime;
+            var errorKind = outcome.ErrorKind ?? ErrorKind.Internal;
             var errorMessage = outcome.ErrorMessage ?? "Unknown error.";
 
-            if (string.Equals(errorKind, ErrorKind.Runtime, StringComparison.Ordinal))
+            if (string.Equals(errorKind, ErrorKind.Internal, StringComparison.Ordinal))
                 errorMessage = AppendCrossAssemblyHint(errorMessage);
 
-            json = MessageSerializer.Serialize(
-                new EvalErrorMessage
-                {
-                    Id = id,
-                    ErrorKind = errorKind,
-                    Message = errorMessage,
-                    StackTrace = outcome.StackTrace,
-                }
-            );
+            json = Serialize(EvalError(id, errorKind, ToEvalErrorCode(errorKind), errorMessage));
         }
         _clients!.SendTo(connectionId, json);
     }
@@ -816,6 +748,52 @@ public sealed class ReplEngine : IDisposable
     private System.Collections.Generic.IReadOnlyCollection<SubscriptionState> GetAllSubscriptions() =>
         _subscriptions!.GetAll();
 
+    private static string Serialize(object message) => ProtocolMessageSerializer.Serialize(message);
+
+    private static HotReplErrorEnvelope Error(
+        string kind,
+        string code,
+        string message,
+        bool retryable
+    ) => new(kind, code, message, retryable, details: null);
+
+    private static string ToEvalErrorCode(string kind) =>
+        kind switch
+        {
+            ErrorKind.ValidationFailed => "compileError",
+            ErrorKind.Timeout => "evalTimeout",
+            ErrorKind.Cancelled => "evalCancelled",
+            _ => "runtimeException",
+        };
+
+    private static EvalErrorMessage EvalError(
+        string id,
+        string kind,
+        string code,
+        string message,
+        bool retryable = false
+    ) =>
+        new()
+        {
+            Id = id,
+            Error = Error(kind, code, message, retryable),
+        };
+
+    private static SubscribeErrorMessage SubscriptionError(
+        string id,
+        long seq,
+        string kind,
+        string code,
+        string message,
+        bool final
+    ) =>
+        new()
+        {
+            Id = id,
+            Seq = seq,
+            Error = Error(kind, code, message, retryable: false),
+            Final = final,
+        };
     /// <summary>
     /// Detects known cross-assembly error patterns in runtime errors and appends a
     /// helpful suggestion. These occur after hot reloads when the evaluator holds
