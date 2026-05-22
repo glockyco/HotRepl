@@ -9,6 +9,19 @@
         "typescript": "^6.0.3",
       },
     },
+    "packages/cli": {
+      "name": "@hotrepl/cli",
+      "version": "0.0.0",
+      "bin": {
+        "hotrepl": "./src/index.ts",
+      },
+      "dependencies": {
+        "@hotrepl/sdk": "workspace:*",
+      },
+      "devDependencies": {
+        "@hotrepl/testing": "workspace:*",
+      },
+    },
     "packages/conformance": {
       "name": "@hotrepl/conformance",
       "version": "0.0.0",
@@ -45,6 +58,8 @@
     },
   },
   "packages": {
+    "@hotrepl/cli": ["@hotrepl/cli@workspace:packages/cli"],
+
     "@hotrepl/conformance": ["@hotrepl/conformance@workspace:packages/conformance"],
 
     "@hotrepl/protocol": ["@hotrepl/protocol@workspace:packages/protocol"],

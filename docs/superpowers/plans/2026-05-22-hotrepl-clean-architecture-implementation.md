@@ -781,13 +781,13 @@ git commit -m "feat(sdk): add websocket transport and conformance suite"
 - Test: `packages/cli/test/cli-output.test.ts`
 - Test: `packages/cli/test/exit-codes.test.ts`
 
-- [ ] **Step 1: Write failing CLI tests**
+- [x] **Step 1: Write failing CLI tests**
 
 Snapshot-test text, JSON, and JSONL output for `info`, `wait`, `doctor`, `eval`, `reset`,
 `complete`, `watch`, `run`, `describe`, `artifacts read`, and `journal`. Test exit-code mapping for
 every v2 error kind plus `server_unreachable`, `session_evicted`, and `artifact_corrupted`.
 
-- [ ] **Step 2: Run red tests**
+- [x] **Step 2: Run red tests**
 
 Run:
 
@@ -797,13 +797,13 @@ bun test packages/cli/test
 
 Expected: FAIL because the CLI package does not exist.
 
-- [ ] **Step 3: Implement CLI on SDK only**
+- [x] **Step 3: Implement CLI on SDK only**
 
 Use SDK public API exclusively; do not import protocol transport internals. Keep low-level job
 status/cancel and evaluator selection under `hotrepl debug`. Remove auth/profile/lease flags from
 the public surface.
 
-- [ ] **Step 4: Run green verification**
+- [x] **Step 4: Run green verification**
 
 Run:
 
@@ -814,7 +814,7 @@ bun run --cwd packages/cli typecheck
 
 Expected: all pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```sh
 git add packages/cli package.json bun.lock docs/superpowers/plans/2026-05-22-hotrepl-clean-architecture-implementation.md
