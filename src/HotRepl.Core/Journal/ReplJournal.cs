@@ -11,9 +11,10 @@ internal sealed class ReplJournal
     private const string CommandKind = "command";
 
     private readonly int _capacity;
-    private readonly Queue<ReplJournalEntry> _entries;
+    private readonly Queue<ReplJournalEntry> _evalEntries;
+    private readonly Queue<ReplJournalEntry> _commandEntries;
     private readonly object _gate = new();
-    private long _resetCount;
+    private long _sequence;
 
     public ReplJournal(int capacity)
     {
@@ -21,11 +22,12 @@ internal sealed class ReplJournal
             throw new ArgumentOutOfRangeException(nameof(capacity), capacity, "Capacity must be positive.");
 
         _capacity = capacity;
-        _entries = new Queue<ReplJournalEntry>(capacity);
+        _evalEntries = new Queue<ReplJournalEntry>(capacity);
+        _commandEntries = new Queue<ReplJournalEntry>(capacity);
     }
 
     public void RecordEval(string id, bool success, long durationMs, string? errorKind) =>
-        Record(new ReplJournalEntry(id, EvalKind, null, success, durationMs, errorKind, DateTimeOffset.UtcNow));
+        Record(id, EvalKind, name: null, success, durationMs, errorKind);
 
     public void RecordCommand(
         string id,
@@ -33,15 +35,10 @@ internal sealed class ReplJournal
         bool success,
         long durationMs,
         string? errorKind
-    ) =>
-        Record(new ReplJournalEntry(id, CommandKind, name, success, durationMs, errorKind, DateTimeOffset.UtcNow));
+    ) => Record(id, CommandKind, name, success, durationMs, errorKind);
 
-    public void RecordReset(string id)
-    {
-        _ = id;
-        lock (_gate)
-            _resetCount++;
-    }
+    public void RecordReset(string id) =>
+        Record(id, CommandKind, name: "reset", success: true, durationMs: 0, errorKind: null);
 
     public IReadOnlyList<ReplJournalEntry> Query(string? kind, int limit)
     {
@@ -50,21 +47,48 @@ internal sealed class ReplJournal
 
         lock (_gate)
         {
-            IEnumerable<ReplJournalEntry> query = _entries;
+            if (string.Equals(kind, EvalKind, StringComparison.Ordinal))
+                return _evalEntries.TakeLast(limit).ToArray();
+            if (string.Equals(kind, CommandKind, StringComparison.Ordinal))
+                return _commandEntries.TakeLast(limit).ToArray();
             if (!string.IsNullOrEmpty(kind))
-                query = query.Where(entry => string.Equals(entry.Kind, kind, StringComparison.Ordinal));
+                return Array.Empty<ReplJournalEntry>();
 
-            return query.TakeLast(limit).ToArray();
+            return _evalEntries
+                .Concat(_commandEntries)
+                .OrderBy(entry => entry.Sequence)
+                .TakeLast(limit)
+                .ToArray();
         }
     }
 
-    private void Record(ReplJournalEntry entry)
+    private void Record(
+        string id,
+        string kind,
+        string? name,
+        bool success,
+        long durationMs,
+        string? errorKind
+    )
     {
         lock (_gate)
         {
-            if (_entries.Count == _capacity)
-                _entries.Dequeue();
-            _entries.Enqueue(entry);
+            var entry = new ReplJournalEntry(
+                id,
+                kind,
+                name,
+                success,
+                durationMs,
+                errorKind,
+                DateTimeOffset.UtcNow,
+                _sequence++
+            );
+            var entries = string.Equals(kind, EvalKind, StringComparison.Ordinal)
+                ? _evalEntries
+                : _commandEntries;
+            if (entries.Count == _capacity)
+                entries.Dequeue();
+            entries.Enqueue(entry);
         }
     }
 }

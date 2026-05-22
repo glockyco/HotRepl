@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using Fleck;
@@ -11,6 +12,7 @@ using HotRepl.Discovery;
 using HotRepl.Engine.Commands;
 using HotRepl.Evaluator;
 using HotRepl.Helpers;
+using HotRepl.Journal;
 using HotRepl.Protocol;
 using HotRepl.Protocol.Serialization;
 using HotRepl.Serialization;
@@ -51,6 +53,7 @@ public sealed class ReplEngine : IDisposable
     private ControlCommandRouter? _controlRouter;
     private ControlJobManager? _controlJobs;
     private InstanceDocumentWriter? _instanceDocument;
+    private ReplJournal? _journal;
 
     // ── Queues — written by Fleck threads, drained by Tick() ──────────────────
     private readonly ConcurrentQueue<EvalJob> _evalQueue = new();
@@ -88,6 +91,7 @@ public sealed class ReplEngine : IDisposable
 
         _history = new HistoryTracker();
         _subscriptions = new SubscriptionManager(_host.Config);
+        _journal = new ReplJournal(capacity: 1024);
         _evaluator = CreateEvaluator(_host.DefaultEvaluatorName);
 
         _wsServer = new ReplWebSocketServer(msg => _host.LogInfo(msg));
@@ -232,7 +236,7 @@ public sealed class ReplEngine : IDisposable
 
     internal void EnqueueCommand(IEngineCommand cmd) => _commandQueue.Enqueue(cmd);
 
-    internal int QueuedCommandCount => _commandQueue.Count;
+    internal int QueuedCommandCount => _commandQueue.Count + _evalQueue.Count;
 
     internal void SendProtocolError(Guid connectionId, string json) =>
         _clients?.SendControlTo(connectionId, json);
@@ -271,6 +275,7 @@ public sealed class ReplEngine : IDisposable
         {
             EvalOutcome outcome = RunGuarded(job.Id, job.Code, job.TimeoutMs, job.Cancellation);
             RecordHistory(job.Code, outcome);
+            _journal!.RecordEval(job.Id, outcome.Success, outcome.DurationMs, outcome.ErrorKind);
             SendEvalOutcome(job.Id, job.ConnectionId, outcome);
         }
     }
@@ -399,6 +404,7 @@ public sealed class ReplEngine : IDisposable
             case CommandCallCmd c:
             {
                 var response = _controlRouter!.Execute(c.Message, c.ConnectionId);
+                RecordCommandResult(c.Message, response);
                 _clients!.SendControlTo(c.ConnectionId, Serialize(response));
                 if (response is JobAcceptedMessage accepted)
                     _jobRunQueue.Enqueue(accepted.JobId);
@@ -409,6 +415,9 @@ public sealed class ReplEngine : IDisposable
                 break;
             case JobCancelCmd c:
                 HandleJobCancel(c);
+                break;
+            case JournalQueryCmd c:
+                HandleJournalQuery(c);
                 break;
         }
     }
@@ -423,6 +432,19 @@ public sealed class ReplEngine : IDisposable
     {
         var response = _controlRouter!.CancelJob(cmd.Message, cmd.ConnectionId);
         _clients!.SendControlTo(cmd.ConnectionId, Serialize(response));
+    }
+
+    private void HandleJournalQuery(JournalQueryCmd cmd)
+    {
+        var limit = cmd.Limit.GetValueOrDefault(100);
+        var entries = _journal!
+            .Query(cmd.Kind, limit)
+            .Select(ToMessage)
+            .ToArray();
+        _clients!.SendControlTo(
+            cmd.ConnectionId,
+            Serialize(new JournalQueryResultMessage { Id = cmd.Id, Entries = entries })
+        );
     }
 
     private void HandleReset(ResetCmd cmd)
@@ -476,6 +498,7 @@ public sealed class ReplEngine : IDisposable
             return;
         }
 
+        _journal!.RecordReset(cmd.Id);
         _host.LogInfo("[HotRepl] Evaluator reset.");
         _clients!.SendTo(
             cmd.ConnectionId,
@@ -678,6 +701,32 @@ public sealed class ReplEngine : IDisposable
             // History failure is always non-fatal.
         }
     }
+
+    private void RecordCommandResult(CommandCallMessage message, object response)
+    {
+        if (response is not CommandResultMessage result)
+            return;
+
+        _journal!.RecordCommand(
+            message.Id,
+            message.Name,
+            string.Equals(result.Status, "ok", StringComparison.Ordinal),
+            durationMs: 0,
+            errorKind: result.Error?.Kind
+        );
+    }
+
+    private static JournalEntry ToMessage(ReplJournalEntry entry) =>
+        new()
+        {
+            Id = entry.Id,
+            Kind = entry.Kind,
+            Name = entry.Name,
+            Success = entry.Success,
+            DurationMs = entry.DurationMs,
+            ErrorKind = entry.ErrorKind,
+            Timestamp = entry.Timestamp.ToString("O", CultureInfo.InvariantCulture),
+        };
 
     private void SendEvalOutcome(string id, Guid connectionId, EvalOutcome outcome)
     {

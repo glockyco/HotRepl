@@ -50,6 +50,21 @@ public class ControlRoutingTests
     }
 
     [Fact]
+    public void Describe_PreservesCommandArtifactSchema()
+    {
+        var router = new ControlCommandRouter(new FakeRegistry(new JobHandler()));
+
+        var result = Assert.IsType<CommandDescribeResultMessage>(router.Describe(new CommandDescribeMessage
+        {
+            Id = "describe-1",
+            Name = "archive.export",
+        }));
+
+        Assert.Equal("array", result.Descriptor.ArtifactsSchema["required"]!.Type.ToString().ToLowerInvariant());
+        Assert.Equal("items", result.Descriptor.ArtifactsSchema["required"]![0]!.Value<string>());
+    }
+
+    [Fact]
     public void Execute_UnknownCommand_ReturnsCommandError()
     {
         var router = new ControlCommandRouter(EmptyControlCommandRegistry.Instance);
@@ -298,7 +313,8 @@ public class ControlRoutingTests
                 ControlCommandKind.Job,
                 mutatesState: false,
                 argsSchema: JObject.Parse("{\"type\":\"object\"}"),
-                resultSchema: JObject.Parse("{\"type\":\"object\"}")
+                resultSchema: JObject.Parse("{\"type\":\"object\"}"),
+                artifactsSchema: JObject.Parse("{\"type\":\"object\",\"required\":[\"items\"]}")
             );
 
         public ValueTask<ControlCommandResult> ExecuteAsync(

@@ -55,7 +55,7 @@ On connection the server immediately sends:
     "defaultEvalTimeoutMs": 10000,
     "maxJobConcurrency": 1
   },
-  "enforces": ["maxMessageBytes", "maxQueuedCommands", "maxResultLength"]
+  "enforces": ["maxMessageBytes", "maxQueuedCommands", "maxJobConcurrency"]
 }
 ```
 

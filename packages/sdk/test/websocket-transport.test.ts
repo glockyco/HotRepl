@@ -1,7 +1,7 @@
 import { FakeRuntime } from "@hotrepl/testing";
 import { describe, expect, test } from "bun:test";
 import type { RuntimeRequest } from "../src";
-import { connect, HotReplSessionEvicted } from "../src";
+import { connect, HotReplError, HotReplSessionEvicted, WebSocketTransport } from "../src";
 
 function serveRuntime(runtime: FakeRuntime): { close: () => void; url: string } {
   const server = Bun.serve<{ closeEviction: () => void }>({
@@ -82,6 +82,96 @@ describe("WebSocket transport", () => {
       expect(evictionReason).toBe("displaced");
     } finally {
       server.close();
+    }
+  });
+
+  test("routes protocol error frames to subscription iterators", async () => {
+    const runtime = new FakeRuntime();
+    const server = Bun.serve<{ closeEviction: () => void }>({
+      port: 0,
+      hostname: "127.0.0.1",
+      fetch(request, server) {
+        if (server.upgrade(request, { data: { closeEviction: () => {} } })) return undefined;
+        return new Response("Expected WebSocket upgrade.", { status: 426 });
+      },
+      websocket: {
+        open(socket) {
+          socket.send(JSON.stringify(runtime.handshakeMessage));
+        },
+        message(socket, message) {
+          const request = JSON.parse(String(message)) as RuntimeRequest;
+          socket.send(JSON.stringify({
+            type: "error",
+            id: request.id,
+            error: {
+              kind: "invalid_request",
+              code: "badSubscription",
+              message: "Subscription rejected.",
+              retryable: false,
+            },
+          }));
+        },
+      },
+    });
+
+    try {
+      const session = await connect({ url: `ws://127.0.0.1:${server.port}` });
+      const iterator = session.watch("Health")[Symbol.asyncIterator]();
+
+      try {
+        await iterator.next();
+        throw new Error("Expected subscription to fail.");
+      } catch (error) {
+        expect(error).toBeInstanceOf(HotReplError);
+        expect(error).toMatchObject({
+          kind: "invalid_request",
+          code: "badSubscription",
+        });
+      }
+    } finally {
+      server.stop(true);
+    }
+  });
+
+  test("rejects request protocol error frames at the transport boundary", async () => {
+    const runtime = new FakeRuntime();
+    const server = Bun.serve({
+      port: 0,
+      hostname: "127.0.0.1",
+      fetch(request, server) {
+        if (server.upgrade(request)) return undefined;
+        return new Response("Expected WebSocket upgrade.", { status: 426 });
+      },
+      websocket: {
+        open(socket) {
+          socket.send(JSON.stringify(runtime.handshakeMessage));
+        },
+        message(socket, message) {
+          const request = JSON.parse(String(message)) as RuntimeRequest;
+          socket.send(JSON.stringify({
+            type: "error",
+            id: request.id,
+            error: {
+              kind: "invalid_request",
+              code: "badRequest",
+              message: "Request rejected.",
+              retryable: false,
+            },
+          }));
+        },
+      },
+    });
+
+    try {
+      const transport = await WebSocketTransport.connect(`ws://127.0.0.1:${server.port}`);
+
+      await expect(transport.request({ type: "eval", id: "eval-1", code: "1 + 1" }))
+        .rejects.toMatchObject({
+          kind: "invalid_request",
+          code: "badRequest",
+        });
+    } finally {
+      server.stop(true);
     }
   });
 });

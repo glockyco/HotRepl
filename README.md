@@ -58,8 +58,6 @@ The server sends a `handshake` immediately after a WebSocket connection opens:
   "enforces": [
     "maxMessageBytes",
     "maxQueuedCommands",
-    "maxResultLength",
-    "maxEnumerableElements",
     "maxJobConcurrency"
   ]
 }
@@ -82,6 +80,15 @@ See [`docs/control-plane-protocol.md`](docs/control-plane-protocol.md) for the m
 | `@hotrepl/conformance` | Protocol conformance suite for FakeRuntime and optional real hosts  |
 | `@hotrepl/cli`         | `hotrepl` command-line adapter over the SDK                         |
 | `@hotrepl/mcp`         | fixed nine-tool MCP stdio server over the SDK                       |
+
+All TypeScript packages are versioned as `2.0.0-alpha.0` prerelease packages and are packable with
+`bun pm pack` from each `packages/*` directory. Downstream migrations that cannot use a registry yet
+should check the generated tarballs into `vendor/hotrepl/npm/` and depend on those relative
+`file:vendor/hotrepl/npm/*.tgz` paths rather than machine-local package paths.
+
+The .NET protocol/runtime packages use the same `2.0.0-alpha.0` prerelease version. `dotnet pack`
+for `src/HotRepl.Protocol/` and `src/HotRepl.Core/` produces local NuGet packages that consumers can
+check into `vendor/hotrepl/nuget/` and reference through a repo-local package source.
 
 ## Evaluation semantics
 

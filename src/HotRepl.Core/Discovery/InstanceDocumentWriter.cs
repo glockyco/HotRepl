@@ -52,7 +52,7 @@ internal sealed class InstanceDocumentWriter : IDisposable
             },
             ControlPlane = new ControlPlaneDocument
             {
-                Supported = config.ControlPlaneEnabled,
+                Supported = true,
                 ProtocolVersion = 2,
             },
         };

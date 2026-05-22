@@ -103,6 +103,14 @@ public class ProtocolV2CleanupTests
         Assert.Null(typeof(ReplConfig).GetProperty("RequireControlLease"));
         Assert.Null(typeof(ReplConfig).GetProperty("MaxControlMessageBytes"));
         Assert.Null(typeof(ReplConfig).GetProperty("MaxQueuedControlCommands"));
+        Assert.Null(typeof(ReplConfig).GetProperty("ControlPlaneEnabled"));
+        Assert.Null(typeof(ReplConfig).GetProperty("SchemaValidation"));
+    }
+
+    [Fact]
+    public void ProtocolDefaults_DoNotAdvertiseRuntimeSchemaValidation()
+    {
+        Assert.False(new HandshakeMessage().Control.SchemaValidation);
     }
 
     private static ArtifactRef ExampleArtifact() =>

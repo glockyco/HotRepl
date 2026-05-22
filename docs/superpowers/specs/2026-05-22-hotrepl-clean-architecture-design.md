@@ -224,8 +224,6 @@ server → client:   journal_query_result { entries }
   "enforces": [
     "maxMessageBytes",
     "maxQueuedCommands",
-    "maxResultLength",
-    "maxEnumerableElements",
     "maxJobConcurrency"
   ]
 }
@@ -276,10 +274,10 @@ Substantive runtime changes:
   `{ id, name?, code?, success, durationMs, errorKind?, timestamp }`. Bodies excluded; payloads are
   reference-only. Exposed via `journal_query`. Survives `reset` and evaluator swaps.
 - **Limit enforcement.** Inbound frames over `maxMessageBytes` are rejected with `invalid_request`
-  before parsing. Once `maxQueuedCommands` items sit in the command queue, additional
-  `command_call`/`command_describe`/`eval` requests are rejected with `busy`. Outbound result
-  serialization truncates per `maxResultLength` and `maxEnumerableElements` (already implemented;
-  just formalized).
+  before parsing. Once `maxQueuedCommands` items sit in the command/eval queue, additional
+  `command_call`/`command_describe`/`eval` requests are rejected with `busy`. `maxResultLength` and
+  `maxEnumerableElements` remain eval serializer settings and are not advertised as enforced for
+  command/job outputs until those paths apply the same caps.
 - **Capability-declared cancellation.** Evaluator capabilities + descriptor.cancellation flow into
   runtime so the SDK can tell callers what cancellation actually does for each operation.
 - **Eviction notification.** Before closing the displaced socket, the server sends
@@ -605,15 +603,15 @@ Codegen in the consumer repo emits matching TypeScript types into `controller/sr
 | Limit                       | Default | Why it exists                               | Solo-local risk                                 |
 | --------------------------- | ------- | ------------------------------------------- | ----------------------------------------------- |
 | `maxMessageBytes` (inbound) | 4 MiB   | Reject malformed/huge frames before parsing | Accidental large `args` from controller bugs    |
-| `maxResultLength`           | 100 KiB | Truncate eval result serialization          | `Repl.Inspect(Application)` returning megabytes |
-| `maxEnumerableElements`     | 100     | Cap enumeration in serializer               | Same                                            |
+| `maxResultLength`           | 100 KiB | Configure eval result serialization         | `Repl.Inspect(Application)` returning megabytes |
+| `maxEnumerableElements`     | 100     | Configure eval enumerable serialization     | Same                                            |
 | `maxQueuedCommands`         | 32      | Backpressure when controller floods         | Loop in consumer pushes thousands of commands   |
 | `defaultEvalTimeoutMs`      | 10 000  | Wallclock budget per eval                   | Runaway eval wedging the game                   |
 | `maxJobConcurrency`         | 1       | Serialize jobs through the kernel           | Multiple jobs racing main-thread access         |
 
-Every limit is enforced by the runtime; every limit appears in `handshake.enforces[]`. Limits are
-configurable per host; defaults are sized for solo-local accident protection, not for a hostile
-actor.
+Only limits listed in `handshake.enforces[]` are guaranteed runtime rejection/backpressure
+contracts. Other advertised limits are configuration values that clients may display or use for
+planning, but must not assume are uniformly enforced on every output path.
 
 ### Schemas
 

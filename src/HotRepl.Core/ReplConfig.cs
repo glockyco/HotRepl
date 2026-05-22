@@ -32,8 +32,6 @@ public sealed class ReplConfig
     /// </summary>
     public int MaxEnumerableElements { get; set; } = 100;
 
-    /// <summary>Enable the typed command/job control-plane protocol. Default: true.</summary>
-    public bool ControlPlaneEnabled { get; set; } = true;
 
     /// <summary>WebSocket bind host. Default: loopback only.</summary>
     public string BindHost { get; set; } = "127.0.0.1";
@@ -47,8 +45,6 @@ public sealed class ReplConfig
     /// <summary>Maximum number of concurrently running command jobs. Default: 1.</summary>
     public int MaxJobConcurrency { get; set; } = 1;
 
-    /// <summary>Whether typed command schemas are validated by the runtime. Default: false.</summary>
-    public bool SchemaValidation { get; set; }
 
     /// <summary>Maximum buffered event count per control-plane job. Default: 1000.</summary>
     public int MaxJobEventBuffer { get; set; } = 1000;

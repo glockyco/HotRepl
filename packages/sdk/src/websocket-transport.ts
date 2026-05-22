@@ -182,6 +182,21 @@ export class WebSocketTransport implements RuntimeTransport {
       return;
     }
 
+    if (message.type === MESSAGE_TYPES.error && message.id !== undefined) {
+      const queue = this.subscriptions.get(message.id);
+      if (queue !== undefined) {
+        this.subscriptions.delete(message.id);
+        queue.fail(HotReplError.fromEnvelope(message.error));
+        return;
+      }
+      const pending = this.pending.get(message.id);
+      if (pending !== undefined) {
+        this.pending.delete(message.id);
+        pending.reject(HotReplError.fromEnvelope(message.error));
+        return;
+      }
+    }
+
     if (
       message.type === MESSAGE_TYPES.subscribeResult
       || message.type === MESSAGE_TYPES.subscribeError

@@ -32,7 +32,7 @@ public sealed class HandshakeMessage
             {
                 Supported = true,
                 CommandsListChanged = false,
-                SchemaValidation = true,
+                SchemaValidation = false,
             },
             Limits = RuntimeLimits.CreateDefault(),
             Enforces = EnforcedLimit.Defaults,

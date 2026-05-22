@@ -10,5 +10,6 @@ internal sealed record ReplJournalEntry(
     bool Success,
     long DurationMs,
     string? ErrorKind,
-    DateTimeOffset Timestamp
+    DateTimeOffset Timestamp,
+    long Sequence
 );

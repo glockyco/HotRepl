@@ -67,4 +67,28 @@ public class MessageRouterV2Tests
         var command = Assert.IsType<CommandsListCmd>(Assert.Single(queued));
         Assert.Equal("list-1", command.Id);
     }
+
+    [Fact]
+    public void Router_RoutesJournalQueryMessage()
+    {
+        var queued = new List<IEngineCommand>();
+        var router = MessageRouter.CreateForTests(
+            queued.Add,
+            _ => throw new InvalidOperationException("journal_query must not enqueue eval."),
+            _ => throw new InvalidOperationException("journal_query must not cancel."),
+            (_, _) => throw new InvalidOperationException("journal_query must not send error."),
+            new ReplConfig(),
+            () => 0
+        );
+
+        router.HandleMessage(
+            Guid.NewGuid(),
+            "{\"type\":\"journal_query\",\"id\":\"journal-1\",\"kind\":\"eval\",\"limit\":5}"
+        );
+
+        var command = Assert.IsType<JournalQueryCmd>(Assert.Single(queued));
+        Assert.Equal("journal-1", command.Id);
+        Assert.Equal("eval", command.Kind);
+        Assert.Equal(5, command.Limit);
+    }
 }

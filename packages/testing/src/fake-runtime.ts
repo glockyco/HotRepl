@@ -89,13 +89,7 @@ export class FakeRuntime implements RuntimeTransport {
       helpers: [],
       control: { supported: true, commandsListChanged: false, schemaValidation: false },
       limits: { ...defaultLimits, ...options.limits },
-      enforces: [
-        "maxMessageBytes",
-        "maxQueuedCommands",
-        "maxResultLength",
-        "maxEnumerableElements",
-        "maxJobConcurrency",
-      ],
+      enforces: ["maxMessageBytes", "maxQueuedCommands", "maxJobConcurrency"],
     };
   }
 
@@ -252,7 +246,7 @@ export class FakeRuntime implements RuntimeTransport {
   ): EvalResultMessage | EvalErrorMessage {
     try {
       const result = this.evalHandler(request.code);
-      const value = this.limitOutput(result.value);
+      const value = result.value;
       this.record({ id: request.id, kind: "eval", success: true });
       const response: EvalResultMessage = {
         type: MESSAGE_TYPES.evalResult,
@@ -331,7 +325,7 @@ export class FakeRuntime implements RuntimeTransport {
 
     try {
       const result = await command.handler(request.args as Record<string, any>);
-      const output = this.limitOutput(result.output);
+      const output = result.output;
       this.record({ id: request.id, kind: "command", name: request.name, success: true });
       return {
         type: MESSAGE_TYPES.commandResult,
@@ -402,7 +396,7 @@ export class FakeRuntime implements RuntimeTransport {
   private async finishJob(job: Job): Promise<void> {
     try {
       const result = await job.command.handler(job.args);
-      const output: CommandOutput = { output: this.limitOutput(result.output) };
+      const output: CommandOutput = { output: result.output };
       if (result.artifacts !== undefined) output.artifacts = result.artifacts;
       job.result = output;
       job.state = "done";
@@ -466,22 +460,6 @@ export class FakeRuntime implements RuntimeTransport {
       return;
     }
     throw error("invalid_request", "messageTooLarge", "Message exceeds maxMessageBytes.");
-  }
-
-  private limitOutput(output: unknown): unknown {
-    const capped = Array.isArray(output)
-      ? output.slice(0, this.handshakeMessage.limits.maxEnumerableElements)
-      : output;
-    const serialized = JSON.stringify(capped);
-    if (
-      serialized !== undefined
-      && new TextEncoder().encode(serialized).byteLength
-        > this.handshakeMessage.limits.maxResultLength
-    ) {
-      throw error("internal", "resultTooLarge", "Result exceeds maxResultLength.");
-    }
-
-    return capped;
   }
 
   private runningJobCount(): number {

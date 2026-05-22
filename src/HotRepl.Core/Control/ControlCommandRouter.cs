@@ -230,7 +230,7 @@ internal sealed class ControlCommandRouter
             MutatesState = descriptor.MutatesState,
             InputSchema = descriptor.ArgsSchema,
             OutputSchema = descriptor.ResultSchema,
-            ArtifactsSchema = EmptyObjectSchema(),
+            ArtifactsSchema = descriptor.ArtifactsSchema,
         };
 
     private static ProtocolArtifactRef ToMessage(ControlArtifactRef artifact) =>
@@ -326,5 +326,4 @@ internal sealed class ControlCommandRouter
             : ToMessage(status.Error);
     }
 
-    private static JObject EmptyObjectSchema() => JObject.Parse("{\"type\":\"object\"}");
 }

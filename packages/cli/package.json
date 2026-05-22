@@ -1,8 +1,15 @@
 {
   "name": "@hotrepl/cli",
-  "version": "0.0.0",
-  "private": true,
+  "version": "2.0.0-alpha.0",
+  "description": "HotRepl v2 command-line client.",
   "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "src"
+  ],
+  "sideEffects": false,
   "bin": {
     "hotrepl": "./src/index.ts"
   },
@@ -14,9 +21,9 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@hotrepl/sdk": "workspace:*"
+    "@hotrepl/sdk": "2.0.0-alpha.0"
   },
   "devDependencies": {
-    "@hotrepl/testing": "workspace:*"
+    "@hotrepl/testing": "2.0.0-alpha.0"
   }
 }

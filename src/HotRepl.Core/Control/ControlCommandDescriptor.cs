@@ -12,7 +12,8 @@ public sealed record ControlCommandDescriptor
         ControlCommandKind kind,
         bool mutatesState,
         JObject argsSchema,
-        JObject resultSchema
+        JObject resultSchema,
+        JObject? artifactsSchema = null
     )
     {
         if (string.IsNullOrWhiteSpace(name))
@@ -30,6 +31,7 @@ public sealed record ControlCommandDescriptor
         MutatesState = mutatesState;
         ArgsSchema = argsSchema ?? throw new ArgumentNullException(nameof(argsSchema));
         ResultSchema = resultSchema ?? throw new ArgumentNullException(nameof(resultSchema));
+        ArtifactsSchema = artifactsSchema ?? EmptyObjectSchema();
     }
 
     public string Name { get; }
@@ -38,4 +40,7 @@ public sealed record ControlCommandDescriptor
     public bool MutatesState { get; }
     public JObject ArgsSchema { get; }
     public JObject ResultSchema { get; }
+    public JObject ArtifactsSchema { get; }
+
+    private static JObject EmptyObjectSchema() => JObject.Parse("{\"type\":\"object\"}");
 }

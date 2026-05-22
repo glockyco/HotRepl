@@ -29,13 +29,16 @@ public class JournalTests
         journal.RecordEval("eval-1", success: true, durationMs: 1, errorKind: null);
         journal.RecordCommand("cmd-1", "game.quit", success: false, durationMs: 2, errorKind: "busy");
         journal.RecordEval("eval-2", success: false, durationMs: 3, errorKind: "timeout");
+        journal.RecordEval("eval-3", success: true, durationMs: 4, errorKind: null);
 
-        var entries = journal.Query(kind: null, limit: 2);
-
+        var evalEntries = journal.Query(kind: "eval", limit: 2);
         Assert.Collection(
-            entries,
-            entry => Assert.Equal("cmd-1", entry.Id),
-            entry => Assert.Equal("eval-2", entry.Id)
+            evalEntries,
+            entry => Assert.Equal("eval-2", entry.Id),
+            entry => Assert.Equal("eval-3", entry.Id)
         );
+
+        var commandEntry = Assert.Single(journal.Query(kind: "command", limit: 2));
+        Assert.Equal("cmd-1", commandEntry.Id);
     }
 }

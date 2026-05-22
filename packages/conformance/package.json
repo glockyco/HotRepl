@@ -1,8 +1,15 @@
 {
   "name": "@hotrepl/conformance",
-  "version": "0.0.0",
-  "private": true,
+  "version": "2.0.0-alpha.0",
+  "description": "Reusable conformance checks for HotRepl v2 runtimes.",
   "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "src"
+  ],
+  "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
     "./fake-runtime-target": "./src/fake-runtime-target.ts",
@@ -13,8 +20,8 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@hotrepl/protocol": "workspace:*",
-    "@hotrepl/sdk": "workspace:*",
-    "@hotrepl/testing": "workspace:*"
+    "@hotrepl/protocol": "2.0.0-alpha.0",
+    "@hotrepl/sdk": "2.0.0-alpha.0",
+    "@hotrepl/testing": "2.0.0-alpha.0"
   }
 }

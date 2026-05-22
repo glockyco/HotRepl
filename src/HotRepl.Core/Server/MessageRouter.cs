@@ -217,18 +217,11 @@ internal sealed class MessageRouter
             case MessageType.Reset:
                 return new ResetCmd(De<ResetMessage>(rawJson).Id, connectionId);
             case MessageType.Complete:
-                var cmpl = De<CompleteMessage>(rawJson);
-                return new CompleteCmd(
-                    cmpl.Id,
-                    cmpl.Code,
-                    cmpl.Cursor.GetValueOrDefault(cmpl.Code.Length),
-                    connectionId
-                );
+                return BuildCompleteCmd(connectionId, rawJson);
             case MessageType.Subscribe:
                 return BuildSubscribeCmd(connectionId, De<SubscribeMessage>(rawJson));
             case SelectEvaluatorMessageType:
-                var sel = ParseSelectEvaluator(rawJson);
-                return new SelectEvaluatorCmd(sel.Id, sel.Evaluator, connectionId);
+                return BuildSelectEvaluatorCmd(connectionId, rawJson);
             case MessageType.CommandsList:
                 var list = De<CommandsListMessage>(rawJson);
                 return new CommandsListCmd(list.Id, list.Since, connectionId);
@@ -241,6 +234,8 @@ internal sealed class MessageRouter
                 return new JobStatusCmd(De<JobStatusMessage>(rawJson), connectionId);
             case MessageType.JobCancel:
                 return new JobCancelCmd(De<JobCancelMessage>(rawJson), connectionId);
+            case MessageType.JournalQuery:
+                return BuildJournalQueryCmd(connectionId, rawJson);
             default:
                 SendError(
                     connectionId,
@@ -278,6 +273,28 @@ internal sealed class MessageRouter
             RequestedTimeoutOrDefault(msg.TimeoutMs),
             connectionId
         );
+
+    private static CompleteCmd BuildCompleteCmd(Guid connectionId, string rawJson)
+    {
+        var cmpl = De<CompleteMessage>(rawJson);
+        return new CompleteCmd(
+            cmpl.Id,
+            cmpl.Code,
+            cmpl.Cursor.GetValueOrDefault(cmpl.Code.Length),
+            connectionId
+        );
+    }
+    private static JournalQueryCmd BuildJournalQueryCmd(Guid connectionId, string rawJson)
+    {
+        var journal = De<JournalQueryMessage>(rawJson);
+        return new JournalQueryCmd(journal.Id, journal.Kind, journal.Limit, connectionId);
+    }
+
+    private static SelectEvaluatorCmd BuildSelectEvaluatorCmd(Guid connectionId, string rawJson)
+    {
+        var sel = ParseSelectEvaluator(rawJson);
+        return new SelectEvaluatorCmd(sel.Id, sel.Evaluator, connectionId);
+    }
 
     private int RequestedTimeoutOrDefault(int? timeoutMs)
     {

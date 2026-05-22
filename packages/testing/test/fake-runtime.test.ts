@@ -138,7 +138,7 @@ describe("FakeRuntime", () => {
     expect(cancelledStatus.state).toBe("cancelled");
   });
 
-  test("caps enumerable outputs and rejects oversized results", async () => {
+  test("does not advertise or enforce output result limits", async () => {
     const runtime = new FakeRuntime({ limits: { maxEnumerableElements: 2, maxResultLength: 16 } });
     runtime.setEvalHandler(() => ({ value: [1, 2, 3] }));
     runtime.registerCommand(
@@ -154,12 +154,15 @@ describe("FakeRuntime", () => {
       () => ({ output: "x".repeat(64) }),
     );
 
+    expect(runtime.handshakeMessage.enforces).not.toContain("maxResultLength");
+    expect(runtime.handshakeMessage.enforces).not.toContain("maxEnumerableElements");
+
     const evalResponse = await runtime.request({ type: "eval", id: "eval-1", code: "range" });
     expect(evalResponse.type).toBe(MESSAGE_TYPES.evalResult);
     if (evalResponse.type !== MESSAGE_TYPES.evalResult) {
       throw new Error(`Expected eval_result, got ${evalResponse.type}.`);
     }
-    expect(evalResponse.value).toEqual([1, 2]);
+    expect(evalResponse.value).toEqual([1, 2, 3]);
 
     const commandResponse = await runtime.request({
       type: "command_call",
@@ -171,8 +174,8 @@ describe("FakeRuntime", () => {
     if (commandResponse.type !== MESSAGE_TYPES.commandResult) {
       throw new Error(`Expected command_result, got ${commandResponse.type}.`);
     }
-    expect(commandResponse.status).toBe("failed");
-    expect(commandResponse.error).toMatchObject({ kind: "internal", code: "resultTooLarge" });
+    expect(commandResponse.status).toBe("ok");
+    expect(commandResponse.output).toBe("x".repeat(64));
   });
 
   test("stores commands, artifacts, jobs, and journal entries", async () => {

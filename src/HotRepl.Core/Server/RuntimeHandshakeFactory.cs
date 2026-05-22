@@ -48,9 +48,9 @@ internal static class RuntimeHandshakeFactory
             Helpers = helpers.ToArray(),
             Control = new ControlCapabilities
             {
-                Supported = config.ControlPlaneEnabled,
+                Supported = true,
                 CommandsListChanged = false,
-                SchemaValidation = config.SchemaValidation,
+                SchemaValidation = false,
             },
             Limits = new RuntimeLimits
             {
@@ -59,7 +59,7 @@ internal static class RuntimeHandshakeFactory
                 MaxResultLength = config.MaxResultLength,
                 MaxEnumerableElements = config.MaxEnumerableElements,
                 DefaultEvalTimeoutMs = config.DefaultTimeoutMs,
-                MaxJobConcurrency = config.MaxJobConcurrency,
+                MaxJobConcurrency = Math.Max(1, config.MaxJobConcurrency),
             },
             Enforces = EnforcedLimit.Defaults,
         };

@@ -6,6 +6,13 @@
     <AnalysisMode>Recommended</AnalysisMode>
     <RootNamespace>HotRepl</RootNamespace>
     <AssemblyName>HotRepl.Core</AssemblyName>
+    <PackageId>HotRepl.Core</PackageId>
+    <Version>2.0.0-alpha.0</Version>
+    <Authors>Johann Glock</Authors>
+    <Description>Unity-safe HotRepl v2 runtime core and typed command API.</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryType>git</RepositoryType>
+    <IsPackable>true</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>

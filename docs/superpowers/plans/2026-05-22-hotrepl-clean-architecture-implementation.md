@@ -164,8 +164,6 @@ describe("protocol foundations", () => {
       enforces: [
         "maxMessageBytes",
         "maxQueuedCommands",
-        "maxResultLength",
-        "maxEnumerableElements",
         "maxJobConcurrency",
       ],
     };
@@ -473,10 +471,11 @@ path. `command_call` returns `command_result` for sync handlers and
 
 - [x] **Step 4: Implement journal and limits foundation**
 
-Add two 1 024-entry ring buffers. Record only metadata: id, kind, optional command name, success,
-durationMs, optional errorKind, timestamp. Reject oversized inbound frames before parse using
-`MaxMessageBytes`. Reject enqueue when queued command count reaches `MaxQueuedCommands`. Include
-every enforced limit in handshake `enforces[]`.
+Add two server-owned 1 024-entry journal buffers for eval and command metadata. Record only id,
+kind, optional command name, success, durationMs, optional errorKind, and timestamp. Reject
+oversized inbound frames before parse using `MaxMessageBytes`. Reject enqueue when queued command or
+eval count reaches `MaxQueuedCommands`. Include only actually enforced limits in handshake
+`enforces[]`.
 
 - [x] **Step 5: Run green verification**
 
@@ -995,5 +994,14 @@ worktree.
   downstream consumers.
 - `maxJobConcurrency` stays in `handshake.enforces[]` because `ControlJobManager` now rejects job
   starts once the configured running-job limit is reached.
+- `maxResultLength` and `maxEnumerableElements` remain in `handshake.limits` as eval serializer
+  settings, but they are no longer in the C# runtime's default `enforces[]` because command and job
+  outputs are not capped by those settings yet.
+- The SDK WebSocket transport now rejects `type: "error"` frames at the transport boundary for both
+  pending requests and subscription iterators, so callers cannot accidentally resolve universal
+  protocol errors as successful responses.
 - Protocol-level routing errors are first-class `type: "error"` frames with the universal error
   envelope; the TypeScript SDK rejects the matching request as `HotReplError`.
+- TypeScript and .NET packages now use the concrete prerelease version `2.0.0-alpha.0`. Downstream
+  plans consume repo-local tarballs/NuGet packages under `vendor/hotrepl/` until registry publishing
+  is introduced.
