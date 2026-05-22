@@ -834,14 +834,14 @@ git commit -m "feat(cli): add v2 TypeScript command surface"
 - Test: `packages/mcp/test/tools.test.ts`
 - Test: `packages/mcp/test/session-eviction.test.ts`
 
-- [ ] **Step 1: Write failing MCP tests**
+- [x] **Step 1: Write failing MCP tests**
 
 Assert exactly nine tools are registered: `hotrepl_info`, `hotrepl_eval`, `hotrepl_reset`,
 `hotrepl_complete`, `hotrepl_list_commands`, `hotrepl_describe_command`, `hotrepl_run`,
 `hotrepl_read_artifact`, `hotrepl_journal`. Assert descriptor-derived annotations on `hotrepl_run`
 and one persistent SDK session with eviction reported once.
 
-- [ ] **Step 2: Run red tests**
+- [x] **Step 2: Run red tests**
 
 Run:
 
@@ -851,13 +851,13 @@ bun test packages/mcp/test
 
 Expected: FAIL because the MCP package does not exist.
 
-- [ ] **Step 3: Implement MCP server**
+- [x] **Step 3: Implement MCP server**
 
 Use stdio transport. Do not register per-game commands as MCP tools. `hotrepl_run` accepts
 `{ name, args, timeoutMs? }` and delegates to `Session.run`. On session eviction, report one
 notification and reconnect on the next tool call.
 
-- [ ] **Step 4: Run green verification**
+- [x] **Step 4: Run green verification**
 
 Run:
 
@@ -868,7 +868,7 @@ bun run --cwd packages/mcp typecheck
 
 Expected: all pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```sh
 git add packages/mcp package.json bun.lock docs/superpowers/plans/2026-05-22-hotrepl-clean-architecture-implementation.md
