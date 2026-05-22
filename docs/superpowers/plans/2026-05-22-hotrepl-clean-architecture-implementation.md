@@ -962,23 +962,23 @@ git commit -m "chore: remove v1 Python client surface"
 
 **Files:**
 
-- Create in `ardenfall-compendium`:
-  `docs/superpowers/plans/YYYY-MM-DD-ardenfall-hotrepl-v2-migration.md`
-- Create in `ancient-kingdoms-mods`: `docs/superpowers/plans/YYYY-MM-DD-ak-hotrepl-v2-migration.md`
+- Created in `ardenfall-compendium`:
+  `docs/superpowers/plans/2026-05-22-ardenfall-hotrepl-v2-migration.md`
+- Created in `ancient-kingdoms-mods`: `docs/superpowers/plans/2026-05-22-ak-hotrepl-v2-migration.md`
 - Append to: `local://blog-notes-2026-05-22.md`
 
-- [ ] **Step 1: Create Ardenfall migration plan**
+- [x] **Step 1: Create Ardenfall migration plan**
 
 Plan the exact controller/mod files to touch, generated schema file paths, `CompendiumClient` facade
 methods, deletion of `hotrepl-client.ts`, and verification commands from the Ardenfall repo.
 
-- [ ] **Step 2: Create Ancient Kingdoms migration plan**
+- [x] **Step 2: Create Ancient Kingdoms migration plan**
 
 Plan the exact mod/build-tool/docs files to touch, typed command handlers, `build-tool export`
 rewrite, deletion of `AutoExporter` and `.exporter-result.json`, exit-code rename, and verification
 commands from the AK repo.
 
-- [ ] **Step 3: Commit plans in their repos before editing code there**
+- [x] **Step 3: Commit plans in their repos before editing code there**
 
 Use each repo's commit guidelines and worktree workflow. Do not edit consumer code from the HotRepl
 worktree.
