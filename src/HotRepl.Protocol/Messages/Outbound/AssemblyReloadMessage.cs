@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 namespace HotRepl.Protocol;
 
 /// <summary>Unsolicited assembly reload notification.</summary>
-public sealed class AssemblyReloadMessage
+public sealed record AssemblyReloadMessage
 {
     [JsonProperty("type")]
     public string Type { get; set; } = MessageType.AssemblyReload;

@@ -6,7 +6,7 @@ using Newtonsoft.Json.Linq;
 namespace HotRepl.Protocol;
 
 /// <summary>Terminal command job response.</summary>
-public sealed class JobResultMessage
+public sealed record JobResultMessage
 {
     [JsonProperty("type")]
     public string Type { get; set; } = MessageType.JobResult;

@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 namespace HotRepl.Protocol;
 
 /// <summary>Acknowledgement that a command job is running.</summary>
-public sealed class JobAcceptedMessage
+public sealed record JobAcceptedMessage
 {
     [JsonProperty("type")]
     public string Type { get; set; } = MessageType.JobAccepted;

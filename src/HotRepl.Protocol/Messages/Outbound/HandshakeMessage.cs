@@ -4,7 +4,7 @@ using Newtonsoft.Json;
 namespace HotRepl.Protocol;
 
 /// <summary>Handshake sent by the server immediately after connection.</summary>
-public sealed class HandshakeMessage
+public sealed record HandshakeMessage
 {
     /// <summary>Creates a representative handshake for tests and fixtures.</summary>
     public static HandshakeMessage CreateForTests() =>

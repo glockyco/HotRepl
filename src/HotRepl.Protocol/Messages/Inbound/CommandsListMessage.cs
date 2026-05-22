@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 namespace HotRepl.Protocol;
 
 /// <summary>Request to list registered commands.</summary>
-public sealed class CommandsListMessage
+public sealed record CommandsListMessage
 {
     [JsonProperty("type")]
     public string Type { get; set; } = MessageType.CommandsList;

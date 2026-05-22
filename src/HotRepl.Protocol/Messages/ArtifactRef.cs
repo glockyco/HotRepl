@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 namespace HotRepl.Protocol;
 
 /// <summary>Reference metadata for an artifact produced by a command or job.</summary>
-public sealed class ArtifactRef
+public sealed record ArtifactRef
 {
     [JsonProperty("uri")]
     public string Uri { get; set; } = string.Empty;

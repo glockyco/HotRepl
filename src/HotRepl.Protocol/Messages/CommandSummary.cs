@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 namespace HotRepl.Protocol;
 
 /// <summary>Compact command metadata returned by commands_list.</summary>
-public sealed class CommandSummary
+public sealed record CommandSummary
 {
     [JsonProperty("name")]
     public string Name { get; set; } = string.Empty;

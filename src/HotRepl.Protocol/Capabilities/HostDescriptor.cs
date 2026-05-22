@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 namespace HotRepl.Protocol;
 
 /// <summary>Runtime host metadata advertised in the v2 handshake.</summary>
-public sealed class HostDescriptor
+public sealed record HostDescriptor
 {
     /// <summary>Host adapter name.</summary>
     [JsonProperty("name")]

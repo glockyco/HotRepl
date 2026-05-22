@@ -4,7 +4,7 @@ using Newtonsoft.Json.Linq;
 namespace HotRepl.Protocol;
 
 /// <summary>Request to invoke a typed command.</summary>
-public sealed class CommandCallMessage
+public sealed record CommandCallMessage
 {
     [JsonProperty("type")]
     public string Type { get; set; } = MessageType.CommandCall;

@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 namespace HotRepl.Protocol;
 
 /// <summary>Subscription error response.</summary>
-public sealed class SubscribeErrorMessage
+public sealed record SubscribeErrorMessage
 {
     [JsonProperty("type")]
     public string Type { get; set; } = MessageType.SubscribeError;

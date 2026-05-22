@@ -6,7 +6,7 @@ using Newtonsoft.Json.Linq;
 namespace HotRepl.Protocol;
 
 /// <summary>Terminal synchronous command response.</summary>
-public sealed class CommandResultMessage
+public sealed record CommandResultMessage
 {
     [JsonProperty("type")]
     public string Type { get; set; } = MessageType.CommandResult;

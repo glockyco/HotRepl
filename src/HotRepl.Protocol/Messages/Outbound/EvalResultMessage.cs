@@ -4,7 +4,7 @@ using Newtonsoft.Json.Linq;
 namespace HotRepl.Protocol;
 
 /// <summary>Successful eval response.</summary>
-public sealed class EvalResultMessage
+public sealed record EvalResultMessage
 {
     [JsonProperty("type")]
     public string Type { get; set; } = MessageType.EvalResult;

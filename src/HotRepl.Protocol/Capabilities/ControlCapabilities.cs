@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 namespace HotRepl.Protocol;
 
 /// <summary>Typed-command capabilities advertised in the v2 handshake.</summary>
-public sealed class ControlCapabilities
+public sealed record ControlCapabilities
 {
     /// <summary>Whether typed commands are supported.</summary>
     [JsonProperty("supported")]

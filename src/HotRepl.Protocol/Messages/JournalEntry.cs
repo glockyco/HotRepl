@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 namespace HotRepl.Protocol;
 
 /// <summary>Metadata-only server-side journal entry.</summary>
-public sealed class JournalEntry
+public sealed record JournalEntry
 {
     [JsonProperty("id")]
     public string Id { get; set; } = string.Empty;

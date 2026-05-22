@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 namespace HotRepl.Protocol;
 
 /// <summary>Reset response.</summary>
-public sealed class ResetResultMessage
+public sealed record ResetResultMessage
 {
     [JsonProperty("type")]
     public string Type { get; set; } = MessageType.ResetResult;

@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 namespace HotRepl.Protocol;
 
 /// <summary>Request to cancel an eval or subscription.</summary>
-public sealed class CancelMessage
+public sealed record CancelMessage
 {
     [JsonProperty("type")]
     public string Type { get; set; } = MessageType.Cancel;

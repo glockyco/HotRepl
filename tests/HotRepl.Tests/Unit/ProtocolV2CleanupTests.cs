@@ -96,6 +96,28 @@ public class ProtocolV2CleanupTests
     }
 
     [Fact]
+    public void PublicProtocolDtos_AreRecordTypes()
+    {
+        Assert.Equal(new ResetMessage { Id = "reset-1" }, new ResetMessage { Id = "reset-1" });
+        Assert.Equal(
+            new CommandSummary
+            {
+                Name = "game.quit",
+                MajorVersion = 1,
+                Kind = "sync",
+                MutatesState = true,
+            },
+            new CommandSummary
+            {
+                Name = "game.quit",
+                MajorVersion = 1,
+                Kind = "sync",
+                MutatesState = true,
+            }
+        );
+    }
+
+    [Fact]
     public void ReplConfig_DoesNotExposeV1AuthLeaseOptions()
     {
         Assert.Null(typeof(ReplConfig).GetProperty("RequireControlAuth"));

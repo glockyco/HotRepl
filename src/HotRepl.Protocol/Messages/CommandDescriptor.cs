@@ -4,7 +4,7 @@ using Newtonsoft.Json.Linq;
 namespace HotRepl.Protocol;
 
 /// <summary>Full machine-readable metadata for one typed command.</summary>
-public sealed class CommandDescriptor
+public sealed record CommandDescriptor
 {
     [JsonProperty("name")]
     public string Name { get; set; } = string.Empty;

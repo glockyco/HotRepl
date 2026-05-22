@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 namespace HotRepl.Protocol;
 
 /// <summary>Request to cancel a command job.</summary>
-public sealed class JobCancelMessage
+public sealed record JobCancelMessage
 {
     [JsonProperty("type")]
     public string Type { get; set; } = MessageType.JobCancel;

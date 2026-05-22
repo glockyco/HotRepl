@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 namespace HotRepl.Protocol;
 
 /// <summary>Runtime limits advertised in the v2 handshake.</summary>
-public sealed class RuntimeLimits
+public sealed record RuntimeLimits
 {
     /// <summary>Default inbound frame limit in bytes.</summary>
     public const int DefaultMaxMessageBytes = 4 * 1024 * 1024;

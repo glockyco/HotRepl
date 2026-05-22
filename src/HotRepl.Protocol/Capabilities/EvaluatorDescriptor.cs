@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 namespace HotRepl.Protocol;
 
 /// <summary>Evaluator capabilities advertised in the v2 handshake.</summary>
-public sealed class EvaluatorDescriptor
+public sealed record EvaluatorDescriptor
 {
     /// <summary>Evaluator name.</summary>
     [JsonProperty("name")]

@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 namespace HotRepl.Protocol;
 
 /// <summary>Failed eval response.</summary>
-public sealed class EvalErrorMessage
+public sealed record EvalErrorMessage
 {
     [JsonProperty("type")]
     public string Type { get; set; } = MessageType.EvalError;

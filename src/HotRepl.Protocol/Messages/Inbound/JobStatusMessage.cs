@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 namespace HotRepl.Protocol;
 
 /// <summary>Request to poll command job status.</summary>
-public sealed class JobStatusMessage
+public sealed record JobStatusMessage
 {
     [JsonProperty("type")]
     public string Type { get; set; } = MessageType.JobStatus;

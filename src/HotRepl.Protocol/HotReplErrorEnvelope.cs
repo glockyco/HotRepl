@@ -4,7 +4,7 @@ using Newtonsoft.Json.Linq;
 namespace HotRepl.Protocol;
 
 /// <summary>Universal v2 error envelope returned by protocol and command failures.</summary>
-public sealed class HotReplErrorEnvelope
+public sealed record HotReplErrorEnvelope
 {
     /// <summary>Creates an error envelope.</summary>
     public HotReplErrorEnvelope(

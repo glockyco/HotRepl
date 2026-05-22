@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 namespace HotRepl.Protocol;
 
 /// <summary>Request to query server-side journal entries.</summary>
-public sealed class JournalQueryMessage
+public sealed record JournalQueryMessage
 {
     [JsonProperty("type")]
     public string Type { get; set; } = MessageType.JournalQuery;

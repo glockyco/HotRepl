@@ -4,7 +4,7 @@ using Newtonsoft.Json;
 namespace HotRepl.Protocol;
 
 /// <summary>Server-side journal query response.</summary>
-public sealed class JournalQueryResultMessage
+public sealed record JournalQueryResultMessage
 {
     [JsonProperty("type")]
     public string Type { get; set; } = MessageType.JournalQueryResult;

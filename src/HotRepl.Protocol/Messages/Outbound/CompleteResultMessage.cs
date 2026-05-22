@@ -4,7 +4,7 @@ using Newtonsoft.Json;
 namespace HotRepl.Protocol;
 
 /// <summary>Completion response.</summary>
-public sealed class CompleteResultMessage
+public sealed record CompleteResultMessage
 {
     [JsonProperty("type")]
     public string Type { get; set; } = MessageType.CompleteResult;

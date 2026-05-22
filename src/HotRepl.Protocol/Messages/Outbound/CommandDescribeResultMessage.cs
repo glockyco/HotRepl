@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 namespace HotRepl.Protocol;
 
 /// <summary>Command descriptor response.</summary>
-public sealed class CommandDescribeResultMessage
+public sealed record CommandDescribeResultMessage
 {
     [JsonProperty("type")]
     public string Type { get; set; } = MessageType.CommandDescribeResult;

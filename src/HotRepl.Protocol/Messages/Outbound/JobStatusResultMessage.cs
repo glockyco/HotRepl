@@ -4,7 +4,7 @@ using Newtonsoft.Json.Linq;
 namespace HotRepl.Protocol;
 
 /// <summary>Current command job status.</summary>
-public sealed class JobStatusResultMessage
+public sealed record JobStatusResultMessage
 {
     [JsonProperty("type")]
     public string Type { get; set; } = MessageType.JobStatusResult;

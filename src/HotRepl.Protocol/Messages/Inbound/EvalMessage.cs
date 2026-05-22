@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 namespace HotRepl.Protocol;
 
 /// <summary>Request to evaluate C# code.</summary>
-public sealed class EvalMessage
+public sealed record EvalMessage
 {
     [JsonProperty("type")]
     public string Type { get; set; } = MessageType.Eval;

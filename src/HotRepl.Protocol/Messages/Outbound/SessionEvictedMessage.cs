@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 namespace HotRepl.Protocol;
 
 /// <summary>Notification sent to a displaced connection before the socket closes.</summary>
-public sealed class SessionEvictedMessage
+public sealed record SessionEvictedMessage
 {
     /// <summary>Wire message type.</summary>
     [JsonProperty("type")]

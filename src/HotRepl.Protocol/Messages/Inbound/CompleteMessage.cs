@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 namespace HotRepl.Protocol;
 
 /// <summary>Request to complete C# code at a cursor position.</summary>
-public sealed class CompleteMessage
+public sealed record CompleteMessage
 {
     [JsonProperty("type")]
     public string Type { get; set; } = MessageType.Complete;

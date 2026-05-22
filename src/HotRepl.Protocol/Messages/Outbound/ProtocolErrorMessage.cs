@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 namespace HotRepl.Protocol;
 
 /// <summary>Addressed protocol-level error response.</summary>
-public sealed class ProtocolErrorMessage
+public sealed record ProtocolErrorMessage
 {
     /// <summary>Wire message type.</summary>
     [JsonProperty("type")]

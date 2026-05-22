@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 namespace HotRepl.Protocol;
 
 /// <summary>Request to reset evaluator state.</summary>
-public sealed class ResetMessage
+public sealed record ResetMessage
 {
     [JsonProperty("type")]
     public string Type { get; set; } = MessageType.Reset;

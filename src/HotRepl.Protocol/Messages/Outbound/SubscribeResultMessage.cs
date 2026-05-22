@@ -4,7 +4,7 @@ using Newtonsoft.Json.Linq;
 namespace HotRepl.Protocol;
 
 /// <summary>Subscription value response.</summary>
-public sealed class SubscribeResultMessage
+public sealed record SubscribeResultMessage
 {
     [JsonProperty("type")]
     public string Type { get; set; } = MessageType.SubscribeResult;

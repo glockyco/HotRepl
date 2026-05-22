@@ -4,7 +4,7 @@ using Newtonsoft.Json;
 namespace HotRepl.Protocol;
 
 /// <summary>Registered command list response.</summary>
-public sealed class CommandsListResultMessage
+public sealed record CommandsListResultMessage
 {
     [JsonProperty("type")]
     public string Type { get; set; } = MessageType.CommandsListResult;

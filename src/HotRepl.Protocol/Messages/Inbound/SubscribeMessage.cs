@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 namespace HotRepl.Protocol;
 
 /// <summary>Request to subscribe to repeated expression evaluation.</summary>
-public sealed class SubscribeMessage
+public sealed record SubscribeMessage
 {
     [JsonProperty("type")]
     public string Type { get; set; } = MessageType.Subscribe;
