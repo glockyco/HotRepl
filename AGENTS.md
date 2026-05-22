@@ -1,8 +1,8 @@
 # Agent Instructions
 
-HotRepl: runtime C# REPL over WebSocket for Unity games through BepInEx/Mono or MelonLoader/IL2CPP.
-This file is for agents working **on** this repo. For agents using HotRepl to inspect a running
-game, see the skill at `.claude/skills/hotrepl/SKILL.md`.
+HotRepl: runtime C# REPL and typed command bridge over WebSocket for Unity games through
+BepInEx/Mono or MelonLoader/IL2CPP. This file is for agents working **on** this repo. For agents
+using HotRepl to inspect a running game, see `.claude/skills/hotrepl/SKILL.md`.
 
 ## Commands
 
@@ -10,20 +10,22 @@ Bootstrap once per machine:
 
 ```bash
 brew install lefthook dprint actionlint commitlint typos
+bun install --frozen-lockfile
 dotnet tool restore
 lefthook install
 ```
 
-`dotnet 10.x` is required because `HotRepl.Tests` targets `net10.0`.
+`dotnet 10.x` is required because `HotRepl.Tests` targets `net10.0`. Bun is pinned by `package.json`
+(`bun@1.3.14`).
 
 Common local checks:
 
 ```bash
 dotnet build src/HotRepl.Core/ --nologo -v q
 dotnet test tests/HotRepl.Tests/ --nologo -v q
-uvx ruff check
-uvx ruff format --check
-uv run --project client --extra dev pyright
+bun run test
+bun run typecheck
+bun run schemas:export
 dprint check
 typos
 actionlint
@@ -36,8 +38,8 @@ lefthook run pre-commit --all-files
 lefthook run pre-push --force
 ```
 
-`pre-commit` auto-fixes staged C# / Python / docs formatting. `pre-push` mirrors the full CI gate;
-CI also runs `lefthook run pre-push --force` in `hooks-parity`.
+`pre-commit` auto-fixes staged C# / TypeScript / docs formatting. `pre-push` mirrors the full CI
+gate; CI also runs `lefthook run pre-push --force` in `hooks-parity`.
 
 `--force` is required when no commits are ahead of `origin/HEAD` (e.g., a fresh checkout on `main`,
 or manually validating before pushing). Without it, lefthook 2.x silently skips every command with
@@ -60,25 +62,29 @@ dotnet test tests/HotRepl.Tests/ --nologo -v q
 `TreatWarningsAsErrors=true` is unconditional. CSharpier.MsBuild runs during every build, so
 unformatted C# fails `dotnet build`.
 
-### Python smoke tests against a running game
+### TypeScript packages
 
 ```bash
-cd client
-uv pip install -e '.[test]'
-hotrepl ping
-hotrepl test
-hotrepl test --url ws://host:port
+bun test packages/protocol/test
+bun test packages/sdk/test packages/testing/test packages/conformance/test
+bun test packages/cli/test
+bun test packages/mcp/test
+bun run --cwd packages/sdk typecheck
+bun run --cwd packages/conformance typecheck
+bun run --cwd packages/cli typecheck
+bun run --cwd packages/mcp typecheck
 ```
 
-Smoke tests skip automatically when no server is reachable. They exercise eval, errors, state
-persistence, reset, ping, autocomplete, subscriptions, and edge cases.
+Protocol/client behavior belongs in TypeScript package tests. Prefer `FakeRuntime` and `MockSession`
+for deterministic SDK, CLI, MCP, and consumer-facade coverage.
 
 ## Verification expectations
 
 - Run the narrowest command that covers the change before yielding.
-- For protocol/client behavior, update or add coverage in `client/tests/`.
 - For C# behavior, prefer xUnit coverage under `tests/HotRepl.Tests/`.
-- Before claiming branch-level completion, run `lefthook run pre-push`.
+- For protocol, SDK, CLI, MCP, and conformance behavior, update package tests under
+  `packages/*/test`.
+- Before claiming branch-level completion, run `lefthook run pre-push --force`.
 
 ## Architecture Invariants
 
@@ -90,7 +96,7 @@ These are non-discoverable requirements; do not "simplify" them away:
   Il2CppInterop, game-specific types, `mcs.dll`, or Roslyn packages.
 - Control handlers execute through the main-thread tick path, never directly from WebSocket
   callbacks.
-- Mutating control commands require a valid exclusive lease.
+- v2 has no auth/lease protocol. Loopback plus single-client replacement is the authority boundary.
 - Addressed control responses go only to the originating connection; never fall back to a
   replacement client.
 - Artifacts are references (`uri`, `path`, `sha256`, `byteSize`, `finalized`), not bulk payloads.
@@ -99,7 +105,7 @@ These are non-discoverable requirements; do not "simplify" them away:
 - Evaluator timeout is capability-driven. `HardAbort` may abort the main thread; `Cooperative`
   cannot preempt every runtime loop.
 - Mono.CSharp evaluates user code as C# 7.x. Do not raise this without replacing the evaluator.
-- Do not update `mcs.dll` without running the full smoke test suite.
+- Do not update `mcs.dll` without running the full smoke test suite against a running game.
 
 ## Domain Constraints Agents Often Get Wrong
 
@@ -117,19 +123,21 @@ These are non-discoverable requirements; do not "simplify" them away:
 
 ## Adding Protocol Messages
 
-1. Add a `MessageType` const in `Protocol/MessageType.cs`.
-2. Add the inbound or outbound record class as its own file in `Protocol/Inbound/` or
-   `Protocol/Outbound/` (one type per file; CI's MA0048 enforces this).
-3. Handle the inbound type in `Server/MessageRouter.cs`.
-4. Add an `IEngineCommand` implementation if the message needs main-thread dispatch.
-5. Add the `eval_result` / `eval_error` / `*_result` response in `ReplEngine.cs`.
-6. Add smoke test coverage in `client/tests/`.
+1. Add a `MessageType` const in `src/HotRepl.Protocol/MessageType.cs`.
+2. Add the inbound or outbound C# record in `src/HotRepl.Protocol/Messages/Inbound/` or
+   `Messages/Outbound/` (one public type per file; CI's MA0048 enforces this).
+3. Add or update TypeScript types and schemas in `packages/protocol/src/`.
+4. Handle the inbound type in `src/HotRepl.Core/Server/MessageRouter.cs`.
+5. Add an `IEngineCommand` implementation if the message needs main-thread dispatch.
+6. Add the `eval_result` / `eval_error` / `*_result` response in `ReplEngine.cs`.
+7. Add xUnit and/or package test coverage.
 
 ## Code Conventions
 
 - `netstandard2.1` for both `HotRepl.Core` and `HotRepl.BepInEx`.
-- Newtonsoft.Json for protocol serialization. Do not add a second JSON library.
+- Newtonsoft.Json for C# protocol serialization. Do not add a second C# JSON library.
 - Fleck for WebSocket. Do not add a second WebSocket library.
+- Bun workspaces own the SDK, CLI, MCP, testing, and conformance packages.
 - XML doc comments on all public symbols in `IReplHost.cs`, `ReplEngine.cs`, `ReplConfig.cs`.
 - CSharpier formats every `.cs` file. CSharpier.MsBuild fails the build on unformatted code; the
   `pre-commit` hook auto-fixes staged C# before each commit.
@@ -146,15 +154,15 @@ so a non-conformant message is rejected before the commit lands.
 ## Worktrees
 
 Project-local worktrees go in `.worktrees/<branch-name>` (gitignored). Each worktree needs
-`dotnet tool restore`, optionally `cd client && uv sync`, and (for the BepInEx host) gitignored
-Unity DLLs linked from another checkout. The canonical bootstrap is:
+`dotnet tool restore`, `bun install --frozen-lockfile`, and (for the BepInEx host) gitignored Unity
+DLLs linked from another checkout. The canonical bootstrap is:
 
 ```bash
-scripts/bootstrap-worktree.sh [--source <trusted-checkout>] [--no-python]
+scripts/bootstrap-worktree.sh [--source <trusted-checkout>]
 ```
 
-See `.claude/skills/bootstrap-worktree/SKILL.md` for details and failure modes. Use a worktree
-whenever a change touches multiple commits; do not work on `main` directly for non-trivial work.
+Use a worktree whenever a change touches multiple commits; do not work on `main` directly for
+non-trivial work.
 
 ## Shell Conventions
 

@@ -1,178 +1,137 @@
 # HotRepl
 
-Runtime C# REPL over WebSocket for Unity games through BepInEx/Mono or MelonLoader/IL2CPP. Accepts
-C# code, compiles and executes it in the game process on the main thread, returns structured JSON.
-Primary audience: coding agents. License: MIT.
+HotRepl is a runtime C# REPL and typed command bridge for Unity games. It runs inside a game through
+BepInEx/Mono or MelonLoader/IL2CPP, executes work on Unity's main thread, and exposes a v2 WebSocket
+protocol for coding agents, CLI automation, and MCP tools.
 
-## Connect
+## Requirements
 
-Default endpoint: `ws://localhost:18590`
+- .NET 10.x for the Core test project.
+- Bun 1.3.14 for the TypeScript protocol, SDK, CLI, MCP, testing, and conformance packages.
+- Unity/BepInEx or MelonLoader assemblies only when building host adapters.
 
-On connection the server immediately sends a `handshake` message — read it before sending evals. It
-lists evaluator/host metadata, opened namespaces, and available helpers.
+## Quickstart
+
+```bash
+dotnet build src/HotRepl.Core/ --nologo -v q
+dotnet test tests/HotRepl.Tests/ --nologo -v q
+bun install --frozen-lockfile
+bun run test
+bun run typecheck
+```
+
+A running host listens on `ws://127.0.0.1:18590` by default. The TypeScript SDK also uses that URL
+unless `HOTREPL_URL` or an explicit URL is supplied.
+
+```bash
+bun packages/cli/src/index.ts info
+bun packages/cli/src/index.ts eval '1 + 1'
+bun packages/cli/src/index.ts run archive.preflight '{}'
+bun packages/mcp/src/index.ts
+```
+
+## Protocol v2
+
+The server sends a `handshake` immediately after a WebSocket connection opens:
 
 ```json
 {
   "type": "handshake",
-  "version": "1.0.0",
-  "csharpVersion": "latest",
+  "protocolVersion": 2,
+  "host": { "name": "MelonLoader", "version": "0.x", "platform": "Unity IL2CPP" },
   "evaluator": {
     "name": "Roslyn.Script",
     "languageVersion": "latest",
-    "supportsPersistentState": true,
+    "persistentState": true,
     "supportsCompletion": false,
-    "timeoutMode": "Cooperative"
+    "cancellation": "cooperative"
   },
-  "host": {
-    "name": "MelonLoader",
-    "version": "0.x",
-    "runtime": ".NET 6",
-    "platform": "Unity IL2CPP"
+  "control": { "supported": true, "commandsListChanged": false, "schemaValidation": true },
+  "limits": {
+    "maxMessageBytes": 4194304,
+    "maxQueuedCommands": 32,
+    "maxResultLength": 102400,
+    "maxEnumerableElements": 100,
+    "defaultEvalTimeoutMs": 10000,
+    "maxJobConcurrency": 1
   },
-  "availableEvaluators": ["Roslyn.Script", "Roslyn.Isolated"],
-  "defaultUsings": ["System", "System.Linq", "HotRepl.Helpers.Unity"],
-  "helpers": ["String[] Help()", "Object History(Int32 limit = 20)"]
+  "enforces": ["maxMessageBytes", "maxQueuedCommands", "maxResultLength"]
 }
 ```
 
-Eval REPL access remains single-client per server — a new connection replaces the previous session
-and cancels all active subscriptions. The typed control plane adds optional auth and exclusive
-leases for automation clients.
+All frames are UTF-8 JSON with a `type` discriminant and caller-assigned `id` where a response is
+expected. Runtime errors use a single `error` envelope with closed `kind` values. Typed commands use
+`commands_list`, `command_describe`, and `command_call`; job commands return `job_accepted`, then
+`job_status` returns either running state or the terminal `job_result`.
 
-## Protocol
+See [`docs/control-plane-protocol.md`](docs/control-plane-protocol.md) for the message inventory.
 
-All messages are UTF-8 JSON with a `type` discriminant; `id` is caller-assigned and echoed verbatim.
-Protocol constants, serializers, and message records live under
-[`src/HotRepl.Core/Protocol/`](src/HotRepl.Core/Protocol/).
+## TypeScript packages
 
-HotRepl also exposes a control plane for typed commands, cooperative jobs, artifact references,
-auth, and exclusive controller leases. See
-[`docs/control-plane-protocol.md`](docs/control-plane-protocol.md).
+| Package                | Purpose                                                             |
+| ---------------------- | ------------------------------------------------------------------- |
+| `@hotrepl/protocol`    | v2 constants, TypeBox schemas, and message types                    |
+| `@hotrepl/sdk`         | `connect`, `Session`, `Artifact`, typed errors, WebSocket transport |
+| `@hotrepl/testing`     | `FakeRuntime`, `MockSession`, recorder, and replay helpers          |
+| `@hotrepl/conformance` | Protocol conformance suite for FakeRuntime and optional real hosts  |
+| `@hotrepl/cli`         | `hotrepl` command-line adapter over the SDK                         |
+| `@hotrepl/mcp`         | fixed nine-tool MCP stdio server over the SDK                       |
 
-Notable behaviors:
+## Evaluation semantics
 
-- `final: true` on a `subscribe_result` or `subscribe_error` means the subscription is now closed
-  (limit reached, unrecoverable error, or reset)
-- `errorKind`: `compile` | `runtime` | `timeout` | `cancelled` | `unsupported`
-
-## Evaluation Semantics
-
-- **Persistent state**: variables, using directives, and type definitions survive across evals
-  within a session. Use `reset` to clear them.
-- **Main thread**: all evals run on the game's main thread. At most one executes per frame; the rest
-  queue.
-- **Timeout**: wall-clock budget per eval (default 10 s), overridable via `timeoutMs`. Enforcement
-  depends on the active evaluator: Mono.CSharp reports `HardAbort`; Roslyn reports `Cooperative`.
-- **C# version**: depends on the active evaluator. Mono.CSharp is C# 7.x; Roslyn evaluators report
-  `latest`.
-
-## Built-in Helpers
-
-Injected as the static class `Repl`. Call `Repl.Help()` for the current full list.
-
-| Method                                                      | Returns    | Description                                                  |
-| ----------------------------------------------------------- | ---------- | ------------------------------------------------------------ |
-| `Repl.Help()`                                               | `string[]` | Signatures of all available helpers                          |
-| `Repl.History(int limit=20)`                                | `object[]` | Recent evals: `{code, value, error, timestamp}`              |
-| `Repl.Inspect(object obj, int depth=2, int maxChildren=50)` | `object`   | Deep reflection dictionary; handles circular refs            |
-| `Repl.Describe(Type type)`                                  | `object`   | Type metadata: base, interfaces, properties, fields, methods |
-
-Hosts can inject additional helpers (e.g. `UnityHelpers.SceneGraph()`, `UnityHelpers.Screenshot()`,
-and `Il2CppHelpers.FindObjects()` on IL2CPP hosts). They appear in `handshake.helpers[]`.
+- Persistent evaluator state survives across evals until `reset`; generated types may remain loaded
+  until process exit.
+- Fleck callbacks enqueue work only. The main-thread `Tick()` path is the sole executor.
+- Tick drain order is fixed: cancels, command queue, at most one eval, subscriptions.
+- A new WebSocket connection replaces the previous client and emits `session_evicted`.
+- Mono.CSharp evaluates C# 7.x; Roslyn evaluators report `latest`.
+- Timeout enforcement is capability-driven: `hardAbort`, `cooperative`, or `unsupported`.
 
 ## Embedding
 
-Implement [`IReplHost`](src/HotRepl.Core/IReplHost.cs) and drive `ReplEngine`:
+Implement [`IReplHost`](src/HotRepl.Core/IReplHost.cs) and drive `ReplEngine` from the host's main
+thread:
 
 ```csharp
 var engine = new ReplEngine(new MyHost());
-engine.Start();   // once, from the main thread
+engine.Start();
 
-// per-frame:
+// per frame
 engine.Tick();
 
-// on shutdown:
 engine.Dispose();
 ```
 
-`IReplHost` is the only coupling point between `HotRepl.Core` and any platform. It supplies extra
-assemblies, opened namespaces, and helper signatures for the handshake. See
-[`ReplConfig.cs`](src/HotRepl.Core/ReplConfig.cs) for configuration options (all properties have
-safe defaults and XML doc comments).
+`IReplHost` is the only platform boundary. Core stays free of BepInEx, UnityEngine, MelonLoader,
+Il2CppInterop, game-specific types, `mcs.dll`, and Roslyn packages.
 
-## Building
-
-### Common
+## Building host adapters
 
 ```bash
-dotnet build src/HotRepl.Core/        # Core only; no Unity DLLs needed
-dotnet build src/HotRepl.BepInEx/     # Requires Unity DLLs in lib/
-dotnet test tests/HotRepl.Tests/      # Unit tests; no game required
-```
+dotnet build src/HotRepl.BepInEx/ --nologo -v q
 
-### BepInEx / Mono
-
-Output: `src/<Project>/bin/Debug/netstandard2.1/`. Deploy the host, Core control contracts, Core
-dependencies, and Mono.CSharp runtime side-by-side to BepInEx:
-
-```bash
-GAME_DIR="/path/to/game"
-HOTREPL_OUT="src/HotRepl.BepInEx/bin/Debug/netstandard2.1"
-cp -f "$HOTREPL_OUT"/HotRepl.BepInEx.dll "$GAME_DIR/BepInEx/plugins/"
-cp -f "$HOTREPL_OUT"/HotRepl.Core.dll "$GAME_DIR/BepInEx/plugins/"
-cp -f "$HOTREPL_OUT"/Fleck.dll "$GAME_DIR/BepInEx/plugins/"
-cp -f "$HOTREPL_OUT"/Newtonsoft.Json.dll "$GAME_DIR/BepInEx/plugins/"
-cp -f "$HOTREPL_OUT"/mcs.dll "$GAME_DIR/BepInEx/plugins/"
-```
-
-### MelonLoader / IL2CPP
-
-Build with game-provided paths:
-
-```bash
 dotnet build src/HotRepl.Host.MelonLoader/HotRepl.Host.MelonLoader.csproj \
   -p:MelonLoaderPath="/path/to/Game/MelonLoader" \
   -p:Il2CppAssembliesPath="/path/to/Game/MelonLoader/Il2CppAssemblies"
 ```
 
-Deploy the host, Core, Roslyn evaluator, Unity helpers, Fleck, Newtonsoft.Json, and Roslyn DLLs
-side-by-side in the game's `Mods/` directory. Do not deploy `System.*` framework sidecars unless a
-game-specific deploy guide has validated that resolver layout. The MelonLoader host uses
-Roslyn.Script by default and reports `timeoutMode: "Cooperative"` in the handshake.
-
-After deploying to an IL2CPP game, verify:
-
-```bash
-hotrepl info
-hotrepl eval '1 + 1'
-hotrepl eval 'UnityEngine.Application.version'
-hotrepl eval 'Il2CppHelpers.DescribeType("Il2Cpp.Monster")'    # use a type present in the target game
-hotrepl eval 'Il2CppHelpers.FindObjects("Il2Cpp.Monster").Length'
-hotrepl control describe
-hotrepl control call archive.preflight '{}'
-```
-
-Use a game-local wrapper type for the last two commands; HotRepl itself remains game-agnostic.
-
-## Known Limitations
-
-| Limitation                        | Details                                                                                                                                                         |
-| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Timeout mode depends on evaluator | Mono.CSharp reports `HardAbort`; Roslyn reports `Cooperative`, so a runaway runtime loop can still require restarting the game                                  |
-| Completion depends on evaluator   | Mono.CSharp supports completion; Roslyn evaluators report `supportsCompletion: false`                                                                           |
-| Type memory leak                  | Persistent evaluator sessions can emit assemblies that are not reclaimed until process exit; use `Roslyn.Isolated` for stateless audit snippets on .NET 6 hosts |
-| Single client                     | A new WebSocket connection replaces the prior session; old subscriptions are cancelled                                                                          |
+BepInEx deploys `HotRepl.BepInEx.dll`, `HotRepl.Core.dll`, Fleck, Newtonsoft.Json, and `mcs.dll`
+side-by-side. MelonLoader deploys the host, Core, Roslyn evaluator, Unity helpers, Fleck,
+Newtonsoft.Json, and Roslyn dependencies in `Mods/`.
 
 ## Contributing
 
-Install contributor tools once:
-
 ```bash
 brew install lefthook dprint actionlint commitlint typos
+bun install --frozen-lockfile
 dotnet tool restore
 lefthook install
+lefthook run pre-push --force
 ```
 
-Use `lefthook run pre-push` before pushing; it mirrors the CI gate. Commit messages follow
-Conventional Commits and are checked by the local `commit-msg` hook. See `AGENTS.md` for exact
-commands, verification expectations, and agent-specific constraints.
+`pre-push` mirrors CI: Bun tests/typecheck/schema export, dprint, typos, actionlint, C# build, and
+C# tests. See [`AGENTS.md`](AGENTS.md) for agent-specific constraints and targeted commands.
+
+## License
+
+MIT

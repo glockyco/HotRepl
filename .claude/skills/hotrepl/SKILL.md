@@ -7,25 +7,25 @@ description: >
   types and scene structure. HotRepl is a WebSocket REPL that accepts C# and returns
   structured JSON.
 allowed-tools: Bash,Read,Write
-version: 1.0.0
+version: 2.0.0
 ---
 
 # HotRepl Usage Guide
 
 HotRepl embeds a WebSocket server in a running Unity game through BepInEx or MelonLoader. You send
-C# code; it executes on the game's main thread and returns structured JSON. State persistence and
-timeout behavior depend on the active evaluator.
+C# code or typed command calls; work executes on the game's main thread and returns structured JSON.
+State persistence, completion, and timeout behavior are reported by the handshake.
 
 ## Verify the server is running
 
 ```bash
-cd /path/to/repo/client && hotrepl ping
-cd /path/to/repo/client && hotrepl info
+hotrepl info
+hotrepl eval '1 + 1'
 ```
 
-`pong` response means the server is up. `hotrepl info` shows the host, active evaluator, timeout
-mode, and available evaluators. If the `hotrepl` CLI is unavailable, connect with any WebSocket
-client (e.g. `websocat ws://localhost:18590`). Default endpoint: `ws://localhost:18590`
+Default endpoint: `ws://127.0.0.1:18590`. Override with `HOTREPL_URL` or CLI `--url`. If the CLI is
+unavailable, connect with any WebSocket client and read the initial `handshake` frame before sending
+requests.
 
 ## Handshake
 
@@ -34,44 +34,46 @@ On connection the server immediately sends:
 ```json
 {
   "type": "handshake",
-  "version": "1.0.0",
-  "csharpVersion": "latest",
+  "protocolVersion": 2,
+  "host": { "name": "MelonLoader", "version": "0.x", "platform": "Unity IL2CPP" },
   "evaluator": {
     "name": "Roslyn.Script",
     "languageVersion": "latest",
-    "supportsPersistentState": true,
+    "persistentState": true,
     "supportsCompletion": false,
-    "timeoutMode": "Cooperative"
-  },
-  "host": {
-    "name": "MelonLoader",
-    "runtime": ".NET 6",
-    "platform": "Unity IL2CPP"
+    "cancellation": "cooperative"
   },
   "availableEvaluators": ["Roslyn.Script", "Roslyn.Isolated"],
-  "defaultUsings": ["System", "System.Linq", "UnityEngine", "..."],
-  "helpers": ["String[] Help()", "Object Inspect(Object obj, ...)", "..."]
+  "defaultUsings": ["System", "System.Linq", "UnityEngine"],
+  "helpers": ["String[] Help()", "Object Inspect(Object obj, ...)", "..."],
+  "control": { "supported": true, "commandsListChanged": false, "schemaValidation": true },
+  "limits": {
+    "maxMessageBytes": 4194304,
+    "maxQueuedCommands": 32,
+    "maxResultLength": 102400,
+    "maxEnumerableElements": 100,
+    "defaultEvalTimeoutMs": 10000,
+    "maxJobConcurrency": 1
+  },
+  "enforces": ["maxMessageBytes", "maxQueuedCommands", "maxResultLength"]
 }
 ```
 
-Read `defaultUsings` — those namespaces are already open. Read `helpers` — no additional imports are
-needed; call them as `Repl.*` (core helpers), `UnityHelpers.*`, or `Il2CppHelpers.*` when those
-helper assemblies are present.
+Read `defaultUsings` and `helpers` before writing imports. Helpers appear as `Repl.*`,
+`UnityHelpers.*`, or `Il2CppHelpers.*` when those assemblies are present.
 
 ## Evaluate code
 
-Request:
-
 ```json
-{ "type": "eval", "id": "1", "code": "1 + 1" }
+{ "type": "eval", "id": "eval-1", "code": "1 + 1" }
 ```
 
-Success response:
+Success:
 
 ```json
 {
   "type": "eval_result",
-  "id": "1",
+  "id": "eval-1",
   "hasValue": true,
   "value": "2",
   "valueType": "System.Int32",
@@ -79,31 +81,35 @@ Success response:
 }
 ```
 
-Error response:
+Failure:
 
 ```json
 {
   "type": "eval_error",
-  "id": "1",
-  "errorKind": "compile",
-  "message": "error CS0103: The name 'x' does not exist in the current context"
+  "id": "eval-1",
+  "error": {
+    "kind": "validation_failed",
+    "code": "compileError",
+    "message": "error CS0103: The name 'x' does not exist in the current context",
+    "retryable": false
+  }
 }
 ```
 
-`errorKind`: `compile` | `runtime` | `timeout` | `cancelled` | `unsupported`
-
-`id` is caller-assigned and echoed back. Use unique ids per request.
+Closed error kinds: `validation_failed`, `precondition_failed`, `conflict`, `timeout`, `cancelled`,
+`busy`, `unknown_command`, `unsupported_operation`, `artifact_missing`, `invalid_request`,
+`internal`.
 
 ## State persists across evals
 
 ```json
-{"type": "eval", "id": "2", "code": "var player = GameObject.Find(\"Player\");"}
-{"type": "eval", "id": "3", "code": "player.transform.position"}
+{ "type": "eval", "id": "eval-2", "code": "var player = GameObject.Find(\"Player\");" }
+{ "type": "eval", "id": "eval-3", "code": "player.transform.position" }
 ```
 
 Variables, type definitions, and using directives survive until `reset` or reconnect when the active
-evaluator reports `supportsPersistentState: true`. Use `Roslyn.Isolated` for repeatable, stateless
-snippets on .NET 6 hosts.
+evaluator reports `persistentState: true`. Use `Roslyn.Isolated` for repeatable, stateless snippets
+on .NET 6 hosts.
 
 ## Common inspection patterns
 
@@ -154,71 +160,56 @@ Repl.History(limit: 10)   // returns [{code, value, error, timestamp}, ...]
   "id": "watch-pos",
   "code": "GameObject.Find(\"Player\").transform.position.ToString()",
   "intervalFrames": 30,
-  "onChange": true,
   "limit": 100
 }
 ```
 
-- `intervalFrames`: re-evaluate every N frames (default 1).
-- `onChange`: only emit when the value changes from the previous tick.
-- `limit`: stop after N results (0 = unlimited).
-- Each tick produces `subscribe_result` or `subscribe_error`.
-- `"final": true` in the response means the subscription is closed.
+Each tick produces `subscribe_result` or `subscribe_error`. `final: true` means the subscription is
+closed.
 
-Cancel a subscription:
+## Typed commands
 
-```json
-{ "type": "cancel", "id": "watch-pos" }
-```
-
-## Autocomplete
+List and describe commands before calling them:
 
 ```json
-{ "type": "complete", "id": "c1", "code": "Time.", "cursorPos": 5 }
+{ "type": "commands_list", "id": "commands-1" }
+{ "type": "command_describe", "id": "describe-1", "name": "archive.preflight" }
 ```
 
-Returns `complete_result` with `completions[]`. Does not execute code.
-
-## Reset evaluator state
+Run a sync command:
 
 ```json
-{ "type": "reset", "id": "r1" }
+{ "type": "command_call", "id": "cmd-1", "name": "archive.preflight", "args": {} }
 ```
 
-Clears REPL-defined variables and types for persistent evaluators. Use before starting a fresh
-exploration session. Persistent evaluators may retain generated assemblies until process exit; use
-`Roslyn.Isolated` for stateless snippets on .NET 6 hosts.
+Run a job command: `command_call` returns `job_accepted`; poll `job_status` until it returns
+terminal `job_result`. Clients do not send a separate `job_result` request in v2.
 
-## Heartbeat
+## Artifact references
 
-```json
-{ "type": "ping", "id": "hb1" }
-```
+Command outputs include named artifact references instead of bulk payloads. Verify `sha256`, size,
+`finalized`, schema, and counts before trusting artifact content. The TypeScript SDK `Artifact`
+helper rehashes bytes before returning `bytes()`, `text()`, `json()`, or `open()` metadata.
 
-Returns `{"type": "pong", "id": "hb1"}`. Use to verify the connection is alive before long sequences
-of evals.
-
-## Python CLI shortcuts
+## TypeScript CLI shortcuts
 
 ```bash
 hotrepl info                                      # show host/evaluator metadata
-hotrepl select-evaluator Roslyn.Isolated         # stateless snippets on .NET 6 hosts
 hotrepl eval 'Camera.main.transform.position'    # eval and print formatted result
-hotrepl eval --json 'Time.frameCount'            # raw JSON response
+hotrepl eval 'Time.frameCount' --format json     # JSON output
 hotrepl complete 'Time.'                         # completions at end of snippet
-hotrepl test                                     # run full protocol smoke suite
-hotrepl test --url ws://192.168.1.10:18590       # against a remote game
+hotrepl run archive.preflight '{}'               # typed command call
+hotrepl describe archive.preflight               # descriptor details
+hotrepl journal --limit 20                       # recent eval/command entries
 ```
-
-The library at `client/src/hotrepl/` is importable for scripted workflows.
 
 ## Limitations — read before writing evals
 
-| Constraint                        | What to do                                                                                                                                                      |
-| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| C# version depends on evaluator   | Mono.CSharp is C# 7.x; Roslyn evaluators report `latest`                                                                                                        |
-| `varName * expr` parser bug       | `player * 2` is parsed as a pointer type if `player` was defined in a prior eval. Use `2 * player` instead. Affects `*` only                                    |
-| Timeout mode depends on evaluator | Mono.CSharp reports `HardAbort`; Roslyn reports `Cooperative`, so runaway runtime loops may still require restarting the game                                   |
-| One client at a time              | Reconnecting replaces the session and cancels all subscriptions                                                                                                 |
-| IL2CPP requires MelonLoader host  | Use `hotrepl info` to verify host/evaluator metadata before IL2CPP audits                                                                                       |
-| Type definitions leak memory      | Persistent evaluator sessions can emit assemblies that are not reclaimed until process exit; use `Roslyn.Isolated` for stateless audit snippets on .NET 6 hosts |
+| Constraint                        | What to do                                                                                                                                                |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| C# version depends on evaluator   | Mono.CSharp is C# 7.x; Roslyn evaluators report `latest`                                                                                                  |
+| `varName * expr` parser bug       | `player * 2` is parsed as a pointer type if `player` was defined in a prior eval. Use `2 * player` instead. Affects `*` only                              |
+| Timeout mode depends on evaluator | Mono.CSharp reports `hardAbort`; Roslyn reports `cooperative`, so runaway runtime loops may still require restarting the game                             |
+| One client at a time              | Reconnecting replaces the session and cancels all subscriptions                                                                                           |
+| IL2CPP requires MelonLoader host  | Use `hotrepl info` to verify host/evaluator metadata before IL2CPP audits                                                                                 |
+| Type definitions leak memory      | Persistent evaluator sessions can emit assemblies that are not reclaimed until process exit; use `Roslyn.Isolated` for stateless snippets on .NET 6 hosts |

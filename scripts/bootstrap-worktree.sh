@@ -3,7 +3,7 @@
 #
 # Fresh git worktrees contain tracked files only. HotRepl additionally requires
 # gitignored inputs (Unity DLLs in `lib/`, BepInEx assemblies, `Local.props`)
-# and per-worktree restored state (`.dotnet/tools/`, `client/.venv/`) before
+# and per-worktree restored state (`.dotnet/tools/`, `node_modules/`) before
 # builds and tests are meaningful.
 #
 # This script never overwrites tracked files. Optional gitignored inputs are
@@ -11,7 +11,7 @@
 # one local copy of large Unity DLLs.
 #
 # Usage:
-#   scripts/bootstrap-worktree.sh [--source <trusted-checkout>] [--no-python]
+#   scripts/bootstrap-worktree.sh [--source <trusted-checkout>]
 #
 # Run from inside a HotRepl git worktree.
 
@@ -25,19 +25,17 @@ Bootstrap a fresh HotRepl git worktree:
   - link gitignored Unity DLLs from a trusted checkout (optional)
   - link `Local.props` if the source has one and the worktree does not
   - run `dotnet tool restore` (csharpier, etc.)
-  - run `uv sync` inside `client/` unless `--no-python`
+  - run `bun install --frozen-lockfile`
   - report what is still missing
 
 Options:
   --source <path>   Trusted local checkout to link gitignored inputs from.
                     Skip to bootstrap a Core-only worktree (no host build).
-  --no-python       Skip `cd client && uv sync`.
   -h, --help        Show this help and exit.
 USAGE
 }
 
 source_checkout=""
-do_python=1
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -45,10 +43,6 @@ while [[ $# -gt 0 ]]; do
       [[ $# -ge 2 ]] || { echo "Error: --source requires a path" >&2; exit 2; }
       source_checkout="$2"
       shift 2
-      ;;
-    --no-python)
-      do_python=0
-      shift
       ;;
     -h|--help)
       usage
@@ -151,12 +145,10 @@ fi
 echo "Restoring per-worktree state:"
 run dotnet tool restore
 
-if [[ "$do_python" -eq 1 ]]; then
-  if command -v uv >/dev/null 2>&1; then
-    run bash -lc 'cd client && uv sync --extra dev'
-  else
-    echo "  skip    client/uv sync (uv not on PATH)"
-  fi
+if command -v bun >/dev/null 2>&1; then
+  run bun install --frozen-lockfile
+else
+  echo "  skip    bun install --frozen-lockfile (bun not on PATH)"
 fi
 
 # ---- verify ----------------------------------------------------------------
@@ -178,9 +170,7 @@ if [[ -n "$source_checkout" ]]; then
   verify_path "$repo_root/lib/UnityEngine.CoreModule.dll" "Unity DLLs in lib/"
   verify_path "$repo_root/src/HotRepl.BepInEx/lib" "BepInEx host references"
 fi
-if [[ "$do_python" -eq 1 ]]; then
-  verify_path "$repo_root/client/.venv" "Python venv (client/.venv)"
-fi
+verify_path "$repo_root/node_modules" "Bun dependencies (node_modules)"
 
 cat <<DONE
 
@@ -190,5 +180,6 @@ Next steps:
   - Build Core:                    dotnet build src/HotRepl.Core/ --nologo -v q
   - Run unit tests:                dotnet test tests/HotRepl.Tests/ --nologo -v q
   - Build BepInEx host (if libs):  dotnet build src/HotRepl.BepInEx/ --nologo -v q
+  - Run package tests:              bun test packages/*/test/**/*.test.ts
   - Run pre-push gate:             lefthook run pre-push --force
 DONE

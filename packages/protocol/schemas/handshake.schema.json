@@ -1,0 +1,190 @@
+{
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "type",
+    "protocolVersion",
+    "host",
+    "evaluator",
+    "availableEvaluators",
+    "defaultUsings",
+    "helpers",
+    "control",
+    "limits",
+    "enforces"
+  ],
+  "properties": {
+    "type": {
+      "const": "handshake",
+      "type": "string"
+    },
+    "protocolVersion": {
+      "const": 2,
+      "type": "number"
+    },
+    "host": {
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "name",
+        "version",
+        "platform"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "platform": {
+          "type": "string"
+        }
+      }
+    },
+    "evaluator": {
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "name",
+        "languageVersion",
+        "persistentState",
+        "supportsCompletion",
+        "cancellation"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "languageVersion": {
+          "type": "string"
+        },
+        "persistentState": {
+          "type": "boolean"
+        },
+        "supportsCompletion": {
+          "type": "boolean"
+        },
+        "cancellation": {
+          "anyOf": [
+            {
+              "const": "cooperative",
+              "type": "string"
+            },
+            {
+              "const": "hardAbort",
+              "type": "string"
+            },
+            {
+              "const": "unsupported",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    "availableEvaluators": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "defaultUsings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "helpers": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "control": {
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "supported",
+        "commandsListChanged",
+        "schemaValidation"
+      ],
+      "properties": {
+        "supported": {
+          "type": "boolean"
+        },
+        "commandsListChanged": {
+          "type": "boolean"
+        },
+        "schemaValidation": {
+          "type": "boolean"
+        }
+      }
+    },
+    "limits": {
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "maxMessageBytes",
+        "maxQueuedCommands",
+        "maxResultLength",
+        "maxEnumerableElements",
+        "defaultEvalTimeoutMs",
+        "maxJobConcurrency"
+      ],
+      "properties": {
+        "maxMessageBytes": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "maxQueuedCommands": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "maxResultLength": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "maxEnumerableElements": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "defaultEvalTimeoutMs": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "maxJobConcurrency": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    },
+    "enforces": {
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {
+            "const": "maxMessageBytes",
+            "type": "string"
+          },
+          {
+            "const": "maxQueuedCommands",
+            "type": "string"
+          },
+          {
+            "const": "maxResultLength",
+            "type": "string"
+          },
+          {
+            "const": "maxEnumerableElements",
+            "type": "string"
+          },
+          {
+            "const": "maxJobConcurrency",
+            "type": "string"
+          }
+        ]
+      }
+    }
+  }
+}

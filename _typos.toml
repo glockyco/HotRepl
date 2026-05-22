@@ -24,16 +24,8 @@ LAN = "LAN"
 [files]
 extend-exclude = [
   "lib/",
-  "**/uv.lock",
   "**/*.lock.json",
   "**/package-lock.json",
-  ".mypy_cache/",
-  "**/.mypy_cache/",
-  "**/.ruff_cache/",
-  "**/.pytest_cache/",
-  "**/__pycache__/",
   "**/bin/",
   "**/obj/",
-  "**/.venv/",
-  ".venv/",
 ]

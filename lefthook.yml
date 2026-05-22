@@ -5,8 +5,7 @@
 # directly so drift is impossible.
 #
 # pre-commit operates on staged files only and auto-stages tool fixes
-# (CSharpier, ruff, dprint). pre-push runs the full repository gate
-# without scoping to changed files.
+# (CSharpier, dprint). pre-push runs the full repository gate.
 #
 # Tool wrappers:
 #   - `dotnet csharpier` is a per-repo local tool (.config/dotnet-tools.json);
@@ -15,16 +14,8 @@
 #   - dotnet commands prefer `/usr/local/share/dotnet/dotnet` when present
 #     because Homebrew's `dotnet` formula can shadow the official .NET 10 SDK
 #     with a 9.x SDK on macOS.
-#   - `uvx ruff` runs ruff from uv's ephemeral tool cache; ruff doesn't import
-#     project code, so an isolated env is correct.
-#   - `uv run --project client --extra dev pyright` syncs `client/.venv` with
-#     project deps + pyright, then runs pyright against it. `uvx pyright`
-#     would launch in an isolated env where imports like `websockets` and
-#     `hotrepl` are unresolvable, regardless of `venvPath` in pyproject.toml.
-#     See microsoft/pyright discussion #10975.
-#   - `uv run --project client --extra test` runs pytest with the hotrepl
-#     client installed in a managed venv. The smoke tests skip themselves
-#     when no HotRepl server is reachable, so this is fast offline.
+#   - `bun install --frozen-lockfile` is part of pre-push so package tests,
+#     typecheck, and schema export always use the committed lockfile.
 #
 # Why pre-push omits a standalone CSharpier check: CSharpier.MsBuild runs
 # inside `dotnet build` (Directory.Build.props sets CSharpier_Check=true),
@@ -40,16 +31,8 @@ pre-commit:
         if [ -x /usr/local/share/dotnet/dotnet ]; then dotnet_bin=/usr/local/share/dotnet/dotnet; fi
         "$dotnet_bin" csharpier format {staged_files}
       stage_fixed: true
-    ruff-fix:
-      glob: "*.py"
-      run: uvx ruff check --fix {staged_files}
-      stage_fixed: true
-    ruff-format:
-      glob: "*.py"
-      run: uvx ruff format {staged_files}
-      stage_fixed: true
     dprint:
-      glob: "*.{md,json,jsonc,json5,yml,yaml,toml}"
+      glob: "*.{md,json,jsonc,json5,yml,yaml,toml,ts}"
       run: dprint fmt {staged_files}
       stage_fixed: true
     typos:
@@ -64,14 +47,16 @@ commit-msg:
       run: commitlint --edit {1}
 
 pre-push:
-  parallel: true
+  parallel: false
   commands:
-    ruff-check:
-      run: uvx ruff check
-    ruff-format-check:
-      run: uvx ruff format --check
-    pyright:
-      run: uv run --quiet --project client --extra dev pyright
+    bun-install:
+      run: bun install --frozen-lockfile
+    bun-test:
+      run: bun run test
+    bun-typecheck:
+      run: bun run typecheck
+    schemas-export:
+      run: bun run schemas:export
     dprint-check:
       run: dprint check
     typos:
@@ -90,5 +75,3 @@ pre-push:
         if [ -x /usr/local/share/dotnet/dotnet ]; then dotnet_bin=/usr/local/share/dotnet/dotnet; fi
         "$dotnet_bin" tool restore
         "$dotnet_bin" test tests/HotRepl.Tests/HotRepl.Tests.csproj --nologo -v q
-    pytest:
-      run: uv run --project client --extra test pytest client/tests/ -v --tb=short

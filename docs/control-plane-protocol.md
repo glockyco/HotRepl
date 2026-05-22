@@ -1,101 +1,182 @@
-# HotRepl Control Plane Protocol
+# HotRepl v2 Protocol
 
-HotRepl exposes two WebSocket surfaces: the eval REPL for diagnostics and the control plane for
-typed automation. The control plane is game-agnostic: HotRepl core defines transport, command/job
-envelopes, leases, and artifact metadata; game mods register command handlers through
-`IReplHost.ControlCommands`.
+HotRepl v2 uses one WebSocket JSON protocol for eval, subscriptions, typed commands, jobs,
+artifacts, and journal queries. There is no v1 auth, lease, ping, profile, or Python-client
+compatibility surface.
 
 ## Handshake
 
-When enabled, the `handshake` message includes `controlPlane`:
+The server sends `handshake` immediately after connection:
 
 ```json
 {
-  "supported": true,
-  "protocolVersion": 1,
-  "authRequired": false,
-  "leaseRequired": true,
-  "artifactRefsSupported": true,
-  "jobEventsSupported": true,
+  "type": "handshake",
+  "protocolVersion": 2,
+  "host": { "name": "BepInEx", "version": "0.x", "platform": "Unity Mono" },
+  "evaluator": {
+    "name": "Mono.CSharp",
+    "languageVersion": "7.x",
+    "persistentState": true,
+    "supportsCompletion": true,
+    "cancellation": "hardAbort"
+  },
+  "availableEvaluators": ["Mono.CSharp"],
+  "defaultUsings": ["System"],
+  "helpers": ["String[] Help()"],
+  "control": { "supported": true, "commandsListChanged": false, "schemaValidation": true },
   "limits": {
-    "maxMessageBytes": 1048576,
+    "maxMessageBytes": 4194304,
     "maxQueuedCommands": 32,
-    "maxJobEventBuffer": 1000
-  }
+    "maxResultLength": 102400,
+    "maxEnumerableElements": 100,
+    "defaultEvalTimeoutMs": 10000,
+    "maxJobConcurrency": 1
+  },
+  "enforces": [
+    "maxMessageBytes",
+    "maxQueuedCommands",
+    "maxResultLength",
+    "maxEnumerableElements",
+    "maxJobConcurrency"
+  ]
 }
 ```
 
-## Auth and lease flow
+`control.supported` means typed commands are available. Mutating commands do not require leases in
+v2; loopback/single-client authority is the trust boundary.
 
-1. Send `control_auth` with optional `token`.
-2. Receive `control_auth_result` with `ok`, `sessionId`, or structured `error`.
-3. Send `lease_acquire` with `sessionId` and `clientName` before mutating commands.
-4. Include returned `leaseId` on mutating `command_call`, `job_status`, `job_result`, and
-   `job_cancel` requests.
+## Error envelope
 
-Leases are in-memory and do not survive process restart.
-
-## Command registry
-
-Hosts expose descriptors with `name`, `version`, `kind` (`sync` or `job`), `mutatesState`,
-`argsSchema`, and `resultSchema`. Use `command_describe` to retrieve descriptors.
-
-BepInEx and MelonLoader host adapters expose `GlobalControlCommandRegistry.Instance`. Game-specific
-plugins register handlers with that registry during plugin initialization and dispose their
-registrations during plugin shutdown.
-
-## Synchronous command flow
-
-`command_call` for a `sync` descriptor executes on the engine tick path and returns either:
-
-- `command_result` with `status: "ok"`, `result`, `artifacts`, and `diagnostics`; or
-- `command_error` with `status: "failed"` and structured `error`.
-
-## Job command flow
-
-`command_call` for a `job` descriptor returns `command_accepted` immediately with `jobId` and
-`state: "accepted"`. Use:
-
-- `job_status` → `job_status_result` with `state` and optional `progress`;
-- `job_result` → `job_result` after terminal completion, or `command_error` with `busy` while
-  non-terminal;
-- `job_cancel` → `job_cancel_result` with cancellation acknowledgement.
-
-States are: `accepted`, `running`, `completed`, `failed`, `cancelling`, `cancelled`.
-
-## Cancellation semantics
-
-Cancellation is cooperative. `job_cancel` requests cancellation and returns immediately. A handler
-that observes its cancellation token transitions through `cancelling` to `cancelled`; a handler that
-completes first may still produce `completed`.
-
-## Artifact references
-
-Bulk data is not returned inline. Results include artifact metadata references:
+Failures use one envelope:
 
 ```json
 {
-  "logicalName": "items",
+  "kind": "validation_failed",
+  "code": "schemaValidationFailed",
+  "message": "Input did not match the command schema.",
+  "retryable": false,
+  "details": { "path": "/scene" }
+}
+```
+
+Closed `kind` values are `validation_failed`, `precondition_failed`, `conflict`, `timeout`,
+`cancelled`, `busy`, `unknown_command`, `unsupported_operation`, `artifact_missing`,
+`invalid_request`, and `internal`.
+
+## Eval and reset
+
+```json
+{ "type": "eval", "id": "eval-1", "code": "1 + 1", "timeoutMs": 10000 }
+```
+
+Success returns `eval_result`; failure returns `eval_error` with `error`:
+
+```json
+{ "type": "eval_result", "id": "eval-1", "hasValue": true, "value": "2", "durationMs": 3 }
+{ "type": "eval_error", "id": "eval-1", "error": { "kind": "internal", "code": "runtimeException", "message": "...", "retryable": false } }
+```
+
+`reset` clears persistent evaluator variables and returns `reset_result`.
+
+## Subscriptions
+
+```json
+{
+  "type": "subscribe",
+  "id": "watch-1",
+  "code": "Time.frameCount",
+  "intervalFrames": 1,
+  "limit": 10
+}
+```
+
+The server emits `subscribe_result` frames until `final: true`, or `subscribe_error` with `error`. A
+new client connection sends `session_evicted` to the old session and closes its subscriptions.
+
+## Typed commands
+
+List commands:
+
+```json
+{ "type": "commands_list", "id": "list-1" }
+```
+
+Describe one command:
+
+```json
+{ "type": "command_describe", "id": "describe-1", "name": "archive.preflight" }
+```
+
+Descriptors include `name`, `majorVersion`, `kind` (`sync` or `job`), `mutatesState`, `inputSchema`,
+`outputSchema`, `artifactsSchema`, and optional `cancellation`.
+
+Run a command:
+
+```json
+{ "type": "command_call", "id": "cmd-1", "name": "archive.preflight", "args": {} }
+```
+
+Synchronous commands return:
+
+```json
+{
+  "type": "command_result",
+  "id": "cmd-1",
+  "status": "ok",
+  "output": { "ok": true },
+  "artifacts": {},
+  "durationMs": 12
+}
+```
+
+Failures also use `command_result` with `status: "failed"` and `error`. There is no v2
+`command_error` message.
+
+## Jobs
+
+Job commands return `job_accepted`:
+
+```json
+{ "type": "job_accepted", "id": "cmd-1", "jobId": "job-1", "state": "running" }
+```
+
+Poll with `job_status`:
+
+```json
+{ "type": "job_status", "id": "status-1", "jobId": "job-1" }
+```
+
+While running, the response is `job_status_result`. Once terminal, `job_status` returns the terminal
+`job_result` directly; clients do not send a separate `job_result` request.
+
+Cancel with `job_cancel`, which returns `job_cancel_result`.
+
+## Artifacts
+
+Artifacts are named references, not bulk payloads:
+
+```json
+{
   "uri": "file:///exports/items.json",
   "path": "/exports/items.json",
-  "contentType": "application/json",
-  "byteSize": 1234,
   "sha256": "...",
+  "byteSize": 1234,
+  "contentType": "application/json",
   "finalized": true
 }
 ```
 
-Consumers must independently verify artifact existence, hashes, schemas, and counts.
+Consumers must verify `sha256`, size, finalization, schema, and counts before trusting artifact
+content. The SDK `Artifact` helper performs hash verification before returning bytes, text, JSON, or
+open metadata.
 
-## Error kinds
+## Journal
 
-Known control error kinds include `invalid_request`, `auth_failed`, `lease_required`,
-`lease_conflict`, `unknown_command`, `unsupported_operation`, `precondition_failed`, `conflict`,
-`busy`, `timeout`, `cancelled`, `validation_failed`, `artifact_missing`, and `internal`.
+`journal_query` returns recent eval and command entries:
 
-## Eval and control response delivery
+```json
+{ "type": "journal_query", "id": "journal-1", "kind": "command", "limit": 20 }
+```
 
-Eval messages use the REPL message types documented in `src/HotRepl.Core/Protocol/Messages.cs`. Eval
-responses use compatibility delivery through the active client. Control responses are delivered only
-to the originating connection and are dropped if that connection is gone, preventing a replacement
-client from receiving another controller's results.
+Entries include `id`, `kind`, optional `name` or `code`, `success`, `durationMs`, optional
+`errorKind`, and `timestamp`.

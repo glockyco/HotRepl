@@ -199,7 +199,7 @@ decision:
   "workspaces": ["packages/*"],
   "scripts": {
     "build": "bun run --filter './packages/*' build",
-    "test": "bun test packages/*/test/**/*.test.ts",
+    "test": "bun test packages/*/test",
     "typecheck": "bun run --filter './packages/*' typecheck",
     "schemas:export": "bun run --cwd packages/protocol schemas:export"
   },
@@ -894,7 +894,7 @@ git commit -m "feat(mcp): add fixed HotRepl tool server"
   implementation intentionally differs from the approved design
 - Modify: this plan's checkboxes and deviations section
 
-- [ ] **Step 1: Write failing gate/docs checks**
+- [x] **Step 1: Write failing gate/docs checks**
 
 Before deleting files, run:
 
@@ -907,31 +907,31 @@ uv run --project client --extra dev pyright
 Expected: these are the old gates that will be removed from `lefthook.yml`. Their old success is not
 the v2 acceptance criterion; the acceptance criterion becomes Bun tests/typecheck plus C# tests.
 
-- [ ] **Step 2: Delete Python client and remove Python gates**
+- [x] **Step 2: Delete Python client and remove Python gates**
 
 Delete `client/` and Python-only hook commands (`ruff-check`, `ruff-format-check`, `pyright`,
 `pytest`). Keep any repo-level Python config only if another non-client tool still uses it;
 otherwise delete it in the same commit.
 
-- [ ] **Step 3: Add TS gates**
+- [x] **Step 3: Add TS gates**
 
 Add pre-push commands for:
 
 ```sh
 bun install --frozen-lockfile
-bun test packages/*/test/**/*.test.ts
+bun run test
 bun run typecheck
 bun run schemas:export
 ```
 
 Keep dprint, typos, actionlint, dotnet build, and dotnet test.
 
-- [ ] **Step 4: Rewrite docs and skill references**
+- [x] **Step 4: Rewrite docs and skill**
 
 Update setup/usage instructions to describe Bun packages, `hotrepl` TypeScript CLI, `hotrepl-mcp`,
 v2 protocol, no auth/lease, and loopback/single-client authority.
 
-- [ ] **Step 5: Run final HotRepl repo verification**
+- [x] **Step 5: Run final HotRepl repo verification**
 
 Run:
 
@@ -939,7 +939,7 @@ Run:
 dotnet build src/HotRepl.Core/ --nologo -v q
 dotnet test tests/HotRepl.Tests/ --nologo -v q
 bun install --frozen-lockfile
-bun test packages/*/test/**/*.test.ts
+bun run test
 bun run typecheck
 dprint check
 typos
@@ -949,7 +949,7 @@ lefthook run pre-push --force
 
 Expected: all pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```sh
 git add -A
