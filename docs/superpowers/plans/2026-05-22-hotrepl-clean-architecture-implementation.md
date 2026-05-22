@@ -657,14 +657,14 @@ git commit -m "feat(runtime): use public protocol v2 records"
 - Test: `packages/sdk/test/artifact.test.ts`
 - Test: `packages/testing/test/fake-runtime.test.ts`
 
-- [ ] **Step 1: Write failing SDK tests against FakeRuntime**
+- [x] **Step 1: Write failing SDK tests against FakeRuntime**
 
 Cover connect/handshake validation, protocol mismatch, descriptor caching, sync `run`, job `run`
 with polling, `wait:false` job handle, `eval`, `reset`, `complete` unsupported fast-fail, `watch`
 async iterable final errors, `journal`, typed `HotReplError`, artifact hash verification, and
 session eviction events.
 
-- [ ] **Step 2: Run red tests**
+- [x] **Step 2: Run red tests**
 
 Run:
 
@@ -674,21 +674,21 @@ bun test packages/testing/test packages/sdk/test
 
 Expected: FAIL because packages do not exist.
 
-- [ ] **Step 3: Implement FakeRuntime and MockSession**
+- [x] **Step 3: Implement FakeRuntime and MockSession**
 
 `FakeRuntime` implements every v2 wire message without WebSocket. It stores
 commands/descriptors/jobs/artifacts/journal in memory and applies the same limits as the C# runtime.
 `MockSession` exposes the SDK `Session` API backed by `FakeRuntime` so consumer facade tests do not
 need sockets.
 
-- [ ] **Step 4: Implement SDK core**
+- [x] **Step 4: Implement SDK core**
 
 `connect()` resolves default URL, env URL, explicit URL, and completes handshake before returning.
 `Session.run()` consults descriptors, chooses sync/job, polls job status every 250 ms by default,
 and returns a `Result`. `Artifact.bytes/json/text/open` rehashes content against `sha256` before
 returning it.
 
-- [ ] **Step 5: Run green verification**
+- [x] **Step 5: Run green verification**
 
 Run:
 
@@ -700,7 +700,7 @@ bun run --cwd packages/sdk typecheck
 
 Expected: all pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```sh
 git add packages/testing packages/sdk package.json bun.lock docs/superpowers/plans/2026-05-22-hotrepl-clean-architecture-implementation.md

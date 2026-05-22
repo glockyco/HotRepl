@@ -16,9 +16,31 @@
         "@sinclair/typebox": "^0.34.0",
       },
     },
+    "packages/sdk": {
+      "name": "@hotrepl/sdk",
+      "version": "0.0.0",
+      "dependencies": {
+        "@hotrepl/protocol": "workspace:*",
+      },
+      "devDependencies": {
+        "@hotrepl/testing": "workspace:*",
+      },
+    },
+    "packages/testing": {
+      "name": "@hotrepl/testing",
+      "version": "0.0.0",
+      "dependencies": {
+        "@hotrepl/protocol": "workspace:*",
+        "@hotrepl/sdk": "workspace:*",
+      },
+    },
   },
   "packages": {
     "@hotrepl/protocol": ["@hotrepl/protocol@workspace:packages/protocol"],
+
+    "@hotrepl/sdk": ["@hotrepl/sdk@workspace:packages/sdk"],
+
+    "@hotrepl/testing": ["@hotrepl/testing@workspace:packages/testing"],
 
     "@sinclair/typebox": ["@sinclair/typebox@0.34.49", "", {}, "sha512-brySQQs7Jtn0joV8Xh9ZV/hZb9Ozb0pmazDIASBkYKCjXrXU3mpcFahmK/z4YDhGkQvP9mWJbVyahdtU5wQA+A=="],
 

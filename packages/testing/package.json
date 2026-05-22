@@ -1,0 +1,17 @@
+{
+  "name": "@hotrepl/testing",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "bun test test/**/*.test.ts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@hotrepl/protocol": "workspace:*",
+    "@hotrepl/sdk": "workspace:*"
+  }
+}
