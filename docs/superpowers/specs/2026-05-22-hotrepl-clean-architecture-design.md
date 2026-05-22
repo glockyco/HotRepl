@@ -134,7 +134,7 @@ These are restated from the architecture review and adopted verbatim.
 | `@hotrepl/protocol` | wire types, error enums, capability types, JSON Schemas for built-in messages                                   | choreography                                |
 | `@hotrepl/sdk`      | `Session`, auto-acquire choreography, descriptor cache, typed errors, profile/discovery resolution              | argparse, MCP plumbing                      |
 | `@hotrepl/cli`      | argparse / commander, terminal vs JSON vs JSONL formatting, exit codes                                          | protocol details                            |
-| `@hotrepl/mcp`      | MCP tool surface (six tools), annotations from descriptors, stdio transport                                     | choreography (uses SDK)                     |
+| `@hotrepl/mcp`      | MCP tool surface (nine tools), annotations from descriptors, stdio transport                                    | choreography (uses SDK)                     |
 | `@hotrepl/testing`  | in-process fake runtime, record/replay, schema validators                                                       | production logic                            |
 | Consumer            | game-specific typed facades, workflow logic, domain schemas                                                     | protocol primitives                         |
 
