@@ -1,5 +1,5 @@
-import { describe, expect, test } from "bun:test";
 import { FakeRuntime } from "@hotrepl/testing";
+import { describe, expect, test } from "bun:test";
 import { runCli } from "../src/index";
 
 const commandDescriptor = {
@@ -41,7 +41,7 @@ describe("hotrepl CLI output", () => {
       await runCli(["eval", "1 + 1"], { runtime }),
       await runCli(["reset"], { runtime }),
       await runCli(["complete", "Con", "3"], { runtime }),
-      await runCli(["run", "math.double", '{"value":4}'], { runtime }),
+      await runCli(["run", "math.double", "{\"value\":4}"], { runtime }),
       await runCli(["describe", "math.double"], { runtime }),
       await runCli(["artifacts", "read", JSON.stringify(artifact)], { runtime }),
       await runCli(["journal", "--limit", "2"], { runtime }),
@@ -77,7 +77,7 @@ describe("hotrepl CLI output", () => {
   test("renders JSON output for structured commands", async () => {
     const runtime = await configuredRuntime();
 
-    const output = await runCli(["run", "math.double", '{"value":5}', "--format", "json"], {
+    const output = await runCli(["run", "math.double", "{\"value\":5}", "--format", "json"], {
       runtime,
     });
 

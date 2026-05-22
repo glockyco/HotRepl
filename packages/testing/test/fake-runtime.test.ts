@@ -1,5 +1,5 @@
-import { describe, expect, test } from "bun:test";
 import { ERROR_KINDS, MESSAGE_TYPES, PROTOCOL_VERSION } from "@hotrepl/protocol";
+import { describe, expect, test } from "bun:test";
 import { FakeRuntime } from "../src";
 
 describe("FakeRuntime", () => {

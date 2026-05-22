@@ -1,5 +1,5 @@
-import type { CallToolResult, ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import type { Artifact, Result, RunOptions, Session } from "@hotrepl/sdk";
+import type { CallToolResult, ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod/v4";
 import type { SessionManager } from "./session-manager";
 
@@ -16,35 +16,62 @@ export async function createHotReplTools(manager: SessionManager): Promise<HotRe
   const commands = await listCommandDescriptors(session);
   const runMutates = commands.some((command) => command.mutatesState);
   return [
-    tool("hotrepl_info", "Return runtime handshake and capability information.", z.object({}), async () => {
-      const current = await manager.getSession();
-      return result(current.handshake);
-    }, readOnly()),
-    tool("hotrepl_eval", "Evaluate C# code in the runtime.", z.object({ code: z.string(), timeoutMs: z.number().optional() }), async (args) => {
-      const current = await manager.getSession();
-      return result(await current.eval(String(args.code), optionalNumber(args.timeoutMs)));
-    }),
+    tool(
+      "hotrepl_info",
+      "Return runtime handshake and capability information.",
+      z.object({}),
+      async () => {
+        const current = await manager.getSession();
+        return result(current.handshake);
+      },
+      readOnly(),
+    ),
+    tool(
+      "hotrepl_eval",
+      "Evaluate C# code in the runtime.",
+      z.object({ code: z.string(), timeoutMs: z.number().optional() }),
+      async (args) => {
+        const current = await manager.getSession();
+        return result(await current.eval(String(args.code), optionalNumber(args.timeoutMs)));
+      },
+    ),
     tool("hotrepl_reset", "Reset evaluator state.", z.object({}), async () => {
       const current = await manager.getSession();
       await current.reset();
       return result({ reset: true });
     }),
-    tool("hotrepl_complete", "Return completions for C# code.", z.object({ code: z.string(), cursor: z.number().optional() }), async (args) => {
-      const current = await manager.getSession();
-      return result(await current.complete(String(args.code), optionalNumber(args.cursor)));
-    }, readOnly()),
+    tool(
+      "hotrepl_complete",
+      "Return completions for C# code.",
+      z.object({ code: z.string(), cursor: z.number().optional() }),
+      async (args) => {
+        const current = await manager.getSession();
+        return result(await current.complete(String(args.code), optionalNumber(args.cursor)));
+      },
+      readOnly(),
+    ),
     tool("hotrepl_list_commands", "List typed HotRepl commands.", z.object({}), async () => {
       const current = await manager.getSession();
       return result(await listCommandDescriptors(current));
     }, readOnly()),
-    tool("hotrepl_describe_command", "Describe one typed HotRepl command.", z.object({ name: z.string() }), async (args) => {
-      const current = await manager.getSession();
-      return result(await current.describeCommand(String(args.name)));
-    }, readOnly()),
+    tool(
+      "hotrepl_describe_command",
+      "Describe one typed HotRepl command.",
+      z.object({ name: z.string() }),
+      async (args) => {
+        const current = await manager.getSession();
+        return result(await current.describeCommand(String(args.name)));
+      },
+      readOnly(),
+    ),
     tool(
       "hotrepl_run",
       "Run a typed HotRepl command by name.",
-      z.object({ name: z.string(), args: z.record(z.string(), z.unknown()).default({}), timeoutMs: z.number().optional() }),
+      z.object({
+        name: z.string(),
+        args: z.record(z.string(), z.unknown()).default({}),
+        timeoutMs: z.number().optional(),
+      }),
       async (args) => {
         const current = await manager.getSession();
         const runOptions: RunOptions = { pollIntervalMs: 0 };
@@ -54,11 +81,17 @@ export async function createHotReplTools(manager: SessionManager): Promise<HotRe
       },
       { destructiveHint: runMutates, readOnlyHint: !runMutates },
     ),
-    tool("hotrepl_read_artifact", "Read and verify a HotRepl artifact reference.", z.object({ ref: z.unknown() }), async (args) => {
-      const current = await manager.getSession();
-      const artifact = current.artifact(args.ref as Parameters<Session["artifact"]>[0]);
-      return result({ text: await artifact.text() });
-    }, readOnly()),
+    tool(
+      "hotrepl_read_artifact",
+      "Read and verify a HotRepl artifact reference.",
+      z.object({ ref: z.unknown() }),
+      async (args) => {
+        const current = await manager.getSession();
+        const artifact = current.artifact(args.ref as Parameters<Session["artifact"]>[0]);
+        return result({ text: await artifact.text() });
+      },
+      readOnly(),
+    ),
     tool(
       "hotrepl_journal",
       "Query recent eval and command journal entries.",
@@ -110,8 +143,12 @@ function optionalNumber(value: unknown): number | undefined {
   return value === undefined ? undefined : Number(value);
 }
 
-function serializableResult<T>(commandResult: Result<T>): { artifacts: Record<string, Artifact["ref"]>; output: T } {
+function serializableResult<T>(
+  commandResult: Result<T>,
+): { artifacts: Record<string, Artifact["ref"]>; output: T } {
   const artifacts: Record<string, Artifact["ref"]> = {};
-  for (const [name, artifact] of Object.entries(commandResult.artifacts)) artifacts[name] = artifact.ref;
+  for (const [name, artifact] of Object.entries(commandResult.artifacts)) {
+    artifacts[name] = artifact.ref;
+  }
   return { output: commandResult.output, artifacts };
 }

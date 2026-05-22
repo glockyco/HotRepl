@@ -22,7 +22,7 @@ import type {
   SubscribeResultMessage,
 } from "@hotrepl/protocol";
 import { Artifact } from "./artifact";
-import { toResult, type DescriptorCache, type Result } from "./commands";
+import { type DescriptorCache, type Result, toResult } from "./commands";
 import { HotReplError, HotReplSessionEvicted } from "./errors";
 
 export type RuntimeRequest =
@@ -239,7 +239,9 @@ export class Session {
     }
   }
 
-  async journal(query: { kind?: "eval" | "command"; limit?: number } = {}): Promise<JournalEntry[]> {
+  async journal(
+    query: { kind?: "eval" | "command"; limit?: number } = {},
+  ): Promise<JournalEntry[]> {
     this.ensureActive();
     const request: RuntimeRequest = { type: "journal_query", id: this.nextId("journal") };
     if (query.kind !== undefined) request.kind = query.kind;
@@ -316,7 +318,12 @@ function protocolError(code: string, message: string): HotReplError {
 }
 
 function internalError(code: string): HotReplErrorEnvelope {
-  return { kind: "internal", code, message: "Runtime returned an error without details.", retryable: false };
+  return {
+    kind: "internal",
+    code,
+    message: "Runtime returned an error without details.",
+    retryable: false,
+  };
 }
 
 async function sleep(ms: number): Promise<void> {

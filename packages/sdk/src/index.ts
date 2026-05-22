@@ -1,20 +1,20 @@
-export { Artifact, sha256Hex, type ArtifactReader } from "./artifact";
-export { toResult, type DescriptorCache, type Result } from "./commands";
-export { connect, resolveHotReplUrl, type ConnectOptions } from "./connect";
+export { Artifact, type ArtifactReader, sha256Hex } from "./artifact";
+export { type DescriptorCache, type Result, toResult } from "./commands";
+export { connect, type ConnectOptions, resolveHotReplUrl } from "./connect";
 export {
   HotReplArtifactCorrupted,
   HotReplError,
-  HotReplSessionEvicted,
   type HotReplErrorInput,
+  HotReplSessionEvicted,
 } from "./errors";
 export {
-  JobHandle,
-  Session,
   type EvalResponse,
+  JobHandle,
   type JobStatus,
   type RunOptions,
   type RuntimeRequest,
   type RuntimeTransport,
+  Session,
   type WatchTick,
   type WatchWireMessage,
 } from "./session";

@@ -26,7 +26,9 @@ interface ParsedArgs {
 export async function runCli(argv: string[], options: CliRunOptions = {}): Promise<CliRunResult> {
   try {
     const parsed = parseArgs(argv);
-    const connectOptions: ConnectOptions = options.runtime === undefined ? {} : { runtime: options.runtime };
+    const connectOptions: ConnectOptions = options.runtime === undefined
+      ? {}
+      : { runtime: options.runtime };
     if (options.env !== undefined) connectOptions.env = options.env;
     if (parsed.url !== undefined) connectOptions.url = parsed.url;
     const session = await connect(connectOptions);
@@ -53,15 +55,15 @@ function parseArgs(argv: string[]): ParsedArgs {
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === "--format") {
-      format = parseFormat(requireValue(argv, (index += 1), "--format"));
+      format = parseFormat(requireValue(argv, index += 1, "--format"));
     } else if (arg === "--json") {
       format = "json";
     } else if (arg === "--jsonl") {
       format = "jsonl";
     } else if (arg === "--limit") {
-      limit = Number(requireValue(argv, (index += 1), "--limit"));
+      limit = Number(requireValue(argv, index += 1, "--limit"));
     } else if (arg === "--url") {
-      url = requireValue(argv, (index += 1), "--url");
+      url = requireValue(argv, index += 1, "--url");
     } else {
       args.push(arg ?? "");
     }

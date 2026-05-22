@@ -1,9 +1,9 @@
-import { describe, expect, test } from "bun:test";
 import { MESSAGE_TYPES, PROTOCOL_VERSION } from "@hotrepl/protocol";
 import type { CommandDescriptor, RuntimeLimits } from "@hotrepl/protocol";
 import { HotReplError, HotReplSessionEvicted } from "@hotrepl/sdk";
 import type { Session } from "@hotrepl/sdk";
 import type { FakeRuntime } from "@hotrepl/testing";
+import { describe, expect, test } from "bun:test";
 
 export interface ConformanceCreateOptions {
   configure?: (runtime: FakeRuntime) => void;

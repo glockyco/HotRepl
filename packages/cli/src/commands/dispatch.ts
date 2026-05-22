@@ -1,5 +1,5 @@
 import type { Session, WatchTick } from "@hotrepl/sdk";
-import { json, jsonl, line, printable, serializableResult, type CliFormat } from "../format";
+import { type CliFormat, json, jsonl, line, printable, serializableResult } from "../format";
 
 export interface CommandRequest {
   args: string[];
@@ -44,7 +44,9 @@ function renderInfo(session: Session, format: CliFormat): string {
   return line(
     [
       `HotRepl v${handshake.protocolVersion} on ${handshake.host.name} ${handshake.host.version} (${handshake.host.platform})`,
-      `evaluator: ${handshake.evaluator.name}, completion: ${handshake.evaluator.supportsCompletion ? "yes" : "no"}`,
+      `evaluator: ${handshake.evaluator.name}, completion: ${
+        handshake.evaluator.supportsCompletion ? "yes" : "no"
+      }`,
     ].join("\n"),
   );
 }
@@ -55,9 +57,16 @@ async function renderEval(session: Session, args: string[], format: CliFormat): 
   return line(printable(result.value));
 }
 
-async function renderComplete(session: Session, args: string[], format: CliFormat): Promise<string> {
+async function renderComplete(
+  session: Session,
+  args: string[],
+  format: CliFormat,
+): Promise<string> {
   const [code = "", cursorText] = args;
-  const completions = await session.complete(code, cursorText === undefined ? undefined : Number(cursorText));
+  const completions = await session.complete(
+    code,
+    cursorText === undefined ? undefined : Number(cursorText),
+  );
   if (format === "json") return json(completions);
   return completions.map(line).join("");
 }
@@ -80,17 +89,27 @@ async function renderRun(session: Session, args: string[], format: CliFormat): P
   return line(printable(serialized.output));
 }
 
-async function renderDescribe(session: Session, args: string[], format: CliFormat): Promise<string> {
+async function renderDescribe(
+  session: Session,
+  args: string[],
+  format: CliFormat,
+): Promise<string> {
   const [name] = args;
   if (name === undefined) throw new Error("Missing command name.");
   const descriptor = await session.describeCommand(name);
   if (format === "json") return json(descriptor);
   return line(
-    `${descriptor.name} v${descriptor.majorVersion} ${descriptor.kind} ${descriptor.mutatesState ? "mutating" : "readonly"}`,
+    `${descriptor.name} v${descriptor.majorVersion} ${descriptor.kind} ${
+      descriptor.mutatesState ? "mutating" : "readonly"
+    }`,
   );
 }
 
-async function renderArtifact(session: Session, args: string[], format: CliFormat): Promise<string> {
+async function renderArtifact(
+  session: Session,
+  args: string[],
+  format: CliFormat,
+): Promise<string> {
   const [subcommand, refJson] = args;
   if (subcommand !== "read") throw new Error("Expected 'artifacts read'.");
   if (refJson === undefined) throw new Error("Missing artifact reference.");
@@ -99,8 +118,14 @@ async function renderArtifact(session: Session, args: string[], format: CliForma
   return line(await artifact.text());
 }
 
-async function renderJournal(session: Session, format: CliFormat, limit: number | undefined): Promise<string> {
+async function renderJournal(
+  session: Session,
+  format: CliFormat,
+  limit: number | undefined,
+): Promise<string> {
   const entries = await session.journal(limit === undefined ? {} : { limit });
   if (format === "json") return json(entries);
-  return entries.map((entry) => line(`${entry.kind} ${entry.success ? "ok" : entry.errorKind ?? "failed"}`)).join("");
+  return entries.map((entry) =>
+    line(`${entry.kind} ${entry.success ? "ok" : entry.errorKind ?? "failed"}`)
+  ).join("");
 }

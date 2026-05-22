@@ -8,7 +8,9 @@ import { createHotReplTools } from "./tools";
 export { SessionManager } from "./session-manager";
 export { createHotReplTools, type HotReplMcpTool } from "./tools";
 
-export async function createHotReplMcpServer(options: SessionManagerOptions = {}): Promise<McpServer> {
+export async function createHotReplMcpServer(
+  options: SessionManagerOptions = {},
+): Promise<McpServer> {
   const manager = new SessionManager(options);
   const server = new McpServer({ name: "hotrepl-mcp", version: "0.0.0" });
   for (const tool of await createHotReplTools(manager)) {
@@ -19,7 +21,11 @@ export async function createHotReplMcpServer(options: SessionManagerOptions = {}
     if (tool.annotations !== undefined) {
       Object.assign(config, { annotations: tool.annotations });
     }
-    server.registerTool(tool.name, config, async (args) => tool.handler(args as Record<string, any>));
+    server.registerTool(
+      tool.name,
+      config,
+      async (args) => tool.handler(args as Record<string, any>),
+    );
   }
   return server;
 }

@@ -22,7 +22,9 @@ export function printable(value: unknown): string {
   return JSON.stringify(value);
 }
 
-export function serializableResult<T>(result: Result<T>): { artifacts: Record<string, Artifact["ref"]>; output: T } {
+export function serializableResult<T>(
+  result: Result<T>,
+): { artifacts: Record<string, Artifact["ref"]>; output: T } {
   const artifacts: Record<string, Artifact["ref"]> = {};
   for (const [name, artifact] of Object.entries(result.artifacts)) artifacts[name] = artifact.ref;
   return { output: result.output, artifacts };

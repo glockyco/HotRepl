@@ -1,23 +1,23 @@
 import {
-  ERROR_KINDS,
-  MESSAGE_TYPES,
-  PROTOCOL_VERSION,
-  defaultLimits,
   type ArtifactRef,
   type CommandDescriptor,
+  defaultLimits,
+  ERROR_KINDS,
   type EvalErrorMessage,
   type EvalResultMessage,
   type HandshakeMessage,
   type HotReplErrorEnvelope,
   type JobResultMessage,
   type JournalEntry,
+  MESSAGE_TYPES,
+  PROTOCOL_VERSION,
   type RuntimeLimits,
   type ServerMessage,
   type SessionEvictedMessage,
   type SubscribeErrorMessage,
   type SubscribeResultMessage,
 } from "@hotrepl/protocol";
-import { HotReplError, sha256Hex, type RuntimeRequest, type RuntimeTransport } from "@hotrepl/sdk";
+import { HotReplError, type RuntimeRequest, type RuntimeTransport, sha256Hex } from "@hotrepl/sdk";
 
 type CommandOutput = {
   output?: unknown;
@@ -183,7 +183,13 @@ export class FakeRuntime implements RuntimeTransport {
     for (const event of events) {
       seq += 1;
       if ("error" in event) {
-        yield { type: MESSAGE_TYPES.subscribeError, id: request.id, seq, error: event.error, final: event.final };
+        yield {
+          type: MESSAGE_TYPES.subscribeError,
+          id: request.id,
+          seq,
+          error: event.error,
+          final: event.final,
+        };
       } else {
         const hasValue = event.hasValue ?? event.value !== undefined;
         const response: SubscribeResultMessage = {
@@ -282,7 +288,11 @@ export class FakeRuntime implements RuntimeTransport {
     if (command === undefined) {
       throw error("unknown_command", "unknownCommand", `Unknown command ${request.name}.`);
     }
-    return { type: MESSAGE_TYPES.commandDescribeResult, id: request.id, descriptor: command.descriptor };
+    return {
+      type: MESSAGE_TYPES.commandDescribeResult,
+      id: request.id,
+      descriptor: command.descriptor,
+    };
   }
 
   private async handleCommandCall(
@@ -290,7 +300,10 @@ export class FakeRuntime implements RuntimeTransport {
   ): Promise<ServerMessage> {
     const command = this.commands.get(request.name);
     if (command === undefined) {
-      return failedCommand(request.id, errorEnvelope("unknown_command", "unknownCommand", "Unknown command."));
+      return failedCommand(
+        request.id,
+        errorEnvelope("unknown_command", "unknownCommand", "Unknown command."),
+      );
     }
     if (command.descriptor.kind === "job") {
       if (this.runningJobCount() >= this.handshakeMessage.limits.maxJobConcurrency) {
@@ -330,7 +343,13 @@ export class FakeRuntime implements RuntimeTransport {
       };
     } catch (caught) {
       const envelope = toEnvelope(caught);
-      this.record({ id: request.id, kind: "command", name: request.name, success: false, errorKind: envelope.kind });
+      this.record({
+        id: request.id,
+        kind: "command",
+        name: request.name,
+        success: false,
+        errorKind: envelope.kind,
+      });
       return failedCommand(request.id, envelope);
     }
   }
@@ -345,7 +364,12 @@ export class FakeRuntime implements RuntimeTransport {
     }
     if (job.pollsRemaining > 1) {
       job.pollsRemaining -= 1;
-      return { type: MESSAGE_TYPES.jobStatusResult, id: request.id, jobId: job.id, state: "running" };
+      return {
+        type: MESSAGE_TYPES.jobStatusResult,
+        id: request.id,
+        jobId: job.id,
+        state: "running",
+      };
     }
     await this.finishJob(job);
     return this.jobResult(request.id, job);
@@ -368,7 +392,9 @@ export class FakeRuntime implements RuntimeTransport {
     request: Extract<RuntimeRequest, { type: "journal_query" }>,
   ): ServerMessage {
     let entries = this.journalEntries;
-    if (request.kind !== undefined) entries = entries.filter((entry) => entry.kind === request.kind);
+    if (request.kind !== undefined) {
+      entries = entries.filter((entry) => entry.kind === request.kind);
+    }
     if (request.limit !== undefined) entries = entries.slice(-request.limit);
     return { type: MESSAGE_TYPES.journalQueryResult, id: request.id, entries };
   }
@@ -380,7 +406,12 @@ export class FakeRuntime implements RuntimeTransport {
       if (result.artifacts !== undefined) output.artifacts = result.artifacts;
       job.result = output;
       job.state = "done";
-      this.record({ id: job.requestId, kind: "command", name: job.command.descriptor.name, success: true });
+      this.record({
+        id: job.requestId,
+        kind: "command",
+        name: job.command.descriptor.name,
+        success: true,
+      });
     } catch (caught) {
       job.error = toEnvelope(caught);
       job.state = "failed";
@@ -428,7 +459,10 @@ export class FakeRuntime implements RuntimeTransport {
   }
 
   private rejectOversized(request: RuntimeRequest): void {
-    if (new TextEncoder().encode(JSON.stringify(request)).byteLength <= this.handshakeMessage.limits.maxMessageBytes) {
+    if (
+      new TextEncoder().encode(JSON.stringify(request)).byteLength
+        <= this.handshakeMessage.limits.maxMessageBytes
+    ) {
       return;
     }
     throw error("invalid_request", "messageTooLarge", "Message exceeds maxMessageBytes.");
@@ -440,8 +474,9 @@ export class FakeRuntime implements RuntimeTransport {
       : output;
     const serialized = JSON.stringify(capped);
     if (
-      serialized !== undefined &&
-      new TextEncoder().encode(serialized).byteLength > this.handshakeMessage.limits.maxResultLength
+      serialized !== undefined
+      && new TextEncoder().encode(serialized).byteLength
+        > this.handshakeMessage.limits.maxResultLength
     ) {
       throw error("internal", "resultTooLarge", "Result exceeds maxResultLength.");
     }
@@ -458,7 +493,9 @@ export class FakeRuntime implements RuntimeTransport {
   }
 
   private count(request: RuntimeRequest): void {
-    const name = request.type === "command_describe" || request.type === "command_call" ? request.name : undefined;
+    const name = request.type === "command_describe" || request.type === "command_call"
+      ? request.name
+      : undefined;
     const keys = new Set([counterKey(request.type), counterKey(request.type, name)]);
     for (const key of keys) this.counters.set(key, (this.counters.get(key) ?? 0) + 1);
   }
@@ -526,5 +563,9 @@ function toEnvelope(caught: unknown): HotReplErrorEnvelope {
       details: caught.details,
     };
   }
-  return errorEnvelope("internal", "handlerException", caught instanceof Error ? caught.message : String(caught));
+  return errorEnvelope(
+    "internal",
+    "handlerException",
+    caught instanceof Error ? caught.message : String(caught),
+  );
 }

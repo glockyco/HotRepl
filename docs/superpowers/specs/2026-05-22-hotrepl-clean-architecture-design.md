@@ -303,21 +303,21 @@ The center of the new architecture.
 ### Public surface (illustrative; not the final API freeze)
 
 ```ts
-import { connect, type Session, type Result, type Artifact, HotReplError } from "@hotrepl/sdk";
+import { type Artifact, connect, HotReplError, type Result, type Session } from "@hotrepl/sdk";
 
 // connect resolves URL (default, env, profile, or explicit) and completes handshake.
 await using session = await connect({ url: "ws://127.0.0.1:18590" });
 
 // capabilities are eagerly read; SDK validates protocolVersion compatibility.
-session.capabilities.evaluator.name;        // "Roslyn.Script"
-session.capabilities.evaluator.cancellation;// "cooperative"
+session.capabilities.evaluator.name; // "Roslyn.Script"
+session.capabilities.evaluator.cancellation; // "cooperative"
 
 // command discovery, cached for the session lifetime.
 const commands = await session.commands.list();
 await session.commands.require({
-  "compendium.preflight": { kind: "sync",  majorVersion: 1 },
-  "entity.exportBatch":   { kind: "job",   majorVersion: 1 },
-  "run.finalize":         { kind: "sync",  majorVersion: 1 },
+  "compendium.preflight": { kind: "sync", majorVersion: 1 },
+  "entity.exportBatch": { kind: "job", majorVersion: 1 },
+  "run.finalize": { kind: "sync", majorVersion: 1 },
 });
 
 // run(): the canonical command invocation.
@@ -325,17 +325,20 @@ await session.commands.require({
 //   job  -> waits by default, returns Result
 //   wait:false -> returns JobHandle
 const result: Result = await session.run("entity.exportBatch", {
-  runId, entity: "item", offset: 0, limit: 200
+  runId,
+  entity: "item",
+  offset: 0,
+  limit: 200,
 }, { timeoutMs: 30_000 });
 
-result.output;                              // typed via descriptor outputSchema (TS generated)
+result.output; // typed via descriptor outputSchema (TS generated)
 const chunk: Artifact = result.artifacts.chunk;
-const bytes = await chunk.bytes();          // hash-verified
-const json  = await chunk.json();
+const bytes = await chunk.bytes(); // hash-verified
+const json = await chunk.json();
 
 // eval(): peer to run. Interactive agent use case.
 const expr = await session.eval("Repl.Inspect(Application)", { timeoutMs: 5_000 });
-expr.value;          // typed `unknown`; eval results are untyped JSON
+expr.value; // typed `unknown`; eval results are untyped JSON
 expr.stdout;
 expr.hasValue;
 
@@ -481,7 +484,11 @@ methods. No protocol or choreography lives in the consumer.
 // ardenfall-compendium/controller/src/compendium.ts
 import { type Session } from "@hotrepl/sdk";
 import type {
-  PreflightOutput, RunHandle, PlanOutput, ExportBatchOutput, FinalizeOutput,
+  ExportBatchOutput,
+  FinalizeOutput,
+  PlanOutput,
+  PreflightOutput,
+  RunHandle,
 } from "./generated/compendium-types";
 
 export class CompendiumClient {

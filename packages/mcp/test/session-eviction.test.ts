@@ -1,5 +1,5 @@
-import { describe, expect, test } from "bun:test";
 import { FakeRuntime } from "@hotrepl/testing";
+import { describe, expect, test } from "bun:test";
 import { SessionManager } from "../src/session-manager";
 
 describe("MCP SessionManager", () => {

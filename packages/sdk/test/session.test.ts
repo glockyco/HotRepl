@@ -1,5 +1,5 @@
-import { describe, expect, test } from "bun:test";
 import { FakeRuntime, MockSession } from "@hotrepl/testing";
+import { describe, expect, test } from "bun:test";
 import { connect, HotReplError } from "../src";
 
 const syncDescriptor = {

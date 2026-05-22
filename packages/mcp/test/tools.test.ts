@@ -1,5 +1,5 @@
-import { describe, expect, test } from "bun:test";
 import { FakeRuntime } from "@hotrepl/testing";
+import { describe, expect, test } from "bun:test";
 import { SessionManager } from "../src/session-manager";
 import { createHotReplTools } from "../src/tools";
 
@@ -58,6 +58,9 @@ describe("HotRepl MCP tools", () => {
     const result = await run?.handler({ name: "world.export", args: { scene: "main" } });
 
     expect(result?.structuredContent).toEqual({ output: { ok: true }, artifacts: {} });
-    expect(result?.content).toEqual([{ type: "text", text: '{"output":{"ok":true},"artifacts":{}}' }]);
+    expect(result?.content).toEqual([{
+      type: "text",
+      text: "{\"output\":{\"ok\":true},\"artifacts\":{}}",
+    }]);
   });
 });

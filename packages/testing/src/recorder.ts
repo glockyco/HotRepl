@@ -1,5 +1,5 @@
-import type { RuntimeRequest } from "@hotrepl/sdk";
 import type { ServerMessage } from "@hotrepl/protocol";
+import type { RuntimeRequest } from "@hotrepl/sdk";
 
 export interface RecordedExchange {
   request: RuntimeRequest;
