@@ -17,7 +17,6 @@ internal sealed class MessageRouter
 {
     private const string ControlAuthMessageType = "control_auth";
     private const string LeaseAcquireMessageType = "lease_acquire";
-    private const string PingMessageType = "ping";
     private const string SelectEvaluatorMessageType = "select_evaluator";
 
     private readonly Action<IEngineCommand> _enqueueCommand;
@@ -298,7 +297,6 @@ internal sealed class MessageRouter
     private static bool IsLegacyMessageType(string type) =>
         string.Equals(type, ControlAuthMessageType, StringComparison.Ordinal)
         || string.Equals(type, LeaseAcquireMessageType, StringComparison.Ordinal)
-        || string.Equals(type, PingMessageType, StringComparison.Ordinal)
         || string.Equals(type, MessageType.JobResult, StringComparison.Ordinal);
 
     private static string? ExtractId(string rawJson)
@@ -323,11 +321,10 @@ internal sealed class MessageRouter
     )
     {
         var json = ProtocolMessageSerializer.Serialize(
-            new
+            new ProtocolErrorMessage
             {
-                type = "error",
-                id,
-                error = new HotReplErrorEnvelope(kind, code, message, retryable, details: null),
+                Id = id,
+                Error = new HotReplErrorEnvelope(kind, code, message, retryable, details: null),
             }
         );
         _sendProtocolError(connectionId, json);

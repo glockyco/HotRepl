@@ -18,8 +18,6 @@ public class ControlJobManagerTests
 
         var job = manager.StartJob(
             "request-1",
-            null,
-            null,
             (_, _) => ValueTask.FromResult(ControlCommandResult.Empty)
         );
 
@@ -29,13 +27,24 @@ public class ControlJobManagerTests
     }
 
     [Fact]
+    public void StartJob_RejectsWhenRunningJobConcurrencyIsExhausted()
+    {
+        var manager = new ControlJobManager(maxEventBuffer: 100, maxRunningJobs: 1);
+        manager.StartJob("request-1", (_, _) => ValueTask.FromResult(ControlCommandResult.Empty));
+
+        var error = Assert.Throws<InvalidOperationException>(() =>
+            manager.StartJob("request-2", (_, _) => ValueTask.FromResult(ControlCommandResult.Empty))
+        );
+
+        Assert.Equal("maxJobConcurrency", error.Message);
+    }
+
+    [Fact]
     public async Task RunJob_TransitionsToCompletedWithResult()
     {
         var manager = new ControlJobManager(maxEventBuffer: 100);
         var job = manager.StartJob(
             "request-1",
-            null,
-            null,
             (_, _) =>
                 ValueTask.FromResult(
                     new ControlCommandResult(
@@ -59,8 +68,6 @@ public class ControlJobManagerTests
         var manager = new ControlJobManager(maxEventBuffer: 100);
         var job = manager.StartJob(
             "request-1",
-            null,
-            null,
             (_, _) => throw new InvalidOperationException("boom")
         );
 
@@ -79,8 +86,6 @@ public class ControlJobManagerTests
         var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var job = manager.StartJob(
             "request-1",
-            null,
-            null,
             async (_, token) =>
             {
                 started.SetResult();
@@ -111,8 +116,6 @@ public class ControlJobManagerTests
         var manager = new ControlJobManager(maxEventBuffer: 100);
         var job = manager.StartJob(
             "request-1",
-            null,
-            null,
             (context, _) =>
             {
                 context.Report(new JObject { ["step"] = 1 }, "step 1");
@@ -140,8 +143,6 @@ public class ControlJobManagerTests
         var manager = new ControlJobManager(maxEventBuffer: 3);
         var job = manager.StartJob(
             "request-1",
-            null,
-            null,
             (context, _) =>
             {
                 for (var i = 0; i < 5; i++)

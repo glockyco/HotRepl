@@ -159,7 +159,7 @@ describe("protocol foundations", () => {
       availableEvaluators: ["Roslyn.Script"],
       defaultUsings: ["System"],
       helpers: ["String[] Help()"],
-      control: { supported: true, commandsListChanged: false, schemaValidation: true },
+      control: { supported: true, commandsListChanged: false, schemaValidation: false },
       limits: defaultLimits,
       enforces: [
         "maxMessageBytes",
@@ -420,7 +420,7 @@ public void Handshake_AdvertisesProtocolVersionTwoAndNoAuthOrLease()
 ```
 
 asserts JSON contains `"protocolVersion":2`, `"commandsListChanged":false`,
-`"schemaValidation":true`, and no `controlPlane`, `authRequired`, `leaseRequired`, `sessionId`, or
+`"schemaValidation":false`, and no `controlPlane`, `authRequired`, `leaseRequired`, `sessionId`, or
 `leaseId`.
 
 ```csharp
@@ -987,4 +987,13 @@ worktree.
 
 ## Deviations from approved spec
 
-None recorded.
+- Final review removed the remaining v1 auth/lease configuration and classes rather than only hiding
+  them from the v2 wire path. Protocol v2 now uses loopback plus single-client eviction as the
+  authority boundary; non-loopback binds warn because there is no auth or lease handshake.
+- Runtime handshakes advertise `control.schemaValidation: false` until C# command argument/output
+  schema validation is implemented. Generated schemas remain descriptor metadata for SDK, MCP, and
+  downstream consumers.
+- `maxJobConcurrency` stays in `handshake.enforces[]` because `ControlJobManager` now rejects job
+  starts once the configured running-job limit is reached.
+- Protocol-level routing errors are first-class `type: "error"` frames with the universal error
+  envelope; the TypeScript SDK rejects the matching request as `HotReplError`.

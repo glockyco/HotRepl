@@ -1,6 +1,6 @@
 import { FakeRuntime, MockSession } from "@hotrepl/testing";
 import { describe, expect, test } from "bun:test";
-import { connect, HotReplError } from "../src";
+import { connect, HotReplError, type RuntimeTransport, Session } from "../src";
 
 const syncDescriptor = {
   name: "math.double",
@@ -170,6 +170,32 @@ describe("Session", () => {
     ]);
   });
 
+  test("protocol error frames reject the matching request as HotReplError", async () => {
+    const runtime = new FakeRuntime();
+    const transport: RuntimeTransport = {
+      handshake: async () => runtime.handshakeMessage,
+      request: async (request) =>
+        ({
+          type: "error",
+          id: request.id,
+          error: {
+            kind: "invalid_request",
+            code: "unknownMessageType",
+            message: "Unknown message type.",
+            retryable: false,
+          },
+        }) as never,
+      watch: async function*() {},
+      readArtifact: async () => new Uint8Array(),
+      onSessionEvicted: () => () => undefined,
+    };
+    const session = new Session(transport, runtime.handshakeMessage);
+
+    await expect(session.describeCommand("missing.command")).rejects.toMatchObject({
+      kind: "invalid_request",
+      code: "unknownMessageType",
+    });
+  });
   test("session eviction notifies listeners and blocks later calls", async () => {
     const runtime = new FakeRuntime();
     const session = await MockSession.create(runtime);

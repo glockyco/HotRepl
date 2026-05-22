@@ -100,6 +100,12 @@ export interface SessionEvictedMessage {
   by?: { clientName?: string };
 }
 
+export interface ProtocolErrorMessage {
+  type: typeof MESSAGE_TYPES.error;
+  id?: string;
+  error: HotReplErrorEnvelope;
+}
+
 export interface CommandsListResultMessage {
   type: typeof MESSAGE_TYPES.commandsListResult;
   id: string;
@@ -173,6 +179,7 @@ export type ServerMessage =
   | SubscribeResultMessage
   | SubscribeErrorMessage
   | SessionEvictedMessage
+  | ProtocolErrorMessage
   | CommandsListResultMessage
   | CommandDescribeResultMessage
   | CommandResultMessage

@@ -87,7 +87,7 @@ export class FakeRuntime implements RuntimeTransport {
       availableEvaluators: ["FakeEvaluator"],
       defaultUsings: [],
       helpers: [],
-      control: { supported: true, commandsListChanged: false, schemaValidation: true },
+      control: { supported: true, commandsListChanged: false, schemaValidation: false },
       limits: { ...defaultLimits, ...options.limits },
       enforces: [
         "maxMessageBytes",

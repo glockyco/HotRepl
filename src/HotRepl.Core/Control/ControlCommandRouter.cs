@@ -17,11 +17,7 @@ internal sealed class ControlCommandRouter
     private readonly IControlCommandRegistry _registry;
     private readonly ControlJobManager? _jobs;
 
-    public ControlCommandRouter(
-        IControlCommandRegistry registry,
-        ControlSessionManager? sessions = null,
-        ControlJobManager? jobs = null
-    )
+    public ControlCommandRouter(IControlCommandRegistry registry, ControlJobManager? jobs = null)
     {
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
         _jobs = jobs;
@@ -96,26 +92,39 @@ internal sealed class ControlCommandRouter
                 retryable: false
             );
 
-        var requestedTimeout = message.TimeoutMs.GetValueOrDefault();
-        var timeout = requestedTimeout > 0
-            ? TimeSpan.FromMilliseconds(requestedTimeout)
-            : (TimeSpan?)null;
-        var job = _jobs.StartJob(
-            connectionId,
-            message.Id,
-            leaseId: null,
-            idempotencyKey: null,
-            (context, token) =>
-                handler.ExecuteAsync(context.ToCommandContext(timeout), message.Args, token)
-        );
-
-        return new JobAcceptedMessage
+        try
         {
-            Id = message.Id,
-            JobId = job.JobId,
-            State = ControlJobStates.Running,
-        };
+            var requestedTimeout = message.TimeoutMs.GetValueOrDefault();
+            var timeout = requestedTimeout > 0
+                ? TimeSpan.FromMilliseconds(requestedTimeout)
+                : (TimeSpan?)null;
+            var job = _jobs.StartJob(
+                connectionId,
+                message.Id,
+                (context, token) =>
+                    handler.ExecuteAsync(context.ToCommandContext(timeout), message.Args, token)
+            );
+
+            return new JobAcceptedMessage
+            {
+                Id = message.Id,
+                JobId = job.JobId,
+                State = ControlJobStates.Running,
+            };
+        }
+        catch (InvalidOperationException ex)
+            when (string.Equals(ex.Message, "maxJobConcurrency", StringComparison.Ordinal))
+        {
+            return CommandError(
+                message.Id,
+                ErrorKind.Busy,
+                "jobConcurrencyLimit",
+                "Maximum concurrent command jobs reached.",
+                retryable: true
+            );
+        }
     }
+
 
     private static CommandResultMessage ExecuteSynchronous(
         CommandCallMessage message,
@@ -128,7 +137,7 @@ internal sealed class ControlCommandRouter
             var timeout = requestedTimeout > 0
                 ? TimeSpan.FromMilliseconds(requestedTimeout)
                 : (TimeSpan?)null;
-            var context = new ControlCommandContext(message.Id, null, null, timeout);
+            var context = new ControlCommandContext(message.Id, timeout);
             var result = handler
                 .ExecuteAsync(context, message.Args, CancellationToken.None)
                 .AsTask()

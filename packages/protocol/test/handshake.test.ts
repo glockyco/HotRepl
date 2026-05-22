@@ -44,7 +44,7 @@ describe("protocol foundations", () => {
       availableEvaluators: ["Roslyn.Script"],
       defaultUsings: ["System"],
       helpers: ["String[] Help()"],
-      control: { supported: true, commandsListChanged: false, schemaValidation: true },
+      control: { supported: true, commandsListChanged: false, schemaValidation: false },
       limits: defaultLimits,
       enforces: [
         "maxMessageBytes",

@@ -34,7 +34,7 @@ public class HandshakeV2Tests
 
         Assert.Contains("\"protocolVersion\":2", json, StringComparison.Ordinal);
         Assert.Contains("\"commandsListChanged\":false", json, StringComparison.Ordinal);
-        Assert.Contains("\"schemaValidation\":true", json, StringComparison.Ordinal);
+        Assert.Contains("\"schemaValidation\":false", json, StringComparison.Ordinal);
         Assert.Contains("\"maxMessageBytes\":4194304", json, StringComparison.Ordinal);
         Assert.Contains("\"maxJobConcurrency\"", json, StringComparison.Ordinal);
         Assert.DoesNotContain("controlPlane", json, StringComparison.Ordinal);

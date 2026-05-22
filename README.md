@@ -46,7 +46,7 @@ The server sends a `handshake` immediately after a WebSocket connection opens:
     "supportsCompletion": false,
     "cancellation": "cooperative"
   },
-  "control": { "supported": true, "commandsListChanged": false, "schemaValidation": true },
+  "control": { "supported": true, "commandsListChanged": false, "schemaValidation": false },
   "limits": {
     "maxMessageBytes": 4194304,
     "maxQueuedCommands": 32,
@@ -55,7 +55,13 @@ The server sends a `handshake` immediately after a WebSocket connection opens:
     "defaultEvalTimeoutMs": 10000,
     "maxJobConcurrency": 1
   },
-  "enforces": ["maxMessageBytes", "maxQueuedCommands", "maxResultLength"]
+  "enforces": [
+    "maxMessageBytes",
+    "maxQueuedCommands",
+    "maxResultLength",
+    "maxEnumerableElements",
+    "maxJobConcurrency"
+  ]
 }
 ```
 

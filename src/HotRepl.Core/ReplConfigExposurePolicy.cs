@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace HotRepl;
 
-/// <summary>Security checks for WebSocket bind and control-plane authentication configuration.</summary>
+/// <summary>Security checks for WebSocket bind configuration.</summary>
 public static class ReplConfigExposurePolicy
 {
     /// <summary>Returns warnings for configuration that exposes HotRepl beyond loopback.</summary>
@@ -14,10 +14,10 @@ public static class ReplConfigExposurePolicy
 
         var warnings = new List<string>();
         var loopbackOnly = IsLoopback(config.BindHost);
-        if (!loopbackOnly && string.IsNullOrWhiteSpace(config.ControlAuthToken))
+        if (!loopbackOnly)
         {
             warnings.Add(
-                $"HotRepl BindHost '{config.BindHost}' is reachable beyond loopback and ControlAuthToken is empty. This exposes the REPL/control socket to any client that can reach the host."
+                $"HotRepl BindHost '{config.BindHost}' is reachable beyond loopback. Protocol v2 has no auth or lease handshake; use loopback binding or an external trusted network boundary."
             );
         }
 
@@ -27,14 +27,6 @@ public static class ReplConfigExposurePolicy
         );
     }
 
-    /// <summary>Requires control-plane authentication when a token is configured.</summary>
-    public static void ApplyControlAuthToken(ReplConfig config)
-    {
-        if (config == null)
-            throw new ArgumentNullException(nameof(config));
-        if (!string.IsNullOrWhiteSpace(config.ControlAuthToken))
-            config.RequireControlAuth = true;
-    }
 
     private static bool IsLoopback(string? bindHost)
     {

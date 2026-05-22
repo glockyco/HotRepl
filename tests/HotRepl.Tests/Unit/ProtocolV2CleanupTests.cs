@@ -95,6 +95,16 @@ public class ProtocolV2CleanupTests
         Assert.Equal("HotRepl.Protocol", typeof(SubscribeErrorMessage).Assembly.GetName().Name);
     }
 
+    [Fact]
+    public void ReplConfig_DoesNotExposeV1AuthLeaseOptions()
+    {
+        Assert.Null(typeof(ReplConfig).GetProperty("RequireControlAuth"));
+        Assert.Null(typeof(ReplConfig).GetProperty("ControlAuthToken"));
+        Assert.Null(typeof(ReplConfig).GetProperty("RequireControlLease"));
+        Assert.Null(typeof(ReplConfig).GetProperty("MaxControlMessageBytes"));
+        Assert.Null(typeof(ReplConfig).GetProperty("MaxQueuedControlCommands"));
+    }
+
     private static ArtifactRef ExampleArtifact() =>
         new()
         {

@@ -59,28 +59,7 @@ public sealed class ReplPlugin : BaseUnityPlugin
             "127.0.0.1",
             "WebSocket bind host. Use 127.0.0.1 for loopback-only, or explicitly set 0.0.0.0 for host-reachable automation."
         );
-        var requireAuth = Config.Bind(
-            "Control",
-            "RequireAuth",
-            false,
-            "Require control-plane authentication."
-        );
-        var authToken = Config.Bind(
-            "Control",
-            "AuthToken",
-            string.Empty,
-            "Token required for control-plane authentication. Set this when BindHost is not loopback."
-        );
-
-        var config = new ReplConfig
-        {
-            Port = port.Value,
-            BindHost = bindHost.Value,
-            RequireControlAuth = requireAuth.Value,
-            ControlAuthToken = string.IsNullOrWhiteSpace(authToken.Value) ? null : authToken.Value,
-        };
-
-        ReplConfigExposurePolicy.ApplyControlAuthToken(config);
+        var config = new ReplConfig { Port = port.Value, BindHost = bindHost.Value };
         foreach (var warning in ReplConfigExposurePolicy.Validate(config).Warnings)
             Logger.LogWarning(warning);
 

@@ -286,7 +286,9 @@ export class Session {
   async request<T extends ServerMessage>(request: RuntimeRequest): Promise<T> {
     this.ensureActive();
     try {
-      return (await this.transport.request(request)) as T;
+      const response = await this.transport.request(request);
+      if (response.type === MESSAGE_TYPES.error) throw HotReplError.fromEnvelope(response.error);
+      return response as T;
     } catch (error) {
       if (error instanceof HotReplError) throw error;
       throw error;

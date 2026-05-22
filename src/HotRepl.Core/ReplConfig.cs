@@ -47,23 +47,8 @@ public sealed class ReplConfig
     /// <summary>Maximum number of concurrently running command jobs. Default: 1.</summary>
     public int MaxJobConcurrency { get; set; } = 1;
 
-    /// <summary>Whether typed command schemas are validated by the runtime. Default: true.</summary>
-    public bool SchemaValidation { get; set; } = true;
-
-    /// <summary>Whether control-plane auth is required. Default: false until auth is configured.</summary>
-    public bool RequireControlAuth { get; set; }
-
-    /// <summary>Optional token required for control-plane authentication.</summary>
-    public string? ControlAuthToken { get; set; }
-
-    /// <summary>Whether mutating control commands require an exclusive lease. Default: true.</summary>
-    public bool RequireControlLease { get; set; } = true;
-
-    /// <summary>Maximum inbound control-plane message size in bytes. Default: 1 MiB.</summary>
-    public int MaxControlMessageBytes { get; set; } = 1024 * 1024;
-
-    /// <summary>Maximum number of queued control commands before overload rejection. Default: 32.</summary>
-    public int MaxQueuedControlCommands { get; set; } = 32;
+    /// <summary>Whether typed command schemas are validated by the runtime. Default: false.</summary>
+    public bool SchemaValidation { get; set; }
 
     /// <summary>Maximum buffered event count per control-plane job. Default: 1000.</summary>
     public int MaxJobEventBuffer { get; set; } = 1000;

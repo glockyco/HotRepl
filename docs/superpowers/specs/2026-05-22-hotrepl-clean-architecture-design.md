@@ -211,7 +211,7 @@ server → client:   journal_query_result { entries }
   "control": {
     "supported": true,
     "commandsListChanged": false,
-    "schemaValidation": true
+    "schemaValidation": false
   },
   "limits": {
     "maxMessageBytes": 4194304,
@@ -618,11 +618,9 @@ actor.
 ### Schemas
 
 - `inputSchema`, `outputSchema`, `artifactsSchema` per command.
-- Validation runs on entry (`command_call.args` against `inputSchema`) and on exit (`output` against
-  `outputSchema`, artifact map against `artifactsSchema`). Failure → `validation_failed`.
-- Validation is on by default; can be turned off via `ReplConfig.SchemaValidation = false` for
-  performance-critical games (handshake will advertise `control.schemaValidation: false` so the SDK
-  knows).
+- Current runtime does not validate command JSON Schemas on the C# side. Hosts advertise
+  `control.schemaValidation: false`; generated schemas remain descriptor metadata for SDKs, MCP,
+  downstream clients, and future host-side validation.
 - Schemas are addressable: the SDK ships a JSON-Pointer-style lookup so descriptor consumers can
   inspect a sub-schema (`commands.get("entity.exportBatch").schema("input.properties.offset")`).
 
@@ -863,8 +861,8 @@ is no need to dual-stack.
   language-neutral so a port can happen. Conformance tests guarantee any port is a valid
   implementation.
 - **Schema validation cost.** JSON Schema validation on every command call is cheap but non-zero.
-  The `control.schemaValidation` capability flag lets a host disable it for tight loops. Disabled by
-  default in the MelonLoader host? Probably not; benchmark before deciding.
+  The current C# runtime advertises `control.schemaValidation: false`; enable host-side validation
+  only after benchmarking and committing the validator dependency explicitly.
 - **Removing auth feels uncomfortable.** It is honest: loopback + single-client + single-process
   model already provides the guarantee that token-based auth pretended to give. If a future
   deployment needs cross-machine access, that is a separate design and likely a proxy/broker

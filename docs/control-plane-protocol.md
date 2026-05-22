@@ -23,7 +23,7 @@ The server sends `handshake` immediately after connection:
   "availableEvaluators": ["Mono.CSharp"],
   "defaultUsings": ["System"],
   "helpers": ["String[] Help()"],
-  "control": { "supported": true, "commandsListChanged": false, "schemaValidation": true },
+  "control": { "supported": true, "commandsListChanged": false, "schemaValidation": false },
   "limits": {
     "maxMessageBytes": 4194304,
     "maxQueuedCommands": 32,
@@ -52,8 +52,8 @@ Failures use one envelope:
 ```json
 {
   "kind": "validation_failed",
-  "code": "schemaValidationFailed",
-  "message": "Input did not match the command schema.",
+  "code": "badArgument",
+  "message": "The command argument is invalid.",
   "retryable": false,
   "details": { "path": "/scene" }
 }
@@ -62,6 +62,9 @@ Failures use one envelope:
 Closed `kind` values are `validation_failed`, `precondition_failed`, `conflict`, `timeout`,
 `cancelled`, `busy`, `unknown_command`, `unsupported_operation`, `artifact_missing`,
 `invalid_request`, and `internal`.
+
+`control.schemaValidation: false` means the current C# runtime exposes schemas as metadata but does
+not validate command arguments or outputs itself.
 
 ## Eval and reset
 

@@ -31,7 +31,7 @@ namespace HotRepl;
 ///
 /// Tick() drain order (invariant):
 ///   1. Process cancel requests — populate _cancelledIds, abort if matching eval running
-///   2. Drain command queue — reset, ping, complete, subscribe, control
+///   2. Drain command queue — reset, complete, subscribe, typed commands
 ///   3. Start at most one queued control job
 ///   4. Execute at most one eval
 ///   5. Tick subscriptions
@@ -49,7 +49,6 @@ public sealed class ReplEngine : IDisposable
     private SubscriptionManager? _subscriptions;
     private HistoryTracker? _history;
     private ControlCommandRouter? _controlRouter;
-    private ControlSessionManager? _controlSessions;
     private ControlJobManager? _controlJobs;
     private InstanceDocumentWriter? _instanceDocument;
 
@@ -94,13 +93,11 @@ public sealed class ReplEngine : IDisposable
         _wsServer = new ReplWebSocketServer(msg => _host.LogInfo(msg));
         _clients = new ClientRegistry(_wsServer, msg => _host.LogInfo(msg));
         _router = new MessageRouter(this, msg => _host.LogInfo(msg));
-        _controlSessions = new ControlSessionManager(_host.Config);
-        _controlJobs = new ControlJobManager(_host.Config.MaxJobEventBuffer);
+        _controlJobs = new ControlJobManager(_host.Config.MaxJobEventBuffer, _host.Config.MaxJobConcurrency);
         _controlRouter = new ControlCommandRouter(_host.ControlCommands, jobs: _controlJobs);
 
         _wsServer.ClientConnected += (_, e) => OnClientConnected(e.ConnectionId, e.Connection);
         _wsServer.ClientDisconnected += (_, e) => _clients.OnDisconnected(e.ConnectionId);
-        _wsServer.ClientDisconnected += (_, e) => _controlSessions.OnDisconnected(e.ConnectionId);
         _wsServer.MessageReceived += (_, e) => _router.HandleMessage(e.ConnectionId, e.RawJson);
 
         _wsServer.Start(_host.Config.Port, _host.Config.BindHost);

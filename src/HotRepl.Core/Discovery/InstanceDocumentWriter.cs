@@ -2,7 +2,6 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
-using System.Security.Cryptography;
 using System.Text;
 using Newtonsoft.Json;
 
@@ -10,7 +9,6 @@ namespace HotRepl.Discovery;
 
 internal sealed class InstanceDocumentWriter : IDisposable
 {
-    private const int FingerprintHexChars = 8;
     private readonly string _path;
     private bool _disposed;
 
@@ -55,16 +53,7 @@ internal sealed class InstanceDocumentWriter : IDisposable
             ControlPlane = new ControlPlaneDocument
             {
                 Supported = config.ControlPlaneEnabled,
-                ProtocolVersion = 1,
-                AuthRequired =
-                    config.RequireControlAuth || !string.IsNullOrEmpty(config.ControlAuthToken),
-                LeaseRequired = config.RequireControlLease,
-            },
-            Auth = new AuthDocument
-            {
-                Required =
-                    config.RequireControlAuth || !string.IsNullOrEmpty(config.ControlAuthToken),
-                Fingerprint = Fingerprint(config.ControlAuthToken),
+                ProtocolVersion = 2,
             },
         };
 
@@ -134,25 +123,6 @@ internal sealed class InstanceDocumentWriter : IDisposable
         return builder.ToString();
     }
 
-    private static string? Fingerprint(string? token)
-    {
-        if (string.IsNullOrEmpty(token))
-            return null;
-
-        using var sha = SHA256.Create();
-        var hash = sha.ComputeHash(Encoding.UTF8.GetBytes(token));
-        var builder = new StringBuilder("sha256:".Length + FingerprintHexChars);
-        builder.Append("sha256:");
-        for (
-            var i = 0;
-            i < hash.Length && builder.Length < "sha256:".Length + FingerprintHexChars;
-            i++
-        )
-            builder.Append(
-                hash[i].ToString("x2", System.Globalization.CultureInfo.InvariantCulture)
-            );
-        return builder.ToString();
-    }
 
     private sealed class InstanceDocument
     {
@@ -183,8 +153,6 @@ internal sealed class InstanceDocumentWriter : IDisposable
         [JsonProperty("controlPlane")]
         public ControlPlaneDocument ControlPlane { get; set; } = new();
 
-        [JsonProperty("auth")]
-        public AuthDocument Auth { get; set; } = new();
     }
 
     private sealed class ProcessDocument
@@ -215,20 +183,6 @@ internal sealed class InstanceDocumentWriter : IDisposable
 
         [JsonProperty("protocolVersion")]
         public int ProtocolVersion { get; set; }
-
-        [JsonProperty("authRequired")]
-        public bool AuthRequired { get; set; }
-
-        [JsonProperty("leaseRequired")]
-        public bool LeaseRequired { get; set; }
     }
 
-    private sealed class AuthDocument
-    {
-        [JsonProperty("required")]
-        public bool Required { get; set; }
-
-        [JsonProperty("fingerprint")]
-        public string? Fingerprint { get; set; }
-    }
 }

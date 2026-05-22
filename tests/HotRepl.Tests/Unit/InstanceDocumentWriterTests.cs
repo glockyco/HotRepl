@@ -11,16 +11,9 @@ public sealed class InstanceDocumentWriterTests : IDisposable
     private readonly string _root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
 
     [Fact]
-    public void Write_CreatesDocumentWithoutTokenValue()
+    public void Write_CreatesV2DocumentWithoutAuthOrLeaseFields()
     {
-        var config = new ReplConfig
-        {
-            BindHost = "127.0.0.1",
-            Port = 18590,
-            ControlAuthToken = "super-secret-token",
-            RequireControlAuth = true,
-            RequireControlLease = true,
-        };
+        var config = new ReplConfig { BindHost = "127.0.0.1", Port = 18590 };
         var host = new HostInfo
         {
             Name = "BepInEx",
@@ -42,20 +35,19 @@ public sealed class InstanceDocumentWriterTests : IDisposable
         Assert.Equal("test-instance", json["instanceId"]!.Value<string>());
         Assert.Equal("ws://127.0.0.1:18590", json["url"]!.Value<string>());
         Assert.Equal("BepInEx", json["host"]!["name"]!.Value<string>());
-        Assert.True(json["controlPlane"]!["authRequired"]!.Value<bool>());
-        Assert.True(json["controlPlane"]!["leaseRequired"]!.Value<bool>());
-        Assert.StartsWith(
-            "sha256:",
-            json["auth"]!["fingerprint"]!.Value<string>(),
-            StringComparison.Ordinal
-        );
-        Assert.DoesNotContain("super-secret-token", raw, StringComparison.Ordinal);
+        Assert.True(json["controlPlane"]!["supported"]!.Value<bool>());
+        Assert.Equal(2, json["controlPlane"]!["protocolVersion"]!.Value<int>());
+        Assert.Null(json["controlPlane"]!["authRequired"]);
+        Assert.Null(json["controlPlane"]!["leaseRequired"]);
+        Assert.Null(json["auth"]);
+        Assert.DoesNotContain("auth", raw, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("lease", raw, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
     public void Dispose_RemovesDocument()
     {
-        var config = new ReplConfig { ControlAuthToken = "secret", RequireControlAuth = true };
+        var config = new ReplConfig();
         var host = new HostInfo
         {
             Name = "BepInEx",

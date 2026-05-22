@@ -7,7 +7,7 @@ namespace HotRepl.Tests.Unit;
 public sealed class ReplConfigExposurePolicyTests
 {
     [Fact]
-    public void Validate_AllowsDefaultLoopbackWithoutAuthToken()
+    public void Validate_AllowsDefaultLoopback()
     {
         var config = new ReplConfig();
 
@@ -18,28 +18,22 @@ public sealed class ReplConfigExposurePolicyTests
     }
 
     [Fact]
-    public void Validate_WarnsWhenNonLoopbackBindHasNoControlAuthToken()
+    public void Validate_WarnsWhenNonLoopbackBindHasNoLoopbackAuthority()
     {
         var config = new ReplConfig { BindHost = "0.0.0.0" };
 
         var result = ReplConfigExposurePolicy.Validate(config);
 
         Assert.False(result.IsSafeDefault);
-        Assert.Contains(
-            result.Warnings,
-            warning =>
-                warning.Contains("0.0.0.0", StringComparison.Ordinal)
-                && warning.Contains("ControlAuthToken", StringComparison.Ordinal)
-        );
+        var warning = Assert.Single(result.Warnings);
+        Assert.Contains("0.0.0.0", warning, StringComparison.Ordinal);
+        Assert.Contains("loopback", warning, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("ControlAuthToken", warning, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void ApplyControlAuthToken_EnablesControlAuthWhenTokenIsProvided()
+    public void ReplConfigExposurePolicy_DoesNotExposeAuthorityMutation()
     {
-        var config = new ReplConfig { ControlAuthToken = "local-secret" };
-
-        ReplConfigExposurePolicy.ApplyControlAuthToken(config);
-
-        Assert.True(config.RequireControlAuth);
+        Assert.Null(typeof(ReplConfigExposurePolicy).GetMethod("ApplyControlAuthToken"));
     }
 }

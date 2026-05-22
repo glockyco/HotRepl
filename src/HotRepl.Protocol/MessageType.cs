@@ -9,6 +9,9 @@ public static class MessageType
     /// <summary>Notification sent to a displaced connection before close.</summary>
     public const string SessionEvicted = "session_evicted";
 
+    /// <summary>Addressed protocol-level error response.</summary>
+    public const string Error = "error";
+
     /// <summary>Evaluate C# code.</summary>
     public const string Eval = "eval";
 

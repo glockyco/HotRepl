@@ -11,26 +11,24 @@ namespace HotRepl.Control.Jobs;
 internal sealed class ControlJobManager
 {
     private readonly int _maxEventBuffer;
+    private readonly int _maxRunningJobs;
     private readonly object _sync = new();
     private readonly Dictionary<string, JobState> _jobs = new(StringComparer.Ordinal);
 
-    public ControlJobManager(int maxEventBuffer)
+    public ControlJobManager(int maxEventBuffer, int maxRunningJobs = int.MaxValue)
     {
         _maxEventBuffer = Math.Max(1, maxEventBuffer);
+        _maxRunningJobs = Math.Max(1, maxRunningJobs);
     }
 
     public ControlJob StartJob(
         string requestId,
-        string? leaseId,
-        string? idempotencyKey,
         Func<ControlJobExecutionContext, CancellationToken, ValueTask<ControlCommandResult>> execute
-    ) => StartJob(Guid.Empty, requestId, leaseId, idempotencyKey, execute);
+    ) => StartJob(Guid.Empty, requestId, execute);
 
     public ControlJob StartJob(
         Guid connectionId,
         string requestId,
-        string? leaseId,
-        string? idempotencyKey,
         Func<ControlJobExecutionContext, CancellationToken, ValueTask<ControlCommandResult>> execute
     )
     {
@@ -38,9 +36,11 @@ internal sealed class ControlJobManager
             throw new ArgumentNullException(nameof(execute));
 
         var jobId = Guid.NewGuid().ToString("N");
-        var state = new JobState(jobId, connectionId, requestId, leaseId, idempotencyKey, execute);
+        var state = new JobState(jobId, connectionId, requestId, execute);
         lock (_sync)
         {
+            if (RunningJobCountLocked() >= _maxRunningJobs)
+                throw new InvalidOperationException("maxJobConcurrency");
             _jobs.Add(jobId, state);
             AddEventLocked(state, ControlJobStates.Running, progress: null, message: null);
         }
@@ -60,16 +60,8 @@ internal sealed class ControlJobManager
 
         try
         {
-            var context = new ControlJobExecutionContext(
-                state.JobId,
-                state.RequestId,
-                state.LeaseId,
-                state.IdempotencyKey,
-                Report
-            );
-            var result = await state
-                .Execute(context, state.Cancellation.Token)
-                .ConfigureAwait(false);
+            var context = new ControlJobExecutionContext(state.JobId, state.RequestId, Report);
+            var result = await state.Execute(context, state.Cancellation.Token).ConfigureAwait(false);
             lock (_sync)
             {
                 state.Result = result.Result;
@@ -156,8 +148,10 @@ internal sealed class ControlJobManager
         }
     }
 
+    private int RunningJobCountLocked() => _jobs.Values.Count(state => !IsTerminal(state.State));
+
     private static ControlJob Snapshot(JobState state) =>
-        new(state.JobId, state.RequestId, state.LeaseId, state.IdempotencyKey, state.State);
+        new(state.JobId, state.RequestId, state.State);
 
     private JobState RequireJob(string jobId)
     {
@@ -187,10 +181,7 @@ internal sealed class ControlJobManager
     }
 
     private static bool IsTerminal(string state) =>
-        state
-            is ControlJobStates.Completed
-                or ControlJobStates.Failed
-                or ControlJobStates.Cancelled;
+        state is ControlJobStates.Completed or ControlJobStates.Failed or ControlJobStates.Cancelled;
 
     private sealed class JobState
     {
@@ -198,33 +189,19 @@ internal sealed class ControlJobManager
             string jobId,
             Guid connectionId,
             string requestId,
-            string? leaseId,
-            string? idempotencyKey,
-            Func<
-                ControlJobExecutionContext,
-                CancellationToken,
-                ValueTask<ControlCommandResult>
-            > execute
+            Func<ControlJobExecutionContext, CancellationToken, ValueTask<ControlCommandResult>> execute
         )
         {
             JobId = jobId;
             ConnectionId = connectionId;
             RequestId = requestId;
-            LeaseId = leaseId;
-            IdempotencyKey = idempotencyKey;
             Execute = execute;
         }
 
         public string JobId { get; }
         public Guid ConnectionId { get; }
         public string RequestId { get; }
-        public string? LeaseId { get; }
-        public string? IdempotencyKey { get; }
-        public Func<
-            ControlJobExecutionContext,
-            CancellationToken,
-            ValueTask<ControlCommandResult>
-        > Execute { get; }
+        public Func<ControlJobExecutionContext, CancellationToken, ValueTask<ControlCommandResult>> Execute { get; }
         public CancellationTokenSource Cancellation { get; } = new();
         public string State { get; set; } = ControlJobStates.Running;
         public long NextSequence { get; set; }

@@ -3,6 +3,7 @@ export const PROTOCOL_VERSION = 2;
 export const MESSAGE_TYPES = {
   handshake: "handshake",
   sessionEvicted: "session_evicted",
+  error: "error",
   eval: "eval",
   complete: "complete",
   reset: "reset",
