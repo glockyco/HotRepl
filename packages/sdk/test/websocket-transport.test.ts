@@ -6,6 +6,7 @@ import { connect, HotReplSessionEvicted } from "../src";
 function serveRuntime(runtime: FakeRuntime): { close: () => void; url: string } {
   const server = Bun.serve<{ closeEviction: () => void }>({
     port: 0,
+    hostname: "127.0.0.1",
     fetch(request, server) {
       if (server.upgrade(request, { data: { closeEviction: () => {} } })) return undefined;
       return new Response("Expected WebSocket upgrade.", { status: 426 });
