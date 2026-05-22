@@ -12,7 +12,7 @@ namespace HotRepl.Tests.Unit;
 public class ControlJobManagerTests
 {
     [Fact]
-    public void StartJob_CreatesAcceptedState()
+    public void StartJob_CreatesRunningState()
     {
         var manager = new ControlJobManager(maxEventBuffer: 100);
 
@@ -23,9 +23,9 @@ public class ControlJobManagerTests
             (_, _) => ValueTask.FromResult(ControlCommandResult.Empty)
         );
 
-        Assert.Equal("accepted", job.State);
+        Assert.Equal("running", job.State);
         Assert.Equal(job.JobId, manager.GetStatus(job.JobId).JobId);
-        Assert.Equal("accepted", manager.GetStatus(job.JobId).State);
+        Assert.Equal("running", manager.GetStatus(job.JobId).State);
     }
 
     [Fact]
@@ -49,7 +49,7 @@ public class ControlJobManagerTests
         await manager.RunAsync(job.JobId);
 
         var status = manager.GetStatus(job.JobId);
-        Assert.Equal("completed", status.State);
+        Assert.Equal("done", status.State);
         Assert.True(status.Result!["ok"]!.Value<bool>());
     }
 
@@ -73,7 +73,7 @@ public class ControlJobManagerTests
     }
 
     [Fact]
-    public async Task CancelJob_TransitionsThroughCancellingToCancelled()
+    public async Task CancelJob_TransitionsToCancelled()
     {
         var manager = new ControlJobManager(maxEventBuffer: 100);
         var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -98,10 +98,7 @@ public class ControlJobManagerTests
         Assert.True(accepted);
         var status = manager.GetStatus(job.JobId);
         Assert.Equal("cancelled", status.State);
-        Assert.Contains(
-            manager.EventsAfter(job.JobId, 0),
-            e => string.Equals(e.State, "cancelling", StringComparison.Ordinal)
-        );
+
         Assert.Contains(
             manager.EventsAfter(job.JobId, 0),
             e => string.Equals(e.State, "cancelled", StringComparison.Ordinal)
@@ -157,6 +154,6 @@ public class ControlJobManagerTests
 
         var events = manager.EventsAfter(job.JobId, 0);
         Assert.Equal(3, events.Count);
-        Assert.Equal("completed", events[^1].State);
+        Assert.Equal("done", events[^1].State);
     }
 }

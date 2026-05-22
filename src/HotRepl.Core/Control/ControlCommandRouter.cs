@@ -51,20 +51,7 @@ internal sealed class ControlCommandRouter
             );
         }
 
-        if (
-            handler.Descriptor.MutatesState
-            && _sessions is { } sessions
-            && !sessions.IsLeaseValidForConnection(connectionId, message.LeaseId)
-        )
-        {
-            return CommandError(
-                message.Id,
-                "lease_required",
-                "missingOrInvalidLease",
-                "A valid control lease owned by this connection is required for this command.",
-                retryable: true
-            );
-        }
+
 
         return handler.Descriptor.Kind switch
         {
@@ -100,8 +87,8 @@ internal sealed class ControlCommandRouter
         var job = _jobs.StartJob(
             connectionId,
             message.Id,
-            message.LeaseId,
-            message.IdempotencyKey,
+            leaseId: null,
+            idempotencyKey: null,
             (context, token) =>
                 handler.ExecuteAsync(context.ToCommandContext(timeout), message.Args, token)
         );
@@ -110,7 +97,7 @@ internal sealed class ControlCommandRouter
         {
             Id = message.Id,
             JobId = job.JobId,
-            State = job.State,
+            State = ControlJobStates.Running,
         };
     }
 
@@ -125,12 +112,7 @@ internal sealed class ControlCommandRouter
                 message.TimeoutMs > 0
                     ? TimeSpan.FromMilliseconds(message.TimeoutMs)
                     : (TimeSpan?)null;
-            var context = new ControlCommandContext(
-                message.Id,
-                message.LeaseId,
-                message.IdempotencyKey,
-                timeout
-            );
+            var context = new ControlCommandContext(message.Id, null, null, timeout);
             var result = handler
                 .ExecuteAsync(context, message.Args, CancellationToken.None)
                 .AsTask()
@@ -192,12 +174,7 @@ internal sealed class ControlCommandRouter
             return JobOwnershipError(message.Id, message.JobId);
 
         var status = _jobs.GetStatus(message.JobId);
-        if (
-            status.State
-            is ControlJobStates.Accepted
-                or ControlJobStates.Running
-                or ControlJobStates.Cancelling
-        )
+        if (string.Equals(status.State, ControlJobStates.Running, StringComparison.Ordinal))
         {
             return CommandError(
                 message.Id,
@@ -304,7 +281,7 @@ internal sealed class ControlCommandRouter
     private static CommandErrorMessage JobOwnershipError(string id, string jobId) =>
         CommandError(
             id,
-            "auth_failed",
+            "conflict",
             "jobNotOwnedByConnection",
             $"Job '{jobId}' is not owned by this connection.",
             retryable: false

@@ -30,7 +30,7 @@ namespace HotRepl;
 /// Tick() drain order (invariant):
 ///   1. Process cancel requests — populate _cancelledIds, abort if matching eval running
 ///   2. Drain command queue — reset, ping, complete, subscribe, control
-///   3. Start at most one accepted control job
+///   3. Start at most one queued control job
 ///   4. Execute at most one eval
 ///   5. Tick subscriptions
 /// </summary>
@@ -94,11 +94,7 @@ public sealed class ReplEngine : IDisposable
         _router = new MessageRouter(this, msg => _host.LogInfo(msg));
         _controlSessions = new ControlSessionManager(_host.Config);
         _controlJobs = new ControlJobManager(_host.Config.MaxJobEventBuffer);
-        _controlRouter = new ControlCommandRouter(
-            _host.ControlCommands,
-            _controlSessions,
-            _controlJobs
-        );
+        _controlRouter = new ControlCommandRouter(_host.ControlCommands, jobs: _controlJobs);
 
         _wsServer.ClientConnected += (_, e) => OnClientConnected(e.ConnectionId, e.Connection);
         _wsServer.ClientDisconnected += (_, e) => _clients.OnDisconnected(e.ConnectionId);
@@ -236,6 +232,11 @@ public sealed class ReplEngine : IDisposable
     }
 
     internal void EnqueueCommand(IEngineCommand cmd) => _commandQueue.Enqueue(cmd);
+
+    internal int QueuedCommandCount => _commandQueue.Count;
+
+    internal void SendProtocolError(Guid connectionId, string json) =>
+        _clients?.SendControlTo(connectionId, json);
 
     private ICodeEvaluator CreateEvaluator(string evaluatorName)
     {
@@ -794,44 +795,20 @@ public sealed class ReplEngine : IDisposable
     {
         _clients!.OnConnected(id, socket);
 
-        // Handshake can be sent immediately — its content is entirely statically
-        // knowable and does not require the evaluator to be initialized.
+        // Handshake can be sent immediately — its content is statically knowable
+        // from host and evaluator capabilities.
         var usings = _host.AdditionalUsings.ToArray();
         var helpers = HelperInjector.AllHelperSignatures(_host);
-
-        _clients.Send(
-            MessageSerializer.Serialize(
-                new HandshakeMessage
-                {
-                    Version = "1.0.0",
-                    Evaluator = _evaluator?.Capabilities,
-                    Host = _host.HostInfo,
-                    AvailableEvaluators = _host.AvailableEvaluators.Select(e => e.Name).ToArray(),
-                    CsharpVersion = _evaluator?.Capabilities.LanguageVersion ?? "unknown",
-                    DefaultUsings = usings,
-                    Helpers = helpers,
-                    ControlPlane = _host.Config.ControlPlaneEnabled
-                        ? new ControlPlaneHandshake
-                        {
-                            Supported = true,
-                            ProtocolVersion = 1,
-                            AuthRequired = _host.Config.RequireControlAuth,
-                            LeaseRequired = _host.Config.RequireControlLease,
-                            ArtifactRefsSupported = true,
-                            JobEventsSupported = false,
-                            JobEventReplaySupported = false,
-                            Limits = new ControlPlaneLimits
-                            {
-                                MaxMessageBytes = _host.Config.MaxControlMessageBytes,
-                                MaxInFlightCommands = 1,
-                                MaxQueuedCommands = _host.Config.MaxQueuedControlCommands,
-                                MaxJobEventBuffer = _host.Config.MaxJobEventBuffer,
-                            },
-                        }
-                        : null,
-                }
-            )
+        var json = RuntimeHandshakeFactory.Serialize(
+            _host.Config,
+            _host.HostInfo,
+            _evaluator!.Capabilities,
+            _host.AvailableEvaluators.Select(e => e.Name).ToArray(),
+            usings,
+            helpers
         );
+
+        _clients.SendTo(id, json);
     }
 
     // ── Private: helpers ─────────────────────────────────────────────────────

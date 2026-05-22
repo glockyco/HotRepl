@@ -108,7 +108,7 @@ public class ControlSessionManagerTests
     }
 
     [Fact]
-    public void Router_RejectsMutatingCommandWithoutLease()
+    public void Router_AllowsMutatingCommandWithoutLease()
     {
         var manager = new ControlSessionManager(new ReplConfig { RequireControlLease = true });
         var router = new ControlCommandRouter(new FakeRegistry(new MutatingHandler()), manager);
@@ -116,9 +116,8 @@ public class ControlSessionManagerTests
 
         var result = router.Execute(message);
 
-        var error = Assert.IsType<CommandErrorMessage>(result);
-        Assert.Equal("lease_required", error.Error.Kind);
-        Assert.True(error.Error.Retryable);
+        var ok = Assert.IsType<CommandResultMessage>(result);
+        Assert.Equal("ok", ok.Status);
     }
 
     [Fact]

@@ -180,14 +180,14 @@ public class ControlMessageSerializerTests
         {
             Id = "cmd-2",
             JobId = "job-1",
-            State = "accepted",
+            State = "running",
         };
         var back = RoundTrip<CommandAcceptedMessage>(msg);
 
         Assert.Equal(MessageType.CommandAccepted, back.Type);
         Assert.Equal("cmd-2", back.Id);
         Assert.Equal("job-1", back.JobId);
-        Assert.Equal("accepted", back.State);
+        Assert.Equal("running", back.State);
     }
 
     [Fact]
@@ -233,7 +233,7 @@ public class ControlMessageSerializerTests
         {
             Id = "result-1",
             JobId = "job-1",
-            State = "completed",
+            State = "done",
             Status = "ok",
             Result = JObject.Parse("{\"done\":true}"),
             Artifacts = new[] { ExampleArtifact() },
@@ -244,7 +244,7 @@ public class ControlMessageSerializerTests
         Assert.Equal(MessageType.JobResult, back.Type);
         Assert.Equal("result-1", back.Id);
         Assert.Equal("job-1", back.JobId);
-        Assert.Equal("completed", back.State);
+        Assert.Equal("done", back.State);
         Assert.Equal("ok", back.Status);
         Assert.True(back.Result["done"]!.Value<bool>());
         Assert.Single(back.Artifacts);
@@ -274,14 +274,14 @@ public class ControlMessageSerializerTests
         {
             Id = "cancel-1",
             Accepted = true,
-            State = "cancelling",
+            State = "running",
         };
         var back = RoundTrip<JobCancelResultMessage>(msg);
 
         Assert.Equal(MessageType.JobCancelResult, back.Type);
         Assert.Equal("cancel-1", back.Id);
         Assert.True(back.Accepted);
-        Assert.Equal("cancelling", back.State);
+        Assert.Equal("running", back.State);
     }
 
     [Fact]

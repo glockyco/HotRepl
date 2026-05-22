@@ -1,6 +1,10 @@
+extern alias HotReplProtocolV2;
+
 using System;
 using System.Collections.Concurrent;
 using Fleck;
+using ProtocolV2 = HotReplProtocolV2::HotRepl.Protocol;
+using ProtocolMessageSerializer = HotReplProtocolV2::HotRepl.Protocol.Serialization.ProtocolMessageSerializer;
 
 namespace HotRepl.Server;
 
@@ -42,6 +46,16 @@ internal sealed class ClientRegistry
             _log("[HotRepl] New client connected; closing previous connection.");
             try
             {
+                _send(
+                    prev,
+                    ProtocolMessageSerializer.Serialize(
+                        new ProtocolV2.SessionEvictedMessage
+                        {
+                            Reason = "displaced",
+                            By = new ProtocolV2.SessionEvictedBy { ClientName = null },
+                        }
+                    )
+                );
                 prev.Close();
             }
             catch

@@ -38,6 +38,18 @@ public sealed class ReplConfig
     /// <summary>WebSocket bind host. Default: loopback only.</summary>
     public string BindHost { get; set; } = "127.0.0.1";
 
+    /// <summary>Maximum inbound protocol message size in bytes. Default: 4 MiB.</summary>
+    public int MaxMessageBytes { get; set; } = 4 * 1024 * 1024;
+
+    /// <summary>Maximum number of queued protocol commands before overload rejection. Default: 32.</summary>
+    public int MaxQueuedCommands { get; set; } = 32;
+
+    /// <summary>Maximum number of concurrently running command jobs. Default: 1.</summary>
+    public int MaxJobConcurrency { get; set; } = 1;
+
+    /// <summary>Whether typed command schemas are validated by the runtime. Default: true.</summary>
+    public bool SchemaValidation { get; set; } = true;
+
     /// <summary>Whether control-plane auth is required. Default: false until auth is configured.</summary>
     public bool RequireControlAuth { get; set; }
 

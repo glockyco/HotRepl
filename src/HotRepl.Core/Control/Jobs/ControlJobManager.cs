@@ -42,7 +42,7 @@ internal sealed class ControlJobManager
         lock (_sync)
         {
             _jobs.Add(jobId, state);
-            AddEventLocked(state, ControlJobStates.Accepted, progress: null, message: null);
+            AddEventLocked(state, ControlJobStates.Running, progress: null, message: null);
         }
 
         return Snapshot(state);
@@ -56,8 +56,6 @@ internal sealed class ControlJobManager
             state = RequireJob(jobId);
             if (IsTerminal(state.State))
                 return;
-            if (string.Equals(state.State, ControlJobStates.Accepted, StringComparison.Ordinal))
-                TransitionLocked(state, ControlJobStates.Running, message: null);
         }
 
         try
@@ -115,13 +113,9 @@ internal sealed class ControlJobManager
         lock (_sync)
         {
             var state = RequireJob(jobId);
-            if (
-                IsTerminal(state.State)
-                || string.Equals(state.State, ControlJobStates.Cancelling, StringComparison.Ordinal)
-            )
+            if (IsTerminal(state.State))
                 return false;
 
-            TransitionLocked(state, ControlJobStates.Cancelling, message: null);
             state.Cancellation.Cancel();
             return true;
         }
@@ -232,7 +226,7 @@ internal sealed class ControlJobManager
             ValueTask<ControlCommandResult>
         > Execute { get; }
         public CancellationTokenSource Cancellation { get; } = new();
-        public string State { get; set; } = ControlJobStates.Accepted;
+        public string State { get; set; } = ControlJobStates.Running;
         public long NextSequence { get; set; }
         public JObject? Progress { get; set; }
         public JObject? Result { get; set; }

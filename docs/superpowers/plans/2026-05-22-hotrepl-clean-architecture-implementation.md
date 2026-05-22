@@ -391,7 +391,7 @@ git commit -m "feat(protocol): add C# v2 protocol assembly"
 
 ---
 
-## Task 3: Runtime v2 cutover
+## Task 3: Runtime v2 foundation cutover
 
 **Files:**
 
@@ -410,7 +410,7 @@ git commit -m "feat(protocol): add C# v2 protocol assembly"
 - Test: `tests/HotRepl.Tests/Unit/LimitEnforcementTests.cs`
 - Test: existing control/job tests updated to v2 semantics
 
-- [ ] **Step 1: Write failing runtime tests**
+- [x] **Step 1: Write failing runtime tests**
 
 Add tests proving:
 
@@ -454,7 +454,7 @@ public void QueueLimit_RejectedRequestReturnsBusyWithoutEnqueueing()
 sets `MaxQueuedCommands = 1`, queues one command, routes a second command, and asserts a `busy`
 response.
 
-- [ ] **Step 2: Run red tests**
+- [x] **Step 2: Run red tests**
 
 Run:
 
@@ -464,21 +464,21 @@ dotnet test tests/HotRepl.Tests/ --nologo -v q --filter "FullyQualifiedName~Hand
 
 Expected: FAIL because runtime still speaks v1.
 
-- [ ] **Step 3: Implement v2 route handling**
+- [x] **Step 3: Implement v2 route handling foundation**
 
 Remove auth, lease, `idempotencyKey`, job events, and accepted/cancelling states from the runtime
 path. `command_call` returns `command_result` for sync handlers and
 `job_accepted { state: "running" }` for job handlers. `job_status_result` returns only `running`,
 `done`, `failed`, or `cancelled`. `job_result` is terminal and includes named artifacts.
 
-- [ ] **Step 4: Implement journal and limits**
+- [x] **Step 4: Implement journal and limits foundation**
 
 Add two 1 024-entry ring buffers. Record only metadata: id, kind, optional command name, success,
 durationMs, optional errorKind, timestamp. Reject oversized inbound frames before parse using
 `MaxMessageBytes`. Reject enqueue when queued command count reaches `MaxQueuedCommands`. Include
 every enforced limit in handshake `enforces[]`.
 
-- [ ] **Step 5: Run green verification**
+- [x] **Step 5: Run green verification**
 
 Run the filtered test command from Step 2, then:
 
@@ -488,7 +488,13 @@ dotnet test tests/HotRepl.Tests/ --nologo -v q
 
 Expected: all C# tests pass.
 
-- [ ] **Step 6: Commit**
+Execution split: this task establishes v2 handshake serialization, observable session eviction,
+legacy auth/lease rejection at the router boundary, `MaxMessageBytes`/`MaxQueuedCommands`
+enforcement, server-owned journal storage, no runtime lease requirement, and v2 job state strings.
+Task 3B below removes the remaining Core-local v1 protocol records and routes all runtime responses
+through `HotRepl.Protocol`.
+
+- [x] **Step 6: Commit**
 
 ```sh
 git add src/HotRepl.Core tests/HotRepl.Tests/Unit docs/superpowers/plans/2026-05-22-hotrepl-clean-architecture-implementation.md
@@ -497,6 +503,59 @@ git commit -m "feat(runtime): cut over to protocol v2"
 
 ---
 
+## Task 3B: Runtime protocol record cleanup
+
+**Files:**
+
+- Modify: `src/HotRepl.Core/ReplEngine.cs`
+- Modify: `src/HotRepl.Core/Server/MessageRouter.cs`
+- Modify: `src/HotRepl.Core/Control/ControlCommandRouter.cs`
+- Delete or retire: `src/HotRepl.Core/Protocol/**` v1 message records that duplicate
+  `src/HotRepl.Protocol`
+- Test: `tests/HotRepl.Tests/Unit/MessageSerializerTests.cs`
+- Test: `tests/HotRepl.Tests/Unit/ControlMessageSerializerTests.cs`
+- Test: `tests/HotRepl.Tests/Unit/ControlRoutingTests.cs`
+
+- [ ] **Step 1: Write failing cleanup tests**
+
+Assert eval errors use the universal error envelope, sync/job command results expose `output` plus a
+named artifact map, and no serialized runtime response contains `diagnostics`, `result`,
+`command_accepted`, `control_auth`, `lease_acquire`, `leaseId`, `sessionId`, or `idempotencyKey`.
+
+- [ ] **Step 2: Run red tests**
+
+Run:
+
+```sh
+dotnet test tests/HotRepl.Tests/ --nologo -v q --filter "FullyQualifiedName~MessageSerializerTests|FullyQualifiedName~ControlMessageSerializerTests|FullyQualifiedName~ControlRoutingTests"
+```
+
+Expected: FAIL while Core-local v1 records are still serialized.
+
+- [ ] **Step 3: Route runtime responses through `HotRepl.Protocol`**
+
+Remove the Core-local v1 protocol records that overlap `HotRepl.Protocol`, remove the external alias
+from Core's project reference, and update ReplEngine/control routing to construct the public v2
+records directly.
+
+- [ ] **Step 4: Run green verification**
+
+Run the filtered command from Step 2, then:
+
+```sh
+dotnet test tests/HotRepl.Tests/ --nologo -v q
+```
+
+Expected: all C# tests pass.
+
+- [ ] **Step 5: Commit**
+
+```sh
+git add src/HotRepl.Core tests/HotRepl.Tests/Unit docs/superpowers/plans/2026-05-22-hotrepl-clean-architecture-implementation.md
+git commit -m "feat(runtime): route responses through protocol v2"
+```
+
+---
 ## Task 4: TypeScript testing runtime and SDK core
 
 **Files:**
@@ -566,7 +625,6 @@ Expected: all pass.
 git add packages/testing packages/sdk package.json bun.lock docs/superpowers/plans/2026-05-22-hotrepl-clean-architecture-implementation.md
 git commit -m "feat(sdk): add typed session over fake runtime"
 ```
-
 ---
 
 ## Task 5: SDK WebSocket adapter and conformance

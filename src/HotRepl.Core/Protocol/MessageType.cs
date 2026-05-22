@@ -35,7 +35,7 @@ internal static class MessageType
     public const string CommandDescribeResult = "command_describe_result";
     public const string CommandResult = "command_result";
     public const string CommandError = "command_error";
-    public const string CommandAccepted = "command_accepted";
+    public const string CommandAccepted = "job_accepted";
     public const string JobStatusResult = "job_status_result";
     public const string JobResult = "job_result";
     public const string JobCancelResult = "job_cancel_result";

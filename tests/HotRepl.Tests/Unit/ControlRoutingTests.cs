@@ -67,18 +67,32 @@ public class ControlRoutingTests
     }
 
     [Fact]
-    public void Execute_MutatingCommandRejectsReplayedLeaseFromDifferentConnection()
+    public void Execute_MutatingCommandDoesNotRequireLease()
+    {
+        var router = new ControlCommandRouter(new FakeRegistry(new MutatingEchoHandler()));
+        var result = router.Execute(
+            new CommandCallMessage
+            {
+                Id = "cmd-1",
+                Name = "archive.mutate",
+                Args = JObject.Parse("{\"value\":\"ok\"}"),
+            },
+            Guid.NewGuid()
+        );
+
+        var ok = Assert.IsType<CommandResultMessage>(result);
+        Assert.Equal("ok", ok.Result["value"]!.Value<string>());
+    }
+
+    [Fact]
+    public void Execute_MutatingCommandIgnoresLegacyLeaseFields()
     {
         var sessions = new ControlSessionManager(new ReplConfig { RequireControlLease = true });
         var ownerConnection = Guid.NewGuid();
         var attackerConnection = Guid.NewGuid();
         var auth = sessions.Authenticate(ownerConnection, token: null);
         var lease = sessions.AcquireLease(ownerConnection, auth.SessionId!, "owner");
-        var router = new ControlCommandRouter(
-            new FakeRegistry(new MutatingEchoHandler()),
-            sessions
-        );
-
+        var router = new ControlCommandRouter(new FakeRegistry(new MutatingEchoHandler()), sessions);
         var result = router.Execute(
             new CommandCallMessage
             {
@@ -88,34 +102,6 @@ public class ControlRoutingTests
                 Args = JObject.Parse("{\"value\":\"ok\"}"),
             },
             attackerConnection
-        );
-
-        var error = Assert.IsType<CommandErrorMessage>(result);
-        Assert.Equal("lease_required", error.Error.Kind);
-        Assert.Equal("missingOrInvalidLease", error.Error.Code);
-    }
-
-    [Fact]
-    public void Execute_MutatingCommandAcceptsLeaseOwnedByConnection()
-    {
-        var sessions = new ControlSessionManager(new ReplConfig { RequireControlLease = true });
-        var ownerConnection = Guid.NewGuid();
-        var auth = sessions.Authenticate(ownerConnection, token: null);
-        var lease = sessions.AcquireLease(ownerConnection, auth.SessionId!, "owner");
-        var router = new ControlCommandRouter(
-            new FakeRegistry(new MutatingEchoHandler()),
-            sessions
-        );
-
-        var result = router.Execute(
-            new CommandCallMessage
-            {
-                Id = "cmd-1",
-                Name = "archive.mutate",
-                LeaseId = lease.LeaseId,
-                Args = JObject.Parse("{\"value\":\"ok\"}"),
-            },
-            ownerConnection
         );
 
         var ok = Assert.IsType<CommandResultMessage>(result);
@@ -151,8 +137,8 @@ public class ControlRoutingTests
         var accepted = Assert.IsType<CommandAcceptedMessage>(result);
         Assert.Equal(MessageType.CommandAccepted, accepted.Type);
         Assert.Equal("cmd-1", accepted.Id);
-        Assert.Equal("accepted", accepted.State);
-        Assert.Equal("accepted", jobs.GetStatus(accepted.JobId).State);
+        Assert.Equal("running", accepted.State);
+        Assert.Equal("running", jobs.GetStatus(accepted.JobId).State);
     }
 
     [Fact]
@@ -171,7 +157,7 @@ public class ControlRoutingTests
         Assert.Equal(MessageType.JobStatusResult, status.Type);
         Assert.Equal("status-1", status.Id);
         Assert.Equal(accepted.JobId, status.JobId);
-        Assert.Equal("accepted", status.State);
+        Assert.Equal("running", status.State);
     }
 
     [Fact]
@@ -210,7 +196,7 @@ public class ControlRoutingTests
 
         var ok = Assert.IsType<JobResultMessage>(result);
         Assert.Equal(MessageType.JobResult, ok.Type);
-        Assert.Equal("completed", ok.State);
+        Assert.Equal("done", ok.State);
         Assert.Equal("ok", ok.Status);
         Assert.Equal("done", ok.Result["value"]!.Value<string>());
         var artifact = Assert.Single(ok.Artifacts);
@@ -234,7 +220,7 @@ public class ControlRoutingTests
         Assert.Equal(MessageType.JobCancelResult, result.Type);
         Assert.Equal("cancel-1", result.Id);
         Assert.True(result.Accepted);
-        Assert.Equal("cancelling", result.State);
+        Assert.Equal("running", result.State);
     }
 
     private sealed class FakeRegistry : IControlCommandRegistry
