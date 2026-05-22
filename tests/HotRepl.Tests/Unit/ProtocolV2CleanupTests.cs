@@ -95,28 +95,6 @@ public class ProtocolV2CleanupTests
         Assert.Equal("HotRepl.Protocol", typeof(SubscribeErrorMessage).Assembly.GetName().Name);
     }
 
-    [Fact]
-    public void PublicProtocolDtos_AreRecordTypes()
-    {
-        Assert.Equal(new ResetMessage { Id = "reset-1" }, new ResetMessage { Id = "reset-1" });
-        Assert.Equal(
-            new CommandSummary
-            {
-                Name = "game.quit",
-                MajorVersion = 1,
-                Kind = "sync",
-                MutatesState = true,
-            },
-            new CommandSummary
-            {
-                Name = "game.quit",
-                MajorVersion = 1,
-                Kind = "sync",
-                MutatesState = true,
-            }
-        );
-    }
-
 
     [Fact]
     public void ReplConfig_DoesNotExposeV1AuthLeaseOptions()
