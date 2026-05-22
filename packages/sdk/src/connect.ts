@@ -1,8 +1,8 @@
 import { PROTOCOL_VERSION } from "@hotrepl/protocol";
-import type { RuntimeTransport } from "./session";
 import { HotReplError } from "./errors";
-import { WebSocketTransport } from "./websocket-transport";
+import type { RuntimeTransport } from "./session";
 import { Session } from "./session";
+import { WebSocketTransport } from "./websocket-transport";
 
 export interface ConnectOptions {
   runtime?: RuntimeTransport;
@@ -11,7 +11,7 @@ export interface ConnectOptions {
 }
 
 export function resolveHotReplUrl(options: ConnectOptions = {}): string {
-  return options.url ?? options.env?.HOTREPL_URL ?? "ws://127.0.0.1:31337";
+  return options.url ?? options.env?.HOTREPL_URL ?? "ws://127.0.0.1:18590";
 }
 
 export async function connect(options: ConnectOptions = {}): Promise<Session> {
