@@ -23,7 +23,7 @@ import type {
 } from "@hotrepl/protocol";
 import { Artifact } from "./artifact";
 import { toResult, type DescriptorCache, type Result } from "./commands";
-import { HotReplError } from "./errors";
+import { HotReplError, HotReplSessionEvicted } from "./errors";
 
 export type RuntimeRequest =
   | { type: "eval"; id: string; code: string; timeoutMs?: number }
@@ -307,12 +307,7 @@ export class Session {
 
   private ensureActive(): void {
     if (this.evicted === undefined) return;
-    throw new HotReplError({
-      kind: "conflict",
-      code: "sessionEvicted",
-      message: `Session was evicted: ${this.evicted.reason}.`,
-      retryable: false,
-    });
+    throw new HotReplSessionEvicted(this.evicted);
   }
 }
 

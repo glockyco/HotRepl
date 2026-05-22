@@ -1,4 +1,4 @@
-import type { ErrorKind, HotReplErrorEnvelope } from "@hotrepl/protocol";
+import type { ErrorKind, HotReplErrorEnvelope, SessionEvictedMessage } from "@hotrepl/protocol";
 
 export interface HotReplErrorInput {
   kind: ErrorKind;
@@ -37,5 +37,20 @@ export class HotReplArtifactCorrupted extends HotReplError {
       retryable: false,
     });
     this.name = "HotReplArtifactCorrupted";
+  }
+}
+
+export class HotReplSessionEvicted extends HotReplError {
+  readonly event: SessionEvictedMessage;
+
+  constructor(event: SessionEvictedMessage) {
+    super({
+      kind: "conflict",
+      code: "sessionEvicted",
+      message: `Session was evicted: ${event.reason}.`,
+      retryable: false,
+    });
+    this.name = "HotReplSessionEvicted";
+    this.event = event;
   }
 }

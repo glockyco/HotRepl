@@ -9,6 +9,15 @@
         "typescript": "^6.0.3",
       },
     },
+    "packages/conformance": {
+      "name": "@hotrepl/conformance",
+      "version": "0.0.0",
+      "dependencies": {
+        "@hotrepl/protocol": "workspace:*",
+        "@hotrepl/sdk": "workspace:*",
+        "@hotrepl/testing": "workspace:*",
+      },
+    },
     "packages/protocol": {
       "name": "@hotrepl/protocol",
       "version": "0.0.0",
@@ -36,6 +45,8 @@
     },
   },
   "packages": {
+    "@hotrepl/conformance": ["@hotrepl/conformance@workspace:packages/conformance"],
+
     "@hotrepl/protocol": ["@hotrepl/protocol@workspace:packages/protocol"],
 
     "@hotrepl/sdk": ["@hotrepl/sdk@workspace:packages/sdk"],

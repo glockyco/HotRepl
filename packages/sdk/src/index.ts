@@ -1,7 +1,12 @@
 export { Artifact, sha256Hex, type ArtifactReader } from "./artifact";
 export { toResult, type DescriptorCache, type Result } from "./commands";
 export { connect, resolveHotReplUrl, type ConnectOptions } from "./connect";
-export { HotReplArtifactCorrupted, HotReplError, type HotReplErrorInput } from "./errors";
+export {
+  HotReplArtifactCorrupted,
+  HotReplError,
+  HotReplSessionEvicted,
+  type HotReplErrorInput,
+} from "./errors";
 export {
   JobHandle,
   Session,
@@ -13,3 +18,4 @@ export {
   type WatchTick,
   type WatchWireMessage,
 } from "./session";
+export { WebSocketTransport } from "./websocket-transport";

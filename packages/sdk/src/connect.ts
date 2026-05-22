@@ -1,6 +1,7 @@
 import { PROTOCOL_VERSION } from "@hotrepl/protocol";
 import type { RuntimeTransport } from "./session";
 import { HotReplError } from "./errors";
+import { WebSocketTransport } from "./websocket-transport";
 import { Session } from "./session";
 
 export interface ConnectOptions {
@@ -14,15 +15,7 @@ export function resolveHotReplUrl(options: ConnectOptions = {}): string {
 }
 
 export async function connect(options: ConnectOptions = {}): Promise<Session> {
-  const runtime = options.runtime;
-  if (runtime === undefined) {
-    throw new HotReplError({
-      kind: "unsupported_operation",
-      code: "webSocketTransportUnavailable",
-      message: `No in-process runtime supplied for ${resolveHotReplUrl(options)}.`,
-      retryable: false,
-    });
-  }
+  const runtime = options.runtime ?? (await WebSocketTransport.connect(resolveHotReplUrl(options)));
 
   const handshake = await runtime.handshake();
   if (handshake.protocolVersion !== PROTOCOL_VERSION) {

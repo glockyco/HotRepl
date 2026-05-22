@@ -721,14 +721,14 @@ git commit -m "feat(sdk): add typed session over fake runtime"
 - Test: `packages/conformance/test/protocol-conformance.test.ts`
 - Test: `packages/sdk/test/websocket-transport.test.ts`
 
-- [ ] **Step 1: Write failing adapter/conformance tests**
+- [x] **Step 1: Write failing adapter/conformance tests**
 
 Conformance must assert handshake shape, eval success/error, reset, command list/describe, sync
 command result, job accepted/status/result/cancel, journal query, limit rejection, and session
 eviction. Run the same suite against `FakeRuntime`; include a WebSocket adapter unit test using an
 in-process Bun server.
 
-- [ ] **Step 2: Run red tests**
+- [x] **Step 2: Run red tests**
 
 Run:
 
@@ -738,18 +738,18 @@ bun test packages/sdk/test/websocket-transport.test.ts packages/conformance/test
 
 Expected: FAIL because transport and conformance packages do not exist.
 
-- [ ] **Step 3: Implement WebSocket transport**
+- [x] **Step 3: Implement WebSocket transport**
 
 Use the Web platform `WebSocket` available in Bun. Keep message correlation in the SDK, not
 consumers. On `session_evicted`, emit one typed event and cause subsequent calls to throw
 `HotReplSessionEvicted`.
 
-- [ ] **Step 4: Implement conformance suite**
+- [x] **Step 4: Implement conformance suite**
 
 Export `runConformance(target)` from `@hotrepl/conformance`. The fake-runtime target is the default
 CI target. The real C# host target is skipped unless a URL is provided.
 
-- [ ] **Step 5: Run green verification**
+- [x] **Step 5: Run green verification**
 
 Run:
 
@@ -760,7 +760,7 @@ bun run --cwd packages/conformance typecheck
 
 Expected: all pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```sh
 git add packages/sdk packages/conformance package.json bun.lock docs/superpowers/plans/2026-05-22-hotrepl-clean-architecture-implementation.md
