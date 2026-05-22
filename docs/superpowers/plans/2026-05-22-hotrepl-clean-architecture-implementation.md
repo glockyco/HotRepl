@@ -303,11 +303,10 @@ git commit -m "feat(protocol): scaffold TypeScript protocol package"
 - Create: `src/HotRepl.Protocol/Messages/Outbound/*.cs`
 - Create: `src/HotRepl.Protocol/Serialization/ProtocolMessageSerializer.cs`
 - Modify: `Directory.Packages.props`
-- Modify: `src/HotRepl.Core/HotRepl.Core.csproj`
 - Modify: `tests/HotRepl.Tests/HotRepl.Tests.csproj`
 - Test: `tests/HotRepl.Tests/Unit/ProtocolV2MessageSerializerTests.cs`
 
-- [ ] **Step 1: Write failing C# protocol tests**
+- [x] **Step 1: Write failing C# protocol tests**
 
 Add `ProtocolV2MessageSerializerTests` covering these cases:
 
@@ -348,7 +347,7 @@ public void ErrorEnvelope_UsesClosedKindConstants()
 }
 ```
 
-- [ ] **Step 2: Run red tests**
+- [x] **Step 2: Run red tests**
 
 Run:
 
@@ -358,19 +357,21 @@ dotnet test tests/HotRepl.Tests/ --nologo -v q --filter FullyQualifiedName~Proto
 
 Expected: FAIL because `HotRepl.Protocol` v2 assembly does not exist.
 
-- [ ] **Step 3: Implement the protocol assembly**
+- [x] **Step 3: Implement the protocol assembly**
 
 Create a `netstandard2.1` project with Newtonsoft.Json. Keep it independent: no references to
 `HotRepl.Core`, evaluator packages, Unity assemblies, Fleck, or Roslyn. Public message records use
 `JsonProperty` names matching the wire format and expose `Type` as a constant default.
 
-- [ ] **Step 4: Wire project references**
+- [x] **Step 4: Wire project references**
 
 Reference `src/HotRepl.Protocol/HotRepl.Protocol.csproj` from Core and tests. Do not remove Core's
 current v1 protocol files in this task; remove them when the runtime routes exclusively through v2
-in Task 3.
+in Task 3. During execution the test project references `HotRepl.Protocol` through the
+`HotReplProtocolV2` alias and Core does not reference it yet. That avoids same-namespace conflicts
+with Core's internal v1 protocol types until Task 3 removes them.
 
-- [ ] **Step 5: Run green verification**
+- [x] **Step 5: Run green verification**
 
 Run:
 
@@ -381,7 +382,7 @@ dotnet build src/HotRepl.Core/ --nologo -v q
 
 Expected: all pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```sh
 git add Directory.Packages.props src/HotRepl.Protocol src/HotRepl.Core/HotRepl.Core.csproj tests/HotRepl.Tests/HotRepl.Tests.csproj tests/HotRepl.Tests/Unit/ProtocolV2MessageSerializerTests.cs docs/superpowers/plans/2026-05-22-hotrepl-clean-architecture-implementation.md
