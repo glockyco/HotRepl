@@ -117,6 +117,7 @@ public class ProtocolV2CleanupTests
         );
     }
 
+
     [Fact]
     public void ReplConfig_DoesNotExposeV1AuthLeaseOptions()
     {

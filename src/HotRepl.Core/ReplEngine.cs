@@ -98,7 +98,12 @@ public sealed class ReplEngine : IDisposable
         _clients = new ClientRegistry(_wsServer, msg => _host.LogInfo(msg));
         _router = new MessageRouter(this, msg => _host.LogInfo(msg));
         _controlJobs = new ControlJobManager(_host.Config.MaxJobEventBuffer, _host.Config.MaxJobConcurrency);
-        _controlRouter = new ControlCommandRouter(_host.ControlCommands, jobs: _controlJobs, config: _host.Config);
+        _controlRouter = new ControlCommandRouter(
+            _host.ControlCommands,
+            jobs: _controlJobs,
+            config: _host.Config,
+            onCommandResult: RecordCommandJournalEntry
+        );
 
         _wsServer.ClientConnected += (_, e) => OnClientConnected(e.ConnectionId, e.Connection);
         _wsServer.ClientDisconnected += (_, e) => _clients.OnDisconnected(e.ConnectionId);
@@ -404,7 +409,6 @@ public sealed class ReplEngine : IDisposable
             case CommandCallCmd c:
             {
                 var response = _controlRouter!.Execute(c.Message, c.ConnectionId);
-                RecordCommandResult(c.Message, response);
                 _clients!.SendControlTo(c.ConnectionId, Serialize(response));
                 if (response is JobAcceptedMessage accepted)
                     _jobRunQueue.Enqueue(accepted.JobId);
@@ -702,19 +706,14 @@ public sealed class ReplEngine : IDisposable
         }
     }
 
-    private void RecordCommandResult(CommandCallMessage message, object response)
-    {
-        if (response is not CommandResultMessage result)
-            return;
-
+    private void RecordCommandJournalEntry(ControlCommandJournalEntry entry) =>
         _journal!.RecordCommand(
-            message.Id,
-            message.Name,
-            string.Equals(result.Status, "ok", StringComparison.Ordinal),
+            entry.Id,
+            entry.Name,
+            entry.Success,
             durationMs: 0,
-            errorKind: result.Error?.Kind
+            errorKind: entry.ErrorKind
         );
-    }
 
     private static JournalEntry ToMessage(ReplJournalEntry entry) =>
         new()

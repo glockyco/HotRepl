@@ -19,16 +19,20 @@ internal sealed class ControlCommandRouter
     private readonly IControlCommandRegistry _registry;
     private readonly ControlJobManager? _jobs;
     private readonly ReplConfig _config;
+    private readonly Action<ControlCommandJournalEntry>? _onCommandResult;
+    private readonly Dictionary<string, PendingJobCommand> _jobCommands = new(StringComparer.Ordinal);
 
     public ControlCommandRouter(
         IControlCommandRegistry registry,
         ControlJobManager? jobs = null,
-        ReplConfig? config = null
+        ReplConfig? config = null,
+        Action<ControlCommandJournalEntry>? onCommandResult = null
     )
     {
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
         _jobs = jobs;
         _config = config ?? new ReplConfig();
+        _onCommandResult = onCommandResult;
     }
 
     public CommandsListResultMessage List(string id) =>
@@ -112,6 +116,7 @@ internal sealed class ControlCommandRouter
                 (context, token) =>
                     handler.ExecuteAsync(context.ToCommandContext(timeout), message.Args, token)
             );
+            _jobCommands[job.JobId] = new PendingJobCommand(message.Id, message.Name);
 
             return new JobAcceptedMessage
             {
@@ -153,32 +158,38 @@ internal sealed class ControlCommandRouter
                 .GetResult();
             if (IsResultTooLarge(result.Result))
             {
-                return CommandError(
+                var tooLarge = CommandError(
                     message.Id,
                     ErrorKind.Internal,
                     "resultTooLarge",
                     "Command output exceeds maxResultLength.",
                     retryable: false
                 );
+                RecordCommand(message.Id, message.Name, tooLarge);
+                return tooLarge;
             }
 
-            return new CommandResultMessage
+            var response = new CommandResultMessage
             {
                 Id = message.Id,
                 Status = "ok",
                 Output = result.Result,
                 Artifacts = ToArtifactMap(result.Artifacts),
             };
+            RecordCommand(message.Id, message.Name, response);
+            return response;
         }
         catch (Exception ex)
         {
-            return CommandError(
+            var response = CommandError(
                 message.Id,
                 ErrorKind.Internal,
                 "handlerException",
                 ex.Message,
                 retryable: false
             );
+            RecordCommand(message.Id, message.Name, response);
+            return response;
         }
     }
 
@@ -300,7 +311,7 @@ internal sealed class ControlCommandRouter
         {
             if (status.Result != null && IsResultTooLarge(status.Result))
             {
-                return new JobResultMessage
+                var tooLarge = new JobResultMessage
                 {
                     Id = id,
                     JobId = status.JobId,
@@ -309,9 +320,11 @@ internal sealed class ControlCommandRouter
                     Error = ResultTooLargeError(),
                     Artifacts = ToArtifactMap(status.Artifacts),
                 };
+                RecordTerminalJob(status.JobId, tooLarge);
+                return tooLarge;
             }
 
-            return new JobResultMessage
+            var response = new JobResultMessage
             {
                 Id = id,
                 JobId = status.JobId,
@@ -320,9 +333,11 @@ internal sealed class ControlCommandRouter
                 Output = status.Result ?? new JObject(),
                 Artifacts = ToArtifactMap(status.Artifacts),
             };
+            RecordTerminalJob(status.JobId, response);
+            return response;
         }
 
-        return new JobResultMessage
+        var failed = new JobResultMessage
         {
             Id = id,
             JobId = status.JobId,
@@ -332,6 +347,8 @@ internal sealed class ControlCommandRouter
             Output = status.Result,
             Artifacts = ToArtifactMap(status.Artifacts),
         };
+        RecordTerminalJob(status.JobId, failed);
+        return failed;
     }
 
     private bool IsResultTooLarge(JToken output) =>
@@ -345,6 +362,34 @@ internal sealed class ControlCommandRouter
             retryable: false,
             details: null
         );
+
+    private void RecordCommand(string id, string name, CommandResultMessage result) =>
+        _onCommandResult?.Invoke(
+            new ControlCommandJournalEntry(
+                id,
+                name,
+                string.Equals(result.Status, "ok", StringComparison.Ordinal),
+                result.Error?.Kind
+            )
+        );
+
+    private void RecordTerminalJob(string jobId, JobResultMessage result)
+    {
+        if (!_jobCommands.TryGetValue(jobId, out var jobCommand))
+            return;
+
+        _jobCommands.Remove(jobId);
+        _onCommandResult?.Invoke(
+            new ControlCommandJournalEntry(
+                jobCommand.Id,
+                jobCommand.Name,
+                string.Equals(result.Status, "ok", StringComparison.Ordinal),
+                result.Error?.Kind
+            )
+        );
+    }
+
+    private sealed record PendingJobCommand(string Id, string Name);
 
     private static HotReplErrorEnvelope ToTerminalJobError(ControlJobStatus status)
     {

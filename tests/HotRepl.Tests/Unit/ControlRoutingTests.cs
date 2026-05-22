@@ -212,6 +212,33 @@ public class ControlRoutingTests
     }
 
     [Fact]
+    public async Task JobStatus_AfterCompletion_RecordsTerminalCommandJournalEntry()
+    {
+        var jobs = new ControlJobManager(maxEventBuffer: 100);
+        var recorded = new List<ControlCommandJournalEntry>();
+        var router = new ControlCommandRouter(
+            new FakeRegistry(new JobHandler()),
+            jobs: jobs,
+            onCommandResult: recorded.Add
+        );
+        var accepted = Assert.IsType<JobAcceptedMessage>(
+            router.Execute(new CommandCallMessage { Id = "cmd-1", Name = "archive.export" })
+        );
+        await router.RunJobAsync(accepted.JobId);
+
+        _ = router.GetJobStatus(
+            new JobStatusMessage { Id = "status-1", JobId = accepted.JobId },
+            Guid.Empty
+        );
+
+        var entry = Assert.Single(recorded);
+        Assert.Equal("cmd-1", entry.Id);
+        Assert.Equal("archive.export", entry.Name);
+        Assert.True(entry.Success);
+        Assert.Null(entry.ErrorKind);
+    }
+
+    [Fact]
     public async Task JobStatus_AppliesConfiguredTerminalOutputLimits()
     {
         var jobs = new ControlJobManager(maxEventBuffer: 100);

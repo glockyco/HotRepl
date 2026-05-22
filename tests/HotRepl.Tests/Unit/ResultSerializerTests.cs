@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using HotRepl;
 using HotRepl.Serialization;
 using Newtonsoft.Json;
@@ -143,13 +144,21 @@ public class ResultSerializerTests
     }
 
     [Fact]
-    public void Truncate_ExceedsLimit_CutsAndAppendsDiagnostic()
+    public void Truncate_ExceedsLimit_StaysWithinUtf8ByteLimit()
     {
         var s = new string('x', 200);
-        var result = JsonResultSerializer.Truncate(s, 10);
+        var result = JsonResultSerializer.Truncate(s, 40);
 
-        Assert.StartsWith(new string('x', 10), result, StringComparison.Ordinal);
-        Assert.Contains("200", result, StringComparison.Ordinal); // original length visible for diagnosis
+        Assert.True(Encoding.UTF8.GetByteCount(result) <= 40);
+        Assert.Contains("200", result, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Truncate_NonAsciiOutput_StaysWithinUtf8ByteLimit()
+    {
+        var result = JsonResultSerializer.Truncate("😀😀😀😀😀", 13);
+
+        Assert.True(Encoding.UTF8.GetByteCount(result) <= 13);
     }
 
     [Fact]
