@@ -92,6 +92,13 @@ describe("FakeRuntime", () => {
     await expect(
       runtime.request({ type: "command_call", id: "sync-2", name: "slow.sync", args: {} }),
     ).rejects.toMatchObject({ kind: "busy", code: "commandQueueFull" });
+    const rejectedWatch = runtime
+      .watch({ type: "subscribe", id: "watch-1", code: "Health" })
+      [Symbol.asyncIterator]();
+    await expect(rejectedWatch.next()).rejects.toMatchObject({
+      kind: "busy",
+      code: "commandQueueFull",
+    });
     releaseFirstCommand?.();
     await firstCommand;
 
@@ -138,7 +145,7 @@ describe("FakeRuntime", () => {
     expect(cancelledStatus.state).toBe("cancelled");
   });
 
-  test("does not advertise or enforce output result limits", async () => {
+  test("advertises and enforces output result limits", async () => {
     const runtime = new FakeRuntime({ limits: { maxEnumerableElements: 2, maxResultLength: 16 } });
     runtime.setEvalHandler(() => ({ value: [1, 2, 3] }));
     runtime.registerCommand(
@@ -154,15 +161,15 @@ describe("FakeRuntime", () => {
       () => ({ output: "x".repeat(64) }),
     );
 
-    expect(runtime.handshakeMessage.enforces).not.toContain("maxResultLength");
-    expect(runtime.handshakeMessage.enforces).not.toContain("maxEnumerableElements");
+    expect(runtime.handshakeMessage.enforces).toContain("maxResultLength");
+    expect(runtime.handshakeMessage.enforces).toContain("maxEnumerableElements");
 
     const evalResponse = await runtime.request({ type: "eval", id: "eval-1", code: "range" });
     expect(evalResponse.type).toBe(MESSAGE_TYPES.evalResult);
     if (evalResponse.type !== MESSAGE_TYPES.evalResult) {
       throw new Error(`Expected eval_result, got ${evalResponse.type}.`);
     }
-    expect(evalResponse.value).toEqual([1, 2, 3]);
+    expect(evalResponse.value).toEqual([1, 2]);
 
     const commandResponse = await runtime.request({
       type: "command_call",
@@ -174,8 +181,8 @@ describe("FakeRuntime", () => {
     if (commandResponse.type !== MESSAGE_TYPES.commandResult) {
       throw new Error(`Expected command_result, got ${commandResponse.type}.`);
     }
-    expect(commandResponse.status).toBe("ok");
-    expect(commandResponse.output).toBe("x".repeat(64));
+    expect(commandResponse.status).toBe("failed");
+    expect(commandResponse.error).toMatchObject({ kind: "internal", code: "resultTooLarge" });
   });
 
   test("stores commands, artifacts, jobs, and journal entries", async () => {

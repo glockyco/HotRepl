@@ -98,7 +98,7 @@ public sealed class ReplEngine : IDisposable
         _clients = new ClientRegistry(_wsServer, msg => _host.LogInfo(msg));
         _router = new MessageRouter(this, msg => _host.LogInfo(msg));
         _controlJobs = new ControlJobManager(_host.Config.MaxJobEventBuffer, _host.Config.MaxJobConcurrency);
-        _controlRouter = new ControlCommandRouter(_host.ControlCommands, jobs: _controlJobs);
+        _controlRouter = new ControlCommandRouter(_host.ControlCommands, jobs: _controlJobs, config: _host.Config);
 
         _wsServer.ClientConnected += (_, e) => OnClientConnected(e.ConnectionId, e.Connection);
         _wsServer.ClientDisconnected += (_, e) => _clients.OnDisconnected(e.ConnectionId);

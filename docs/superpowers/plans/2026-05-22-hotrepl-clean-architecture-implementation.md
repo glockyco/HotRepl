@@ -164,6 +164,8 @@ describe("protocol foundations", () => {
       enforces: [
         "maxMessageBytes",
         "maxQueuedCommands",
+        "maxResultLength",
+        "maxEnumerableElements",
         "maxJobConcurrency",
       ],
     };
@@ -474,8 +476,8 @@ path. `command_call` returns `command_result` for sync handlers and
 Add two server-owned 1 024-entry journal buffers for eval and command metadata. Record only id,
 kind, optional command name, success, durationMs, optional errorKind, and timestamp. Reject
 oversized inbound frames before parse using `MaxMessageBytes`. Reject enqueue when queued command or
-eval count reaches `MaxQueuedCommands`. Include only actually enforced limits in handshake
-`enforces[]`.
+eval count reaches `MaxQueuedCommands`. Apply output limits to eval/subscription serialization and
+command/job output envelopes, then advertise those limits in handshake `enforces[]`.
 
 - [x] **Step 5: Run green verification**
 
@@ -994,9 +996,9 @@ worktree.
   downstream consumers.
 - `maxJobConcurrency` stays in `handshake.enforces[]` because `ControlJobManager` now rejects job
   starts once the configured running-job limit is reached.
-- `maxResultLength` and `maxEnumerableElements` remain in `handshake.limits` as eval serializer
-  settings, but they are no longer in the C# runtime's default `enforces[]` because command and job
-  outputs are not capped by those settings yet.
+- `maxResultLength` and `maxEnumerableElements` stay in `handshake.enforces[]`: eval/subscription
+  serialization applies them directly, and command/job outputs now fail with `resultTooLarge` rather
+  than returning uncapped payloads.
 - The SDK WebSocket transport now rejects `type: "error"` frames at the transport boundary for both
   pending requests and subscription iterators, so callers cannot accidentally resolve universal
   protocol errors as successful responses.

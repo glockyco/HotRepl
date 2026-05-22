@@ -35,6 +35,8 @@ The server sends `handshake` immediately after connection:
   "enforces": [
     "maxMessageBytes",
     "maxQueuedCommands",
+    "maxResultLength",
+    "maxEnumerableElements",
     "maxJobConcurrency"
   ]
 }
@@ -62,9 +64,9 @@ Closed `kind` values are `validation_failed`, `precondition_failed`, `conflict`,
 `invalid_request`, and `internal`.
 
 `control.schemaValidation: false` means the current C# runtime exposes schemas as metadata but does
-not validate command arguments or outputs itself. `limits.maxResultLength` and
-`limits.maxEnumerableElements` still describe eval serialization settings, but they are not
-advertised in `enforces[]` because command and job outputs are not capped by the C# runtime yet.
+not validate command arguments or outputs itself. Output-size limits are still runtime-enforced:
+eval/subscription serialization truncates or caps values, while oversized command/job outputs fail
+with `internal/resultTooLarge` instead of returning a partial JSON object.
 
 ## Eval and reset
 

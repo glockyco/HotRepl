@@ -102,6 +102,22 @@ public class ControlRoutingTests
     }
 
     [Fact]
+    public void Execute_AppliesConfiguredCommandOutputLimits()
+    {
+        var router = new ControlCommandRouter(
+            new FakeRegistry(new LargeOutputHandler()),
+            config: new ReplConfig { MaxResultLength = 16 }
+        );
+
+        var result = Assert.IsType<CommandResultMessage>(
+            router.Execute(new CommandCallMessage { Id = "cmd-1", Name = "archive.largeOutput" })
+        );
+        Assert.Equal("failed", result.Status);
+        Assert.Equal("resultTooLarge", result.Error!.Code);
+    }
+
+
+    [Fact]
     public void Execute_MutatingCommandDoesNotRequireLease()
     {
         var router = new ControlCommandRouter(new FakeRegistry(new MutatingEchoHandler()));
@@ -194,6 +210,32 @@ public class ControlRoutingTests
         Assert.Equal("ok", ok.Status);
         Assert.Equal("done", ok.Output!["value"]!.Value<string>());
     }
+
+    [Fact]
+    public async Task JobStatus_AppliesConfiguredTerminalOutputLimits()
+    {
+        var jobs = new ControlJobManager(maxEventBuffer: 100);
+        var router = new ControlCommandRouter(
+            new FakeRegistry(new LargeJobHandler()),
+            jobs: jobs,
+            config: new ReplConfig { MaxResultLength = 16 }
+        );
+        var accepted = Assert.IsType<JobAcceptedMessage>(
+            router.Execute(new CommandCallMessage { Id = "cmd-1", Name = "archive.largeJob" })
+        );
+        await router.RunJobAsync(accepted.JobId);
+
+        var result = Assert.IsType<JobResultMessage>(
+            router.GetJobStatus(
+                new JobStatusMessage { Id = "status-1", JobId = accepted.JobId },
+                Guid.Empty
+            )
+        );
+
+        Assert.Equal("failed", result.Status);
+        Assert.Equal("resultTooLarge", result.Error!.Code);
+    }
+
 
     [Fact]
     public void JobCancel_ReturnsAcknowledgement()
@@ -304,6 +346,35 @@ public class ControlRoutingTests
         }
     }
 
+    private sealed class LargeOutputHandler : IControlCommandHandler
+    {
+        public ControlCommandDescriptor Descriptor { get; } =
+            new(
+                "archive.largeOutput",
+                1,
+                ControlCommandKind.Synchronous,
+                mutatesState: false,
+                argsSchema: JObject.Parse("{\"type\":\"object\"}"),
+                resultSchema: JObject.Parse("{\"type\":\"object\"}")
+            );
+
+        public ValueTask<ControlCommandResult> ExecuteAsync(
+            ControlCommandContext context,
+            JObject args,
+            CancellationToken cancellationToken
+        )
+        {
+            return ValueTask.FromResult(
+                new ControlCommandResult(
+                    new JObject { ["value"] = new string('x', 64) },
+                    Array.Empty<ControlArtifactRef>(),
+                    Array.Empty<ControlCommandError>()
+                )
+            );
+        }
+    }
+
+
     private sealed class JobHandler : IControlCommandHandler
     {
         public ControlCommandDescriptor Descriptor { get; } =
@@ -342,5 +413,31 @@ public class ControlRoutingTests
                 )
             );
         }
+    }
+
+    private sealed class LargeJobHandler : IControlCommandHandler
+    {
+        public ControlCommandDescriptor Descriptor { get; } =
+            new(
+                "archive.largeJob",
+                1,
+                ControlCommandKind.Job,
+                mutatesState: false,
+                argsSchema: JObject.Parse("{\"type\":\"object\"}"),
+                resultSchema: JObject.Parse("{\"type\":\"object\"}")
+            );
+
+        public ValueTask<ControlCommandResult> ExecuteAsync(
+            ControlCommandContext context,
+            JObject args,
+            CancellationToken cancellationToken
+        ) =>
+            ValueTask.FromResult(
+                new ControlCommandResult(
+                    new JObject { ["value"] = new string('x', 64) },
+                    Array.Empty<ControlArtifactRef>(),
+                    Array.Empty<ControlCommandError>()
+                )
+            );
     }
 }

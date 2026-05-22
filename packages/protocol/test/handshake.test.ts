@@ -49,6 +49,8 @@ describe("protocol foundations", () => {
       enforces: [
         "maxMessageBytes",
         "maxQueuedCommands",
+        "maxResultLength",
+        "maxEnumerableElements",
         "maxJobConcurrency",
       ],
     };

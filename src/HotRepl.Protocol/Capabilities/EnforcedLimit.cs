@@ -23,6 +23,8 @@ public static class EnforcedLimit
     {
         MaxMessageBytes,
         MaxQueuedCommands,
+        MaxResultLength,
+        MaxEnumerableElements,
         MaxJobConcurrency,
     };
 }

@@ -58,6 +58,8 @@ The server sends a `handshake` immediately after a WebSocket connection opens:
   "enforces": [
     "maxMessageBytes",
     "maxQueuedCommands",
+    "maxResultLength",
+    "maxEnumerableElements",
     "maxJobConcurrency"
   ]
 }

@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using HotRepl.Control.Jobs;
 using HotRepl.Protocol;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using ControlArtifactRef = HotRepl.Control.Artifacts.ArtifactRef;
 using ProtocolArtifactRef = HotRepl.Protocol.ArtifactRef;
@@ -16,11 +18,17 @@ internal sealed class ControlCommandRouter
 {
     private readonly IControlCommandRegistry _registry;
     private readonly ControlJobManager? _jobs;
+    private readonly ReplConfig _config;
 
-    public ControlCommandRouter(IControlCommandRegistry registry, ControlJobManager? jobs = null)
+    public ControlCommandRouter(
+        IControlCommandRegistry registry,
+        ControlJobManager? jobs = null,
+        ReplConfig? config = null
+    )
     {
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
         _jobs = jobs;
+        _config = config ?? new ReplConfig();
     }
 
     public CommandsListResultMessage List(string id) =>
@@ -126,7 +134,7 @@ internal sealed class ControlCommandRouter
     }
 
 
-    private static CommandResultMessage ExecuteSynchronous(
+    private CommandResultMessage ExecuteSynchronous(
         CommandCallMessage message,
         IControlCommandHandler handler
     )
@@ -143,6 +151,17 @@ internal sealed class ControlCommandRouter
                 .AsTask()
                 .GetAwaiter()
                 .GetResult();
+            if (IsResultTooLarge(result.Result))
+            {
+                return CommandError(
+                    message.Id,
+                    ErrorKind.Internal,
+                    "resultTooLarge",
+                    "Command output exceeds maxResultLength.",
+                    retryable: false
+                );
+            }
+
             return new CommandResultMessage
             {
                 Id = message.Id,
@@ -275,10 +294,23 @@ internal sealed class ControlCommandRouter
             Error = new HotReplErrorEnvelope(kind, code, message, retryable, details: null),
         };
 
-    private static JobResultMessage ToJobResult(string id, ControlJobStatus status)
+    private JobResultMessage ToJobResult(string id, ControlJobStatus status)
     {
         if (string.Equals(status.State, ControlJobStates.Completed, StringComparison.Ordinal))
         {
+            if (status.Result != null && IsResultTooLarge(status.Result))
+            {
+                return new JobResultMessage
+                {
+                    Id = id,
+                    JobId = status.JobId,
+                    State = ControlJobStates.Failed,
+                    Status = "failed",
+                    Error = ResultTooLargeError(),
+                    Artifacts = ToArtifactMap(status.Artifacts),
+                };
+            }
+
             return new JobResultMessage
             {
                 Id = id,
@@ -301,6 +333,18 @@ internal sealed class ControlCommandRouter
             Artifacts = ToArtifactMap(status.Artifacts),
         };
     }
+
+    private bool IsResultTooLarge(JToken output) =>
+        Encoding.UTF8.GetByteCount(output.ToString(Formatting.None)) > _config.MaxResultLength;
+
+    private static HotReplErrorEnvelope ResultTooLargeError() =>
+        new(
+            ErrorKind.Internal,
+            "resultTooLarge",
+            "Command output exceeds maxResultLength.",
+            retryable: false,
+            details: null
+        );
 
     private static HotReplErrorEnvelope ToTerminalJobError(ControlJobStatus status)
     {
