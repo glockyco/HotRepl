@@ -619,6 +619,88 @@ actor.
 - Schemas are addressable: the SDK ships a JSON-Pointer-style lookup so descriptor consumers can
   inspect a sub-schema (`commands.get("entity.exportBatch").schema("input.properties.offset")`).
 
+### Schema tooling
+
+Two distinct codegen problems live in this repo, so two tools, not one:
+
+| Surface                       | Source of truth           | Tool                                      | Why                                                                                                                                        |
+| ----------------------------- | ------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Protocol layer (~25 messages) | TypeScript (we own it)    | **TypeBox** in `@hotrepl/protocol`        | Single source for TS types AND JSON Schema; runtime validators included; native support for discriminated unions on `type` field.          |
+| Per-game command schemas      | C# (handlers, JSON files) | **`json-schema-to-typescript`** + **ajv** | Mature one-way codegen from JSON Schema; ajv is the de facto runtime validator; commands have flat args/outputs (no discriminator needed). |
+
+#### Why TypeBox for the protocol
+
+- The protocol is small and we are the source of truth, so writing it in TypeScript and emitting
+  JSON Schema as a build artifact is cleaner than maintaining `.json` files and generating types.
+- `Static<typeof Schema>` gives the TS type; the same value is a JSON Schema for runtime validation,
+  exported for C# conformance reads, and reused by the MCP server's input-schema surface.
+- Discriminated unions on the `type` field are first-class via
+  `Type.Union([Type.Object({ type:
+  Type.Literal("eval_result"), … }), …])`, which is exactly the
+  shape JSON-Schema-to-TypeScript tools handle poorly today.
+- Sinclair's TypeBox is widely adopted (used by Fastify, Elysia, etc.), actively maintained, has a
+  small runtime, and pairs with `@sinclair/typebox/compiler` for fast validation if we ever need to
+  optimize.
+
+#### Why json-schema-to-typescript + ajv for game commands
+
+- C# handlers are canonical; per-command schemas live next to handlers as `.json` files. Codegen is
+  one-way (JSON Schema → TS types), which matches `json-schema-to-typescript`'s strengths.
+- Weekly-downloads order of magnitude (~1.6M for `json-schema-to-typescript` vs ~176k for
+  `quicktype` vs ~18k for `dtsgenerator`) reflects ecosystem stability and tool maturity.
+- Game commands are flat objects with known fields. No discriminator-on-oneOf cases, no polymorphic
+  results — so the documented `json-schema-to-typescript` discriminator gap (open since 2019) does
+  not bite us.
+- `ajv` is the de facto JSON Schema runtime validator; the SDK uses it once at the entry/exit
+  boundary so consumers do not need to ship their own validator.
+
+#### Rejected alternatives
+
+- **`quicktype` everywhere.** Broader output formats (including Effect Schema) and runtime
+  validators are appealing, but adoption is roughly 9× lower than `json-schema-to-typescript`,
+  output is noisier, and the documented "missed discriminated unions" warning is a maintenance
+  hazard at scale. Pulling it in to cover both surfaces would buy us less than running two focused
+  tools.
+- **TypeBox for game commands too.** Would force per-game schemas into TypeScript, breaking
+  C#-canonical-handler authoring and complicating the round trip with the runtime that already reads
+  JSON Schema. The benefit (single tool) does not outweigh the cost (moving the source of truth).
+- **Effect Schema.** Same direction as TypeBox (TS-first) but no JSON-Schema → Effect codegen exists
+  yet (open feature request in Effect-TS/effect #4862 as of mid-2026). Would lock the SDK into
+  Effect's ecosystem for what is currently a smaller community than TypeBox's.
+- **`dtsgenerator`.** Plugin architecture is interesting, but the 18k weekly-downloads scale signals
+  less community testing and slower bug response. No clear advantage over
+  `json-schema-to-typescript` for our needs.
+- **One tool for both surfaces.** Tempting for simplicity but fights the use case: protocol is
+  TS-first (we author it) and commands are JSON-first (C# authors them). Picking one direction
+  forces the other into an awkward round trip.
+
+#### Sources triangulated for this decision
+
+- `json-schema-to-typescript` npm: <https://www.npmjs.com/package/json-schema-to-typescript>
+- `quicktype` repo: <https://github.com/glideapps/quicktype>
+- `dtsgenerator` repo: <https://github.com/horiuchi/dtsgenerator>
+- TypeBox repo: <https://github.com/sinclairzx81/typebox>
+- TypeBox-Codegen: <https://github.com/sinclairzx81/typebox-codegen>
+- Discriminator gap in `json-schema-to-typescript`:
+  <https://github.com/bcherny/json-schema-to-typescript/issues/239>
+- Ajv discriminator notes: <https://ajv.js.org/json-schema.html>
+- npm trends comparison:
+  <https://npmtrends.com/json-schema-to-typescript-vs-quicktype-vs-ts-json-schema-generator>
+- "Five ways to stop hand-writing TS interfaces" (warning about quicktype's missed discriminated
+  unions):
+  <https://dev.to/helloashish99/from-json-to-typescript-five-ways-to-stop-hand-writing-interfaces-3bm5>
+- Effect Schema JSON-Schema codegen feature request:
+  <https://github.com/Effect-TS/effect/issues/4862>
+
+#### Migration consequence
+
+- `@hotrepl/protocol` owns TypeBox schemas; `bun run schemas:export` emits JSON Schema files used by
+  the C# runtime for conformance tests and by the MCP server for `inputSchema` advertisement.
+- Each consumer repo runs `bun run codegen:commands` to regenerate
+  `controller/src/generated/<repo>-command-types.ts` from `mod/.../Schemas/*.json`.
+- `@hotrepl/sdk` validates command args/outputs against the schemas served by the runtime; the SDK
+  ships `ajv` as a runtime dependency.
+
 ### Cancellation
 
 Cancellation semantics are explicit and per-evaluator:
@@ -783,9 +865,11 @@ is no need to dual-stack.
 - **Single-client + MCP coexistence.** If the daily workflow involves an always-on MCP session plus
   occasional CLI use, eviction churn will be a nuisance. The eviction notification + auto-reconnect
   in `@hotrepl/mcp` mitigates this. A local broker remains the proper fix when this becomes painful.
-- **TS codegen quality.** Consumer ergonomics depend heavily on generated types. Pick a single JSON
-  Schema → TS generator and validate it covers `oneOf`, `discriminator`, and tuples. Candidates:
-  `json-schema-to-typescript`, `quicktype`.
+- **TS codegen quality (resolved).** Use TypeBox for the protocol layer and
+  `json-schema-to-typescript` + `ajv` for per-game commands. See "Schema tooling" under
+  Cross-cutting concerns for rationale, rejected alternatives, and sources. Open follow-up: pin
+  TypeBox and `json-schema-to-typescript` major versions in the first SDK package commit and add a
+  CI step that fails if generated types drift from committed `.json` schemas.
 - **Mono.CSharp staying around.** It is required for BepInEx (no Roslyn on .NET Standard 2.1 Mono).
   Its quirks (`varName * expr` parser bug, no safepoint injection for tight loops) must remain
   visible through the capability surface, not papered over.
