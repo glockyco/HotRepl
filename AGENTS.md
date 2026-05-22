@@ -143,6 +143,19 @@ See `.claude/skills/commit-guidelines/SKILL.md` for the full conventions. Short 
 attribution lines. The `commit-msg` lefthook hook runs `commitlint` against `commitlint.config.js`,
 so a non-conformant message is rejected before the commit lands.
 
+## Worktrees
+
+Project-local worktrees go in `.worktrees/<branch-name>` (gitignored). Each worktree needs
+`dotnet tool restore`, optionally `cd client && uv sync`, and (for the BepInEx host) gitignored
+Unity DLLs linked from another checkout. The canonical bootstrap is:
+
+```bash
+scripts/bootstrap-worktree.sh [--source <trusted-checkout>] [--no-python]
+```
+
+See `.claude/skills/bootstrap-worktree/SKILL.md` for details and failure modes. Use a worktree
+whenever a change touches multiple commits; do not work on `main` directly for non-trivial work.
+
 ## Shell Conventions
 
 Always use non-interactive flags to avoid hanging:
