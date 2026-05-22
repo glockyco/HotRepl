@@ -1,0 +1,34 @@
+export const PROTOCOL_VERSION = 2;
+
+export const MESSAGE_TYPES = {
+  handshake: "handshake",
+  sessionEvicted: "session_evicted",
+  eval: "eval",
+  complete: "complete",
+  reset: "reset",
+  subscribe: "subscribe",
+  cancel: "cancel",
+  evalResult: "eval_result",
+  evalError: "eval_error",
+  completeResult: "complete_result",
+  resetResult: "reset_result",
+  subscribeResult: "subscribe_result",
+  subscribeError: "subscribe_error",
+  assemblyReload: "assembly_reload",
+  commandsList: "commands_list",
+  commandDescribe: "command_describe",
+  commandCall: "command_call",
+  jobStatus: "job_status",
+  jobCancel: "job_cancel",
+  commandsListResult: "commands_list_result",
+  commandDescribeResult: "command_describe_result",
+  commandResult: "command_result",
+  jobAccepted: "job_accepted",
+  jobStatusResult: "job_status_result",
+  jobResult: "job_result",
+  jobCancelResult: "job_cancel_result",
+  journalQuery: "journal_query",
+  journalQueryResult: "journal_query_result",
+} as const;
+
+export type MessageType = (typeof MESSAGE_TYPES)[keyof typeof MESSAGE_TYPES];

@@ -9,6 +9,9 @@ lib/Mono.CSharp.dll
 src/HotRepl.BepInEx/lib/
 Local.props
 
+# JavaScript / TypeScript
+node_modules/
+
 
 # Python
 __pycache__/

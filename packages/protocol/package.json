@@ -1,0 +1,17 @@
+{
+  "name": "@hotrepl/protocol",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "bun test test/**/*.test.ts",
+    "typecheck": "tsc -p tsconfig.json",
+    "schemas:export": "bun ./scripts/export-schemas.ts"
+  },
+  "dependencies": {
+    "@sinclair/typebox": "^0.34.0"
+  }
+}

@@ -101,25 +101,27 @@ command-schema consumption; MCP TypeScript SDK for stdio tools.
 - Create: `packages/protocol/src/message-types.ts`
 - Create: `packages/protocol/src/error-kinds.ts`
 - Create: `packages/protocol/src/handshake.ts`
+- Create: `packages/protocol/scripts/export-schemas.ts`
+- Modify: `.gitignore`
 - Create: `packages/protocol/test/handshake.test.ts`
 - Modify: `dprint.json`
 - Modify: `docs/superpowers/plans/2026-05-22-hotrepl-clean-architecture-implementation.md`
 
-- [ ] **Step 1: Write the first protocol package tests**
+- [x] **Step 1: Write the first protocol package tests**
 
 Create `packages/protocol/test/handshake.test.ts` with assertions for the v2 protocol version,
 enforced limits, closed error kinds, and TypeBox-derived validation:
 
 ```ts
-import { describe, expect, test } from "bun:test";
 import { Value } from "@sinclair/typebox/value";
+import { describe, expect, test } from "bun:test";
 import {
+  defaultLimits,
   ERROR_KINDS,
+  type HandshakeMessage,
   HandshakeMessageSchema,
   MESSAGE_TYPES,
   PROTOCOL_VERSION,
-  defaultLimits,
-  type HandshakeMessage,
 } from "../src";
 
 describe("protocol foundations", () => {
@@ -173,7 +175,7 @@ describe("protocol foundations", () => {
 });
 ```
 
-- [ ] **Step 2: Run the red test**
+- [x] **Step 2: Run the red test**
 
 Run:
 
@@ -183,7 +185,7 @@ bun test packages/protocol/test/handshake.test.ts
 
 Expected: FAIL because no root Bun workspace or `@hotrepl/protocol` source exists yet.
 
-- [ ] **Step 3: Add the minimal Bun workspace and protocol exports**
+- [x] **Step 3: Add the minimal Bun workspace and protocol exports**
 
 Create the root and package config. Use pinned major versions from the spec's schema-tooling
 decision:
@@ -203,7 +205,7 @@ decision:
   },
   "devDependencies": {
     "@types/bun": "latest",
-    "typescript": "^5.9.0"
+    "typescript": "^6.0.3"
   }
 }
 ```
@@ -220,10 +222,13 @@ decision:
     "noUncheckedIndexedAccess": true,
     "strict": true,
     "target": "ES2023",
-    "types": ["bun-types"]
+    "types": ["bun"]
   }
 }
 ```
+
+Use the current Bun/TypeScript 6 configuration shape: Bun documents `types: ["bun"]`, with
+`@types/bun` installed, because `@types/bun` is the shim that loads `bun-types`.
 
 ```jsonc
 // packages/protocol/package.json
@@ -254,14 +259,18 @@ decision:
 
 Create the protocol source with the constants and `HandshakeMessageSchema` used by the test.
 `defaultLimits` must match the approved spec exactly: 4 MiB inbound messages, 100 KiB results, 100
-enumerable elements, 32 queued commands, 10 000 ms default eval timeout, one job at a time.
+enumerable elements, 32 queued commands, 10 000 ms default eval timeout, one job at a time. The
+first implementation also creates `packages/protocol/scripts/export-schemas.ts` so the
+`schemas:export` script introduced here is valid from the first commit. The implementation also adds
+`node_modules/` to `.gitignore`; `bun install` creates it locally, but dependencies must be
+represented only by `bun.lock`.
 
-- [ ] **Step 4: Include TS files in dprint**
+- [x] **Step 4: Include TS files in dprint**
 
 Modify `dprint.json` so `*.ts` files under `packages/` are formatted by the existing dprint gate. If
 the TypeScript plugin is not already configured, add it in the same commit.
 
-- [ ] **Step 5: Run green verification**
+- [x] **Step 5: Run green verification**
 
 Run:
 
@@ -273,7 +282,7 @@ bun run --cwd packages/protocol typecheck
 
 Expected: all pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```sh
 git add package.json bun.lock tsconfig.json dprint.json packages/protocol docs/superpowers/plans/2026-05-22-hotrepl-clean-architecture-implementation.md
