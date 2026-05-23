@@ -1,4 +1,3 @@
-#!/usr/bin/env bun
 import { connect, HotReplError } from "@hotrepl/sdk";
 import type { ConnectOptions, RuntimeTransport } from "@hotrepl/sdk";
 import { dispatchCommand } from "./commands/dispatch";
@@ -98,11 +97,4 @@ function requireValue(argv: string[], index: number, flag: string): string {
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
-}
-
-if (import.meta.main) {
-  const result = await runCli(Bun.argv.slice(2), { env: process.env });
-  if (result.stdout.length > 0) process.stdout.write(result.stdout);
-  if (result.stderr.length > 0) process.stderr.write(result.stderr);
-  process.exit(result.exitCode);
 }
