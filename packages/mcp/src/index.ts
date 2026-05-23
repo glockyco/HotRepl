@@ -1,4 +1,3 @@
-#!/usr/bin/env bun
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import type { SessionManagerOptions } from "./session-manager";
@@ -33,8 +32,4 @@ export async function createHotReplMcpServer(
 export async function runStdioMcpServer(options: SessionManagerOptions = {}): Promise<void> {
   const server = await createHotReplMcpServer(options);
   await server.connect(new StdioServerTransport());
-}
-
-if (import.meta.main) {
-  await runStdioMcpServer({ env: process.env });
 }
