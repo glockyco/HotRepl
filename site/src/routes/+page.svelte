@@ -35,8 +35,14 @@
     Embed in any Unity game via BepInEx or MelonLoader. Inspect and automate a running game from
     your terminal, scripts, or AI agents — without rebuilding.
   </p>
+  <div class="hero-install">
+    <span class="hero-install-prompt">$</span>
+    <code>bun add @hotrepl/sdk</code>
+    <span class="hero-install-aside">or <code>npx -y @hotrepl/mcp</code> for the agent server</span>
+  </div>
   <div class="hero-ctas">
-    <a class="btn btn-primary" href="/protocol/">Protocol Reference →</a>
+    <a class="btn btn-primary" href="#quickstart">See it work →</a>
+    <a class="btn btn-secondary" href="/protocol/">Protocol</a>
     <a
       class="btn btn-secondary"
       href="https://github.com/glockyco/HotRepl"
@@ -73,7 +79,7 @@
 </section>
 
 <!-- ── Quickstart ──────────────────────────────────────────────────── -->
-<section class="section">
+<section class="section" id="quickstart">
   <h2 class="section-title">Quickstart</h2>
   <p class="section-lead">
     With the BepInEx plugin (Mono) or MelonLoader mod (IL2CPP) loaded, your running game exposes
@@ -219,6 +225,36 @@
     font-size: 1rem;
     line-height: 1.7;
     margin-bottom: 28px;
+  }
+
+  .hero-install {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 10px 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.875rem;
+    margin-bottom: 24px;
+  }
+
+  .hero-install code {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  .hero-install-prompt {
+    color: var(--muted);
+    user-select: none;
+  }
+
+  .hero-install-aside {
+    color: var(--muted);
+    font-size: 0.8125rem;
+    font-family: var(--font-sans, system-ui, sans-serif);
   }
 
   .hero-ctas {
