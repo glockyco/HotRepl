@@ -25,6 +25,7 @@
     "access": "public"
   },
   "files": [
+    "LICENSE",
     "dist"
   ],
   "sideEffects": false,

@@ -1,7 +1,7 @@
 {
   "name": "@hotrepl/cli",
   "version": "2.0.0",
-  "description": "HotRepl v2 command-line client — inspect and automate a running Unity game's REPL from your shell.",
+  "description": "HotRepl v2 command-line client \u2014 inspect and automate a running Unity game's REPL from your shell.",
   "keywords": [
     "hotrepl",
     "unity",
@@ -24,6 +24,7 @@
     "access": "public"
   },
   "files": [
+    "LICENSE",
     "dist"
   ],
   "sideEffects": false,
