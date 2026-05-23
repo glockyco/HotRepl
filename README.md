@@ -47,17 +47,6 @@ Each published package has its own README with details: [`@hotrepl/sdk`](package
 [`@hotrepl/cli`](packages/cli/README.md) · [`@hotrepl/mcp`](packages/mcp/README.md) ·
 [`@hotrepl/protocol`](packages/protocol/README.md).
 
-## Troubleshooting
-
-| Symptom                                                             | Likely cause                                                                                                                                                                       |
-| ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `HotRepl WebSocket connection failed.` from CLI                     | Game isn't running, or the plugin/mod isn't loaded. Start the game and retry. The CLI exits 69 (`EX_UNAVAILABLE`).                                                                 |
-| MCP host doesn't list HotRepl's tools                               | Most often a JSON syntax error in the host's MCP config — any error typically disables every server silently. Re-validate, then fully quit and re-launch the host application.     |
-| Tool call returns `"HotRepl is not reachable…"`                     | Same root cause as the CLI symptom above: game/plugin not running. The MCP server itself is fine; the next tool call after the game starts will succeed.                           |
-| `Session was evicted: displaced.`                                   | HotRepl is single-client. Another CLI or MCP session connected and replaced this one. Close the displacing client, or accept the eviction; the next call reconnects automatically. |
-| Eval hangs                                                          | Mono.CSharp doesn't inject safepoints at loop back-edges, so a `while(true)` eval can't be aborted on timeout. Use `reset` (or restart the game) to recover.                       |
-| `varName * expr` parses oddly after `varName` is defined in an eval | `mcs.dll` interactive-parser bug: `x * 2` is read as a pointer-type declaration when `x` is in scope. Use `2 * x` instead.                                                         |
-
 ## Quickstart
 
 ```ts
@@ -163,6 +152,17 @@ dotnet build src/HotRepl.Host.MelonLoader/HotRepl.Host.MelonLoader.csproj \
 BepInEx deploys `HotRepl.BepInEx.dll`, `HotRepl.Core.dll`, `HotRepl.Protocol.dll`, Fleck,
 Newtonsoft.Json, and `mcs.dll` side-by-side. MelonLoader deploys the host, Core, Protocol, Roslyn
 evaluator, Unity helpers, Fleck, Newtonsoft.Json, and Roslyn dependencies in `Mods/`.
+
+## Troubleshooting
+
+| Symptom                                                             | Likely cause                                                                                                                                                                       |
+| ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `HotRepl WebSocket connection failed.` from CLI                     | Game isn't running, or the plugin/mod isn't loaded. Start the game and retry. The CLI exits 69 (`EX_UNAVAILABLE`).                                                                 |
+| MCP host doesn't list HotRepl's tools                               | Most often a JSON syntax error in the host's MCP config — any error typically disables every server silently. Re-validate, then fully quit and re-launch the host application.     |
+| Tool call returns `"HotRepl is not reachable…"`                     | Same root cause as the CLI symptom above: game/plugin not running. The MCP server itself is fine; the next tool call after the game starts will succeed.                           |
+| `Session was evicted: displaced.`                                   | HotRepl is single-client. Another CLI or MCP session connected and replaced this one. Close the displacing client, or accept the eviction; the next call reconnects automatically. |
+| Eval hangs                                                          | Mono.CSharp doesn't inject safepoints at loop back-edges, so a `while(true)` eval can't be aborted on timeout. Use `reset` (or restart the game) to recover.                       |
+| `varName * expr` parses oddly after `varName` is defined in an eval | `mcs.dll` interactive-parser bug: `x * 2` is read as a pointer-type declaration when `x` is in scope. Use `2 * x` instead.                                                         |
 
 ## Development
 
