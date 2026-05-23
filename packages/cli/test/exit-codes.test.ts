@@ -44,4 +44,25 @@ describe("CLI exit codes", () => {
       }
     `);
   });
+  test("bin exits 69 (EX_UNAVAILABLE) when backend unreachable", () => {
+    const result = Bun.spawnSync({
+      cmd: [process.execPath, "packages/cli/src/bin.ts", "info"],
+      env: { ...process.env, HOTREPL_URL: "ws://127.0.0.1:1" },
+      cwd: import.meta.dir.replace(/\/packages\/cli\/test$/, ""),
+      stderr: "pipe",
+      stdout: "pipe",
+    });
+    expect(result.exitCode).toBe(69);
+    expect(new TextDecoder().decode(result.stderr)).toContain("WebSocket connection failed");
+  });
+
+  test("bin exits 2 when --format value is invalid", () => {
+    const result = Bun.spawnSync({
+      cmd: [process.execPath, "packages/cli/src/bin.ts", "--format", "invalid", "info"],
+      cwd: import.meta.dir.replace(/\/packages\/cli\/test$/, ""),
+      stderr: "pipe",
+      stdout: "pipe",
+    });
+    expect(result.exitCode).toBe(2);
+  });
 });
