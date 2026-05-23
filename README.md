@@ -92,18 +92,20 @@ The default security model is loopback binding plus single-client replacement.
 
 ## TypeScript and .NET packages
 
-| Package                | Purpose                                                             |
-| ---------------------- | ------------------------------------------------------------------- |
-| `@hotrepl/protocol`    | Wire constants, TypeBox schemas, and message types                  |
-| `@hotrepl/sdk`         | `connect`, `Session`, `Artifact`, typed errors, WebSocket transport |
-| `@hotrepl/testing`     | `FakeRuntime`, `MockSession`, recorder, and replay helpers          |
-| `@hotrepl/conformance` | Protocol conformance suite for FakeRuntime and optional real hosts  |
-| `@hotrepl/cli`         | `hotrepl` command-line adapter over the SDK                         |
-| `@hotrepl/mcp`         | fixed nine-tool MCP stdio server over the SDK                       |
+| Package                | Purpose                                                               |
+| ---------------------- | --------------------------------------------------------------------- |
+| `@hotrepl/protocol`    | Wire constants, TypeBox schemas, and message types                    |
+| `@hotrepl/sdk`         | `connect`, `Session`, `Artifact`, typed errors, WebSocket transport   |
+| `@hotrepl/testing`     | `FakeRuntime`, `MockSession`, recorder, and replay helpers (internal) |
+| `@hotrepl/conformance` | Protocol conformance suite for FakeRuntime (internal)                 |
+| `@hotrepl/cli`         | `hotrepl` command-line adapter over the SDK                           |
+| `@hotrepl/mcp`         | fixed nine-tool MCP stdio server over the SDK                         |
 
-Packages are versioned as `2.0.0`. Until registry publishing exists, downstream consumers should
-check packed npm tarballs into `vendor/hotrepl/npm/` and local NuGet packages into
-`vendor/hotrepl/nuget/` instead of depending on machine-local paths.
+Versions are managed by [changesets](https://github.com/changesets/changesets). The four publishable
+packages (`@hotrepl/protocol`, `@hotrepl/sdk`, `@hotrepl/cli`, `@hotrepl/mcp`) are released to npm
+under the `@hotrepl` org from `main`; `@hotrepl/testing` and `@hotrepl/conformance` stay
+workspace-internal. Each release lands as a tagged GitHub Release whose body is the package's
+CHANGELOG entry.
 
 ## Real consumers
 
@@ -113,9 +115,6 @@ check packed npm tarballs into `vendor/hotrepl/npm/` and local NuGet packages in
 - [Ancient Kingdoms Compendium & Mods](https://github.com/glockyco/ancient-kingdoms-mods) uses the
   MelonLoader/IL2CPP path for data export and game automation. It is the reference consumer for
   build-tool-driven host deployment and export orchestration.
-
-Both repositories keep their HotRepl packages vendored locally until public package publishing is
-introduced.
 
 ## Evaluation semantics
 
@@ -172,6 +171,37 @@ lefthook run pre-push --force
 `pre-push` mirrors CI: Bun install/tests/typecheck/schema export, dprint, typos, actionlint, C#
 build, and C# tests. See [`AGENTS.md`](AGENTS.md) for agent-specific constraints and targeted
 commands.
+
+## Releases
+
+The npm packages are released by [`changesets/action`](https://github.com/changesets/action) from
+the `main` branch. Workflow file: [`.github/workflows/release.yml`](.github/workflows/release.yml).
+
+If you ship code that affects a publishable package (`@hotrepl/protocol`, `@hotrepl/sdk`,
+`@hotrepl/cli`, or `@hotrepl/mcp`), add a changeset to your PR:
+
+```bash
+bun changeset
+```
+
+Pick the packages you touched, pick a bump (`patch` / `minor` / `major`), and write a one-line
+summary for consumers. The file lands under `.changeset/` and travels with the PR.
+
+`updateInternalDependencies: "patch"` is enabled, so a `@hotrepl/protocol` minor bump auto-bumps
+`@hotrepl/sdk` (and transitively `@hotrepl/cli` and `@hotrepl/mcp`) as patches — you only need to
+list the package whose API actually changed.
+
+On every push to `main`, the workflow:
+
+1. Opens or updates a `chore(release): version packages` PR whenever pending changesets exist. That
+   PR shows the proposed version bumps and the per-package `CHANGELOG.md` deltas.
+2. When that PR is merged, the workflow builds every package's `dist/`, then publishes any
+   `@hotrepl/*` whose `package.json` version isn't yet on npm. A `<package>@<version>` git tag is
+   pushed and one GitHub Release per published package is created, with the CHANGELOG entry as its
+   body.
+
+Publishing uses [npm trusted publishing via OIDC](https://docs.npmjs.com/trusted-publishers/) — no
+long-lived `NPM_TOKEN`. Provenance is generated automatically.
 
 ## License
 

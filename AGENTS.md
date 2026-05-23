@@ -151,6 +151,29 @@ See `.claude/skills/commit-guidelines/SKILL.md` for the full conventions. Short 
 attribution lines. The `commit-msg` lefthook hook runs `commitlint` against `commitlint.config.js`,
 so a non-conformant message is rejected before the commit lands.
 
+## Releases
+
+The four publishable npm packages (`@hotrepl/protocol`, `@hotrepl/sdk`, `@hotrepl/cli`,
+`@hotrepl/mcp`) are released by `.github/workflows/release.yml` driven by
+[changesets](https://github.com/changesets/changesets). `@hotrepl/testing` and
+`@hotrepl/conformance` are workspace-internal (`"private": true`) and never publish.
+
+When you ship a PR that changes any publishable package, add a changeset:
+
+```bash
+bun changeset
+```
+
+Pick the affected package(s) and a bump type (`patch` / `minor` / `major`). Write the summary for
+the consumer, not the diff — it becomes the `CHANGELOG.md` entry and the GitHub Release body.
+
+`updateInternalDependencies: "patch"` is configured, so internal dependents auto-bump as patches.
+Listing only the directly-changed package is enough.
+
+The workflow opens a `chore(release): version packages` PR on push to `main`. Merging that PR
+publishes via npm trusted publishing (OIDC, no token) and creates one tagged GitHub Release per
+published package.
+
 ## Worktrees
 
 Project-local worktrees go in `.worktrees/<branch-name>` (gitignored). Each worktree needs
