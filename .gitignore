@@ -12,6 +12,7 @@ artifacts/
 
 # JavaScript / TypeScript
 node_modules/
+packages/*/dist/
 
 
 # Python
