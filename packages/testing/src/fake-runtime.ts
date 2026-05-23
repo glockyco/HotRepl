@@ -389,6 +389,7 @@ export class FakeRuntime implements RuntimeTransport {
     return {
       type: MESSAGE_TYPES.jobCancelResult,
       id: request.id,
+      jobId: request.jobId,
       accepted: job !== undefined,
       state: job?.state ?? "cancelled",
     };

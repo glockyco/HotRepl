@@ -274,6 +274,7 @@ export const JobCancelResultMessageSchema = Type.Object(
   {
     type: Type.Literal(MESSAGE_TYPES.jobCancelResult),
     id: Type.String(),
+    jobId: Type.String(),
     accepted: Type.Boolean(),
     state: Type.Union([
       Type.Literal("running"),

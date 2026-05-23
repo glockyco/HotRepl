@@ -274,7 +274,9 @@ export const families: MessageFamily[] = [
   "id": "watch-1",
   "code": "Time.frameCount",
   "intervalFrames": 1,
-  "limit": 10
+  "onChange": true,
+  "limit": 10,
+  "timeoutMs": 250
 }`,
       },
       {
@@ -458,7 +460,7 @@ export const families: MessageFamily[] = [
           "Cancellation acknowledgement. accepted indicates whether the runtime accepted the request.",
         schema: JobCancelResultMessageSchema,
         example:
-          `{ "type": "job_cancel_result", "id": "jc-1", "accepted": true, "state": "running" }`,
+          `{ "type": "job_cancel_result", "id": "jc-1", "jobId": "job-1", "accepted": true, "state": "running" }`,
       },
     ],
   },

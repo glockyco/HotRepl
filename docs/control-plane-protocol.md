@@ -159,7 +159,11 @@ Poll with `job_status`:
 While running, the response is `job_status_result`. Once terminal, `job_status` returns the terminal
 `job_result` directly; clients do not send a separate `job_result` request.
 
-Cancel with `job_cancel`, which returns `job_cancel_result`.
+Cancel with `job_cancel`, which returns `job_cancel_result` and echoes the affected `jobId`:
+
+```json
+{ "type": "job_cancel_result", "id": "jc-1", "jobId": "job-1", "accepted": true, "state": "running" }
+```
 
 ## Artifacts
 

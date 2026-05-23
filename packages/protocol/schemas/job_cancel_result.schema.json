@@ -3,6 +3,7 @@
   "required": [
     "type",
     "id",
+    "jobId",
     "accepted",
     "state"
   ],
@@ -12,6 +13,9 @@
       "const": "job_cancel_result"
     },
     "id": {
+      "type": "string"
+    },
+    "jobId": {
       "type": "string"
     },
     "accepted": {

@@ -306,6 +306,7 @@ describe("server message schemas", () => {
       Value.Check(JobCancelResultMessageSchema, {
         type: MESSAGE_TYPES.jobCancelResult,
         id: "jc1",
+        jobId: "job-1",
         accepted: true,
         state: "running",
       }),
