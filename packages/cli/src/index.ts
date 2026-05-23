@@ -31,11 +31,18 @@ export async function runCli(argv: string[], options: CliRunOptions = {}): Promi
     if (options.env !== undefined) connectOptions.env = options.env;
     if (parsed.url !== undefined) connectOptions.url = parsed.url;
     const session = await connect(connectOptions);
-    return {
-      exitCode: 0,
-      stderr: "",
-      stdout: await dispatchCommand(session, parsed),
-    };
+    try {
+      return {
+        exitCode: 0,
+        stderr: "",
+        stdout: await dispatchCommand(session, parsed),
+      };
+    } finally {
+      // Release the WebSocket so the Node event loop can drain. Without
+      // this, `node hotrepl info` prints its output and then hangs forever
+      // because the open socket keeps the loop alive.
+      session.close();
+    }
   } catch (error) {
     return {
       exitCode: exitCodeForError(error),
