@@ -42,3 +42,9 @@ free; you don't need to list them in your changeset.
 
 The maintainer doesn't run `bun changeset publish` by hand. The `changesets/action` workflow opens a
 Version PR; merging it triggers the publish + GitHub Release step.
+
+## Why no `2.0.0` changeset exists
+
+The first publish at `2.0.0` was done manually with `npm publish --access public` because npm's
+trusted-publishing (OIDC) cannot be configured on a package that doesn't exist yet. From `2.0.1`
+onward, every bump runs through `bun changeset` + the Version PR.
