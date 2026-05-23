@@ -562,6 +562,103 @@ npm install --no-fund --no-audit
 Expected: server stays up across all four messages. `tools/list` returns 9 tools. `hotrepl_eval`
 returns `isError: true` with the actionable message. Sending SIGTERM exits the server with code 0.
 
+### Manual verification against a live game (Ardenfall Demo)
+
+Unit tests and the unreachable-backend smoke-test together prove the plumbing. They cannot prove the
+bins behave correctly when a real Unity game with a real Mono.CSharp evaluator is on the other side
+of the WebSocket. The reference live target is the Ardenfall Compendium consumer at
+`~/Projects/ardenfall-compendium`, which registers five typed commands against the BepInEx host:
+
+| Command                       | `mutatesState` | Use during verification                   |
+| ----------------------------- | -------------- | ----------------------------------------- |
+| `compendium.info`             | false          | Read-only smoke for typed commands        |
+| `compendium.preflight`        | false          | Read-only structured output               |
+| `compendium.continueFromMenu` | true           | Mutating command — drives runMutates true |
+| `entity.plan`                 | false          | Read-only nested output                   |
+| `entity.exportBatch`          | true           | Long-running job; use for SIGINT          |
+
+The presence of mutating commands means Ardenfall's `runMutates` evaluates to `true`, which happens
+to match the conservative defaults — so the annotation refresh's *effect* is invisible at the
+protocol layer here, but the round-trip itself (the `notifications/tools/list_changed` emission)
+remains observable.
+
+**Setup (once per machine):**
+
+```bash
+cd ~/Projects/ardenfall-compendium
+cp .env.example .env   # fill in ARDENFALL_MANAGED_DIR, ARDENFALL_PLUGINS_DIR,
+                       # HOTREPL_REPO, HOTREPL_*_OUT
+bun install --frozen-lockfile
+bun run hotrepl:setup  # builds HotRepl.BepInEx + the Ardenfall mod and
+                       # deploys both to BepInEx/plugins
+# Launch Ardenfall Demo; either manually or, if ARDENFALL_LAUNCH_COMMAND is set:
+bun run hotrepl:launch
+```
+
+The game now exposes `ws://127.0.0.1:18590` once the title screen loads.
+
+**Verification matrix.** All commands run from `/tmp/hotrepl-smoke` (the consumer dir populated by
+the integration smoke-test above), using the packed-and-installed bins — not the workspace source.
+This proves the published artefact behaves correctly, not just the workspace code.
+
+1. **MCP startup with live backend.** Drive the same JSON-RPC handshake from the smoke-test, but
+   without overriding `HOTREPL_URL`. Expected:
+   - `tools/list` returns 9 tools.
+   - Background refresh fires before EOF; the test observes a `notifications/tools/list_changed`
+     notification.
+   - `tools/call` with `hotrepl_eval` (`"UnityEngine.Application.productName"`) returns a
+     non-`isError` result with text including `"Ardenfall"`.
+   - `tools/call` with `hotrepl_run` (`"compendium.info"`, `{}`) returns a non-`isError` result with
+     the command's structured output and an empty `artifacts` map (compendium.info has no
+     artifacts).
+   - Server stays running after the calls (no spurious shutdown).
+
+2. **MCP SIGTERM with active connection.** Spawn the server, send the handshake + one successful
+   `tools/call`, then `kill -TERM <pid>`. Expected: process exits 0, the WebSocket transport closes
+   cleanly (verifiable from BepInEx console — no warnings about an abandoned client), and
+   stdin/stdout drain before exit.
+
+3. **CLI eval against live game.**
+   ```bash
+   hotrepl info --json
+   hotrepl eval 'UnityEngine.Application.productName'
+   hotrepl run compendium.info '{}'
+   ```
+   Expected:
+   - `info` returns the handshake JSON with `evaluator` populated.
+   - `eval` prints `Ardenfall` and exits 0.
+   - `run` prints the structured output and exits 0.
+
+4. **CLI SIGINT during long-running eval.**
+   ```bash
+   hotrepl eval 'System.Threading.Thread.Sleep(5000); 1'
+   # press Ctrl-C ~1s in
+   ```
+   Expected: exit code 130, no stack trace on stderr. Per the "Mono.CSharp tight-loop / Sleep" note
+   in AGENTS.md, the eval cannot always be aborted; the CLI's own SIGINT handler still exits 130
+   even if the underlying eval keeps running on the game side.
+
+5. **MCP backend transition unreachable → reachable.**
+   - Start `npx -y @hotrepl/mcp` with Ardenfall **not** running.
+   - Send `tools/call hotrepl_eval` → expect `isError: true` with the actionable "HotRepl is not
+     reachable" message.
+   - Launch Ardenfall (game opens, BepInEx loads).
+   - Send `tools/call hotrepl_eval` again on the same server → expect a non-`isError` result. This
+     proves `SessionManager.getSession()` is lazy and retries on each call (out-of-scope
+     reconnection logic is unnecessary here because no prior session existed — each tool call
+     attempts a fresh connect).
+
+6. **MCP backend transition reachable → unreachable.** Reverse of (5): start with Ardenfall running,
+   make one successful call, close the game, make another call. Expected: `isError: true` with the
+   "session evicted" or "connection closed" message (depending on whether the game closed cleanly or
+   crashed). This is the gap covered by the deferred reconnection-on-eviction work in *Out of
+   scope*; the manual test confirms today's behavior is the cleanly-degraded one (isError envelope,
+   not a server crash).
+
+**Recording results.** Each verification run goes into the implementation PR description as a short
+note: command run, observed output, pass/fail. A failure on any of (1)–(4) is a regression and
+blocks the merge. Failures on (5)–(6) are documented as known gaps and tracked separately.
+
 ## Out of scope
 
 - **Reconnection on session_evicted.** Today, when the backend evicts the session, the SDK reports
