@@ -453,42 +453,8 @@ public sealed class ReplEngine : IDisposable
 
     private void HandleReset(ResetCmd cmd)
     {
-        // Drain and cancel all pending evals.
-        while (_evalQueue.TryDequeue(out var job))
-        {
-            using (job)
-            {
-                _clients!.SendTo(
-                    job.ConnectionId,
-                    Serialize(
-                        EvalError(
-                            job.Id,
-                            ErrorKind.Cancelled,
-                            "evalCancelled",
-                            "Reset in progress."
-                        )
-                    )
-                );
-            }
-        }
-        // Cancel all subscriptions with a final error.
-        foreach (var sub in GetAllSubscriptions())
-        {
-            _clients!.SendTo(
-                sub.ConnectionId,
-                Serialize(
-                    SubscriptionError(
-                        sub.Id,
-                        sub.Seq + 1,
-                        ErrorKind.Cancelled,
-                        "evalCancelled",
-                        "Reset in progress.",
-                        final: true
-                    )
-                )
-            );
-        }
-        _subscriptions!.CancelAll();
+        CancelPendingEvalsForReset();
+        CancelSubscriptionsForReset();
         _cancelledIds.Clear();
 
         // Rebuild the evaluator.
@@ -513,6 +479,49 @@ public sealed class ReplEngine : IDisposable
             cmd.ConnectionId,
             Serialize(new ResetResultMessage { Id = cmd.Id, Success = true })
         );
+    }
+
+    private void CancelPendingEvalsForReset()
+    {
+        while (_evalQueue.TryDequeue(out var job))
+        {
+            using (job)
+            {
+                _clients!.SendTo(
+                    job.ConnectionId,
+                    Serialize(
+                        EvalError(
+                            job.Id,
+                            ErrorKind.Cancelled,
+                            "evalCancelled",
+                            "Reset in progress."
+                        )
+                    )
+                );
+            }
+        }
+    }
+
+    private void CancelSubscriptionsForReset()
+    {
+        foreach (var sub in GetAllSubscriptions())
+        {
+            _clients!.SendTo(
+                sub.ConnectionId,
+                Serialize(
+                    SubscriptionError(
+                        sub.Id,
+                        sub.Seq + 1,
+                        ErrorKind.Cancelled,
+                        "evalCancelled",
+                        "Reset in progress.",
+                        final: true
+                    )
+                )
+            );
+        }
+
+        _subscriptions!.CancelAll();
     }
 
     private void HandleSelectEvaluator(SelectEvaluatorCmd cmd)
