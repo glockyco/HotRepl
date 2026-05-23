@@ -28,6 +28,22 @@ public sealed class BepInExPluginSourceTests
         );
     }
 
+    [Fact]
+    public void Project_ReferencesProtocolAssemblyForRuntimeDeployment()
+    {
+        var project = File.ReadAllText(FindRepoFile("src/HotRepl.BepInEx/HotRepl.BepInEx.csproj"));
+
+        Assert.Contains("../HotRepl.Protocol/HotRepl.Protocol.csproj", project, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ILRepack_KeepsProtocolAssemblySideBySide()
+    {
+        var targets = File.ReadAllText(FindRepoFile("src/HotRepl.BepInEx/ILRepack.targets"));
+
+        Assert.Contains("$(OutputPath)HotRepl.Protocol.dll", targets, StringComparison.Ordinal);
+    }
+
     private static string FindRepoFile(string relativePath)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
