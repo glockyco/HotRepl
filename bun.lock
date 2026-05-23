@@ -14,37 +14,37 @@
       "name": "@hotrepl/cli",
       "version": "2.0.0",
       "bin": {
-        "hotrepl": "./src/index.ts",
+        "hotrepl": "./dist/bin.js",
       },
       "dependencies": {
-        "@hotrepl/sdk": "workspace:*",
+        "@hotrepl/sdk": "2.0.0",
       },
       "devDependencies": {
-        "@hotrepl/testing": "workspace:*",
+        "@hotrepl/testing": "2.0.0",
       },
     },
     "packages/conformance": {
       "name": "@hotrepl/conformance",
       "version": "2.0.0",
       "dependencies": {
-        "@hotrepl/protocol": "workspace:*",
-        "@hotrepl/sdk": "workspace:*",
-        "@hotrepl/testing": "workspace:*",
+        "@hotrepl/protocol": "2.0.0",
+        "@hotrepl/sdk": "2.0.0",
+        "@hotrepl/testing": "2.0.0",
       },
     },
     "packages/mcp": {
       "name": "@hotrepl/mcp",
       "version": "2.0.0",
       "bin": {
-        "hotrepl-mcp": "./src/index.ts",
+        "hotrepl-mcp": "./dist/bin.js",
       },
       "dependencies": {
-        "@hotrepl/sdk": "workspace:*",
+        "@hotrepl/sdk": "2.0.0",
         "@modelcontextprotocol/sdk": "^1.29.0",
         "zod": "^4.0.0",
       },
       "devDependencies": {
-        "@hotrepl/testing": "workspace:*",
+        "@hotrepl/testing": "2.0.0",
       },
     },
     "packages/protocol": {
@@ -58,18 +58,18 @@
       "name": "@hotrepl/sdk",
       "version": "2.0.0",
       "dependencies": {
-        "@hotrepl/protocol": "workspace:*",
+        "@hotrepl/protocol": "2.0.0",
       },
       "devDependencies": {
-        "@hotrepl/testing": "workspace:*",
+        "@hotrepl/testing": "2.0.0",
       },
     },
     "packages/testing": {
       "name": "@hotrepl/testing",
       "version": "2.0.0",
       "dependencies": {
-        "@hotrepl/protocol": "workspace:*",
-        "@hotrepl/sdk": "workspace:*",
+        "@hotrepl/protocol": "2.0.0",
+        "@hotrepl/sdk": "2.0.0",
       },
     },
     "site": {
@@ -92,6 +92,9 @@
         "wrangler": "^4.0.0",
       },
     },
+  },
+  "patchedDependencies": {
+    "tsup@8.5.1": "patches/tsup@8.5.1.patch",
   },
   "packages": {
     "@cloudflare/kv-asset-handler": ["@cloudflare/kv-asset-handler@0.5.0", "", {}, "sha512-jxQYkj8dSIzc0cD6cMMNdOc1UVjqSqu8BZdor5s8cGjW2I8BjODt/kWPVdY+u9zj3ms75Q5qaZgnxUad83+eAg=="],

@@ -13,5 +13,8 @@
     "@types/bun": "latest",
     "tsup": "^8.5.1",
     "typescript": "^6.0.3"
+  },
+  "patchedDependencies": {
+    "tsup@8.5.1": "patches/tsup@8.5.1.patch"
   }
 }
