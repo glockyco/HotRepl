@@ -1,6 +1,10 @@
 import type { RuntimeTransport } from "@hotrepl/sdk";
 import { FakeRuntime } from "@hotrepl/testing";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import { ToolListChangedNotificationSchema } from "@modelcontextprotocol/sdk/types.js";
 import { describe, expect, test } from "bun:test";
+import { createHotReplMcpServer } from "../src/index";
 import { SessionManager } from "../src/session-manager";
 import { createHotReplTools } from "../src/tools";
 
@@ -94,5 +98,50 @@ describe("HotRepl MCP tools", () => {
       type: "text",
       text: expect.stringContaining("HotRepl is not reachable"),
     }]);
+  });
+
+  test("refreshAnnotations updates hotrepl_run and emits notifications/tools/list_changed", async () => {
+    // Use a non-mutating descriptor so refresh visibly changes the annotation
+    // from the conservative default (destructiveHint:true) to the refined value
+    // (readOnlyHint:true, destructiveHint:false).
+    const nonMutatingDescriptor = { ...descriptor, mutatesState: false };
+    const runtime = new FakeRuntime();
+    runtime.registerCommand(nonMutatingDescriptor, () => ({ output: { ok: true } }));
+
+    const { server, refreshAnnotations } = await createHotReplMcpServer({ runtime });
+
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    const client = new Client({ name: "test", version: "0.0.0" }, { capabilities: {} });
+    await Promise.all([
+      server.connect(serverTransport),
+      client.connect(clientTransport),
+    ]);
+
+    // Before refresh: conservative defaults.
+    const before = await client.listTools();
+    const beforeRun = before.tools.find((t) => t.name === "hotrepl_run");
+    expect(beforeRun?.annotations).toMatchObject({
+      destructiveHint: true,
+      readOnlyHint: false,
+    });
+
+    // Capture the tools/list_changed notification.
+    const notified = new Promise<void>((resolve) => {
+      client.setNotificationHandler(ToolListChangedNotificationSchema, () => resolve());
+    });
+
+    await refreshAnnotations();
+    await notified;
+
+    // After refresh: annotations reflect the non-mutating backend.
+    const after = await client.listTools();
+    const afterRun = after.tools.find((t) => t.name === "hotrepl_run");
+    expect(afterRun?.annotations).toMatchObject({
+      destructiveHint: false,
+      readOnlyHint: true,
+    });
+
+    await client.close();
+    await server.close();
   });
 });
