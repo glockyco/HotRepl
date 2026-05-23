@@ -9,5 +9,6 @@ internal sealed record ControlJobExecutionContext(
     Action<JObject?, string?> Report
 )
 {
-    public ControlCommandContext ToCommandContext(TimeSpan? timeout = null) => new(RequestId, timeout);
+    public ControlCommandContext ToCommandContext(TimeSpan? timeout = null) =>
+        new(RequestId, timeout);
 }

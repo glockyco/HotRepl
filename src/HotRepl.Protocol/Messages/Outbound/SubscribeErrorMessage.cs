@@ -15,13 +15,8 @@ public sealed record SubscribeErrorMessage
     public long Seq { get; set; }
 
     [JsonProperty("error")]
-    public HotReplErrorEnvelope Error { get; set; } = new(
-        ErrorKind.Internal,
-        "internal",
-        "Internal error.",
-        retryable: false,
-        details: null
-    );
+    public HotReplErrorEnvelope Error { get; set; } =
+        new(ErrorKind.Internal, "internal", "Internal error.", retryable: false, details: null);
 
     [JsonProperty("final")]
     public bool Final { get; set; }

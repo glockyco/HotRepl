@@ -95,7 +95,6 @@ public class ProtocolV2CleanupTests
         Assert.Equal("HotRepl.Protocol", typeof(SubscribeErrorMessage).Assembly.GetName().Name);
     }
 
-
     [Fact]
     public void ReplConfig_DoesNotExposeV1AuthLeaseOptions()
     {

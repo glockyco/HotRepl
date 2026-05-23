@@ -32,7 +32,6 @@ public sealed class ReplConfig
     /// </summary>
     public int MaxEnumerableElements { get; set; } = 100;
 
-
     /// <summary>WebSocket bind host. Default: loopback only.</summary>
     public string BindHost { get; set; } = "127.0.0.1";
 
@@ -44,7 +43,6 @@ public sealed class ReplConfig
 
     /// <summary>Maximum number of concurrently running command jobs. Default: 1.</summary>
     public int MaxJobConcurrency { get; set; } = 1;
-
 
     /// <summary>Maximum buffered event count per control-plane job. Default: 1000.</summary>
     public int MaxJobEventBuffer { get; set; } = 1000;

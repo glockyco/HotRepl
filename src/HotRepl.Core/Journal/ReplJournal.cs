@@ -19,7 +19,11 @@ internal sealed class ReplJournal
     public ReplJournal(int capacity)
     {
         if (capacity <= 0)
-            throw new ArgumentOutOfRangeException(nameof(capacity), capacity, "Capacity must be positive.");
+            throw new ArgumentOutOfRangeException(
+                nameof(capacity),
+                capacity,
+                "Capacity must be positive."
+            );
 
         _capacity = capacity;
         _evalEntries = new Queue<ReplJournalEntry>(capacity);

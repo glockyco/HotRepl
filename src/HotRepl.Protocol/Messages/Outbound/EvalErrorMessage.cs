@@ -12,11 +12,6 @@ public sealed record EvalErrorMessage
     public string Id { get; set; } = string.Empty;
 
     [JsonProperty("error")]
-    public HotReplErrorEnvelope Error { get; set; } = new(
-        ErrorKind.Internal,
-        "internal",
-        "Internal error.",
-        retryable: false,
-        details: null
-    );
+    public HotReplErrorEnvelope Error { get; set; } =
+        new(ErrorKind.Internal, "internal", "Internal error.", retryable: false, details: null);
 }

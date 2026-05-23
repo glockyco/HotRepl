@@ -61,7 +61,9 @@ internal sealed class ControlJobManager
         try
         {
             var context = new ControlJobExecutionContext(state.JobId, state.RequestId, Report);
-            var result = await state.Execute(context, state.Cancellation.Token).ConfigureAwait(false);
+            var result = await state
+                .Execute(context, state.Cancellation.Token)
+                .ConfigureAwait(false);
             lock (_sync)
             {
                 state.Result = result.Result;
@@ -181,7 +183,10 @@ internal sealed class ControlJobManager
     }
 
     private static bool IsTerminal(string state) =>
-        state is ControlJobStates.Completed or ControlJobStates.Failed or ControlJobStates.Cancelled;
+        state
+            is ControlJobStates.Completed
+                or ControlJobStates.Failed
+                or ControlJobStates.Cancelled;
 
     private sealed class JobState
     {
@@ -189,7 +194,11 @@ internal sealed class ControlJobManager
             string jobId,
             Guid connectionId,
             string requestId,
-            Func<ControlJobExecutionContext, CancellationToken, ValueTask<ControlCommandResult>> execute
+            Func<
+                ControlJobExecutionContext,
+                CancellationToken,
+                ValueTask<ControlCommandResult>
+            > execute
         )
         {
             JobId = jobId;
@@ -201,7 +210,11 @@ internal sealed class ControlJobManager
         public string JobId { get; }
         public Guid ConnectionId { get; }
         public string RequestId { get; }
-        public Func<ControlJobExecutionContext, CancellationToken, ValueTask<ControlCommandResult>> Execute { get; }
+        public Func<
+            ControlJobExecutionContext,
+            CancellationToken,
+            ValueTask<ControlCommandResult>
+        > Execute { get; }
         public CancellationTokenSource Cancellation { get; } = new();
         public string State { get; set; } = ControlJobStates.Running;
         public long NextSequence { get; set; }

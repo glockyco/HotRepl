@@ -33,7 +33,11 @@ public sealed class BepInExPluginSourceTests
     {
         var project = File.ReadAllText(FindRepoFile("src/HotRepl.BepInEx/HotRepl.BepInEx.csproj"));
 
-        Assert.Contains("../HotRepl.Protocol/HotRepl.Protocol.csproj", project, StringComparison.Ordinal);
+        Assert.Contains(
+            "../HotRepl.Protocol/HotRepl.Protocol.csproj",
+            project,
+            StringComparison.Ordinal
+        );
     }
 
     [Fact]

@@ -59,12 +59,16 @@ public class LimitEnforcementTests
             () => 0
         );
 
-        router.HandleMessage(Guid.NewGuid(), "{\"type\":\"eval\",\"id\":\"eval-1\",\"code\":\"1+1\"}");
+        router.HandleMessage(
+            Guid.NewGuid(),
+            "{\"type\":\"eval\",\"id\":\"eval-1\",\"code\":\"1+1\"}"
+        );
 
         var json = Assert.Single(sent);
         Assert.Contains("\"kind\":\"invalid_request\"", json, StringComparison.Ordinal);
         Assert.Contains("\"code\":\"messageTooLarge\"", json, StringComparison.Ordinal);
     }
+
     private sealed class QueueCountingHost : IReplHost
     {
         public ReplConfig Config { get; } = new();

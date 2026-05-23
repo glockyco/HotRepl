@@ -15,11 +15,12 @@ public sealed record ProtocolErrorMessage
 
     /// <summary>Universal v2 error envelope.</summary>
     [JsonProperty("error")]
-    public HotReplErrorEnvelope Error { get; set; } = new(
-        ErrorKind.InvalidRequest,
-        "invalidRequest",
-        "Invalid request.",
-        retryable: false,
-        details: null
-    );
+    public HotReplErrorEnvelope Error { get; set; } =
+        new(
+            ErrorKind.InvalidRequest,
+            "invalidRequest",
+            "Invalid request.",
+            retryable: false,
+            details: null
+        );
 }

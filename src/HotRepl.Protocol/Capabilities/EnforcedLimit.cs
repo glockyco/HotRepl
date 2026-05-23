@@ -20,11 +20,11 @@ public static class EnforcedLimit
 
     /// <summary>Default enforced v2 limits.</summary>
     public static string[] Defaults { get; } =
-    {
-        MaxMessageBytes,
-        MaxQueuedCommands,
-        MaxResultLength,
-        MaxEnumerableElements,
-        MaxJobConcurrency,
-    };
+        {
+            MaxMessageBytes,
+            MaxQueuedCommands,
+            MaxResultLength,
+            MaxEnumerableElements,
+            MaxJobConcurrency,
+        };
 }

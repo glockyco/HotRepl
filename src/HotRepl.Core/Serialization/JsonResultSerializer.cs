@@ -39,7 +39,9 @@ internal static class JsonResultSerializer
             // Last-resort: at least tell the caller something went wrong.
             try
             {
-                return JsonConvert.SerializeObject(new { error = $"Serialization failed: {ex.Message}" });
+                return JsonConvert.SerializeObject(
+                    new { error = $"Serialization failed: {ex.Message}" }
+                );
             }
             catch
             {
@@ -108,7 +110,11 @@ internal static class JsonResultSerializer
     private static int Utf8ByteCountAt(string value, int index, out int charCount)
     {
         var c = value[index];
-        if (char.IsHighSurrogate(c) && index + 1 < value.Length && char.IsLowSurrogate(value[index + 1]))
+        if (
+            char.IsHighSurrogate(c)
+            && index + 1 < value.Length
+            && char.IsLowSurrogate(value[index + 1])
+        )
         {
             charCount = 2;
             return 4;

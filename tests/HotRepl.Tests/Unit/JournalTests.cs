@@ -27,7 +27,13 @@ public class JournalTests
     {
         var journal = new ReplJournal(capacity: 2);
         journal.RecordEval("eval-1", success: true, durationMs: 1, errorKind: null);
-        journal.RecordCommand("cmd-1", "game.quit", success: false, durationMs: 2, errorKind: "busy");
+        journal.RecordCommand(
+            "cmd-1",
+            "game.quit",
+            success: false,
+            durationMs: 2,
+            errorKind: "busy"
+        );
         journal.RecordEval("eval-2", success: false, durationMs: 3, errorKind: "timeout");
         journal.RecordEval("eval-3", success: true, durationMs: 4, errorKind: null);
 

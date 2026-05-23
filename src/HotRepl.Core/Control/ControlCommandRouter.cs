@@ -20,7 +20,9 @@ internal sealed class ControlCommandRouter
     private readonly ControlJobManager? _jobs;
     private readonly ReplConfig _config;
     private readonly Action<ControlCommandJournalEntry>? _onCommandResult;
-    private readonly Dictionary<string, PendingJobCommand> _jobCommands = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, PendingJobCommand> _jobCommands = new(
+        StringComparer.Ordinal
+    );
 
     public ControlCommandRouter(
         IControlCommandRegistry registry,
@@ -36,11 +38,7 @@ internal sealed class ControlCommandRouter
     }
 
     public CommandsListResultMessage List(string id) =>
-        new()
-        {
-            Id = id,
-            Commands = _registry.Describe().Select(ToSummary).ToArray(),
-        };
+        new() { Id = id, Commands = _registry.Describe().Select(ToSummary).ToArray() };
 
     public object Describe(CommandDescribeMessage message)
     {
@@ -107,9 +105,10 @@ internal sealed class ControlCommandRouter
         try
         {
             var requestedTimeout = message.TimeoutMs.GetValueOrDefault();
-            var timeout = requestedTimeout > 0
-                ? TimeSpan.FromMilliseconds(requestedTimeout)
-                : (TimeSpan?)null;
+            var timeout =
+                requestedTimeout > 0
+                    ? TimeSpan.FromMilliseconds(requestedTimeout)
+                    : (TimeSpan?)null;
             var job = _jobs.StartJob(
                 connectionId,
                 message.Id,
@@ -138,7 +137,6 @@ internal sealed class ControlCommandRouter
         }
     }
 
-
     private CommandResultMessage ExecuteSynchronous(
         CommandCallMessage message,
         IControlCommandHandler handler
@@ -147,9 +145,10 @@ internal sealed class ControlCommandRouter
         try
         {
             var requestedTimeout = message.TimeoutMs.GetValueOrDefault();
-            var timeout = requestedTimeout > 0
-                ? TimeSpan.FromMilliseconds(requestedTimeout)
-                : (TimeSpan?)null;
+            var timeout =
+                requestedTimeout > 0
+                    ? TimeSpan.FromMilliseconds(requestedTimeout)
+                    : (TimeSpan?)null;
             var context = new ControlCommandContext(message.Id, timeout);
             var result = handler
                 .ExecuteAsync(context, message.Args, CancellationToken.None)
@@ -221,7 +220,6 @@ internal sealed class ControlCommandRouter
             Progress = status.Progress,
         };
     }
-
 
     public JobCancelResultMessage CancelJob(JobCancelMessage message) =>
         CancelJob(message, Guid.Empty) as JobCancelResultMessage
@@ -414,5 +412,4 @@ internal sealed class ControlCommandRouter
             )
             : ToMessage(status.Error);
     }
-
 }

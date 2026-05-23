@@ -97,7 +97,10 @@ public sealed class ReplEngine : IDisposable
         _wsServer = new ReplWebSocketServer(msg => _host.LogInfo(msg));
         _clients = new ClientRegistry(_wsServer, msg => _host.LogInfo(msg));
         _router = new MessageRouter(this, msg => _host.LogInfo(msg));
-        _controlJobs = new ControlJobManager(_host.Config.MaxJobEventBuffer, _host.Config.MaxJobConcurrency);
+        _controlJobs = new ControlJobManager(
+            _host.Config.MaxJobEventBuffer,
+            _host.Config.MaxJobConcurrency
+        );
         _controlRouter = new ControlCommandRouter(
             _host.ControlCommands,
             jobs: _controlJobs,
@@ -441,10 +444,7 @@ public sealed class ReplEngine : IDisposable
     private void HandleJournalQuery(JournalQueryCmd cmd)
     {
         var limit = cmd.Limit.GetValueOrDefault(100);
-        var entries = _journal!
-            .Query(cmd.Kind, limit)
-            .Select(ToMessage)
-            .ToArray();
+        var entries = _journal!.Query(cmd.Kind, limit).Select(ToMessage).ToArray();
         _clients!.SendControlTo(
             cmd.ConnectionId,
             Serialize(new JournalQueryResultMessage { Id = cmd.Id, Entries = entries })
@@ -461,7 +461,12 @@ public sealed class ReplEngine : IDisposable
                 _clients!.SendTo(
                     job.ConnectionId,
                     Serialize(
-                        EvalError(job.Id, ErrorKind.Cancelled, "evalCancelled", "Reset in progress.")
+                        EvalError(
+                            job.Id,
+                            ErrorKind.Cancelled,
+                            "evalCancelled",
+                            "Reset in progress."
+                        )
                     )
                 );
             }
@@ -817,12 +822,7 @@ public sealed class ReplEngine : IDisposable
         string code,
         string message,
         bool retryable = false
-    ) =>
-        new()
-        {
-            Id = id,
-            Error = Error(kind, code, message, retryable),
-        };
+    ) => new() { Id = id, Error = Error(kind, code, message, retryable) };
 
     private static SubscribeErrorMessage SubscriptionError(
         string id,
@@ -839,6 +839,7 @@ public sealed class ReplEngine : IDisposable
             Error = Error(kind, code, message, retryable: false),
             Final = final,
         };
+
     /// <summary>
     /// Detects known cross-assembly error patterns in runtime errors and appends a
     /// helpful suggestion. These occur after hot reloads when the evaluator holds

@@ -58,8 +58,11 @@ public class ClientEvictionTests
         public bool IsAvailable { get; set; } = true;
 
         public Task Send(string message) => Task.CompletedTask;
+
         public Task Send(byte[] message) => Task.CompletedTask;
+
         public Task SendPing(byte[] message) => Task.CompletedTask;
+
         public Task SendPong(byte[] message) => Task.CompletedTask;
 
         public void Close()

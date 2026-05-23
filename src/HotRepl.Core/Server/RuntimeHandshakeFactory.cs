@@ -16,7 +16,10 @@ internal static class RuntimeHandshakeFactory
         string[] availableEvaluators,
         string[] defaultUsings,
         string[] helpers
-    ) => ProtocolMessageSerializer.Serialize(Create(config, host, evaluator, availableEvaluators, defaultUsings, helpers));
+    ) =>
+        ProtocolMessageSerializer.Serialize(
+            Create(config, host, evaluator, availableEvaluators, defaultUsings, helpers)
+        );
 
     public static HandshakeMessage Create(
         ReplConfig config,

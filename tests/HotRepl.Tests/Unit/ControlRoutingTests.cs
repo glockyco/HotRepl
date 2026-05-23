@@ -3,17 +3,16 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using HotRepl.Control;
-using ControlArtifactRef = HotRepl.Control.Artifacts.ArtifactRef;
 using HotRepl.Control.Jobs;
 using HotRepl.Protocol;
 using Newtonsoft.Json.Linq;
 using Xunit;
+using ControlArtifactRef = HotRepl.Control.Artifacts.ArtifactRef;
 
 namespace HotRepl.Tests.Unit;
 
 public class ControlRoutingTests
 {
-
     [Fact]
     public void List_ReturnsCommandSummariesFromRegistry()
     {
@@ -35,11 +34,9 @@ public class ControlRoutingTests
     {
         var router = new ControlCommandRouter(new FakeRegistry(new EchoHandler()));
 
-        var result = Assert.IsType<CommandDescribeResultMessage>(router.Describe(new CommandDescribeMessage
-        {
-            Id = "describe-1",
-            Name = "archive.echo",
-        }));
+        var result = Assert.IsType<CommandDescribeResultMessage>(
+            router.Describe(new CommandDescribeMessage { Id = "describe-1", Name = "archive.echo" })
+        );
 
         Assert.Equal(MessageType.CommandDescribeResult, result.Type);
         Assert.Equal("describe-1", result.Id);
@@ -54,13 +51,16 @@ public class ControlRoutingTests
     {
         var router = new ControlCommandRouter(new FakeRegistry(new JobHandler()));
 
-        var result = Assert.IsType<CommandDescribeResultMessage>(router.Describe(new CommandDescribeMessage
-        {
-            Id = "describe-1",
-            Name = "archive.export",
-        }));
+        var result = Assert.IsType<CommandDescribeResultMessage>(
+            router.Describe(
+                new CommandDescribeMessage { Id = "describe-1", Name = "archive.export" }
+            )
+        );
 
-        Assert.Equal("array", result.Descriptor.ArtifactsSchema["required"]!.Type.ToString().ToLowerInvariant());
+        Assert.Equal(
+            "array",
+            result.Descriptor.ArtifactsSchema["required"]!.Type.ToString().ToLowerInvariant()
+        );
         Assert.Equal("items", result.Descriptor.ArtifactsSchema["required"]![0]!.Value<string>());
     }
 
@@ -116,7 +116,6 @@ public class ControlRoutingTests
         Assert.Equal("resultTooLarge", result.Error!.Code);
     }
 
-
     [Fact]
     public void Execute_MutatingCommandDoesNotRequireLease()
     {
@@ -134,7 +133,6 @@ public class ControlRoutingTests
         var ok = Assert.IsType<CommandResultMessage>(result);
         Assert.Equal("ok", ok.Output!["value"]!.Value<string>());
     }
-
 
     [Fact]
     public void Execute_HandlerException_ReturnsInternalCommandError()
@@ -187,7 +185,6 @@ public class ControlRoutingTests
         Assert.Equal(accepted.JobId, status.JobId);
         Assert.Equal("running", status.State);
     }
-
 
     [Fact]
     public async Task JobStatus_AfterCompletion_ReturnsTerminalJobResult()
@@ -262,7 +259,6 @@ public class ControlRoutingTests
         Assert.Equal("failed", result.Status);
         Assert.Equal("resultTooLarge", result.Error!.Code);
     }
-
 
     [Fact]
     public void JobCancel_ReturnsAcknowledgement()
@@ -400,7 +396,6 @@ public class ControlRoutingTests
             );
         }
     }
-
 
     private sealed class JobHandler : IControlCommandHandler
     {

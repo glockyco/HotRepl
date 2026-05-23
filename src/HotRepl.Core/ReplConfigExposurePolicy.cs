@@ -27,7 +27,6 @@ public static class ReplConfigExposurePolicy
         );
     }
 
-
     private static bool IsLoopback(string? bindHost)
     {
         if (string.IsNullOrWhiteSpace(bindHost))

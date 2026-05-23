@@ -284,6 +284,7 @@ internal sealed class MessageRouter
             connectionId
         );
     }
+
     private static JournalQueryCmd BuildJournalQueryCmd(Guid connectionId, string rawJson)
     {
         var journal = De<JournalQueryMessage>(rawJson);
@@ -302,7 +303,6 @@ internal sealed class MessageRouter
         return requested > 0 ? requested : _config.DefaultTimeoutMs;
     }
 
-
     private static (string Id, string Evaluator) ParseSelectEvaluator(string rawJson)
     {
         var obj = JObject.Parse(rawJson);
@@ -311,6 +311,7 @@ internal sealed class MessageRouter
             obj["evaluator"]?.Value<string>() ?? string.Empty
         );
     }
+
     private static bool IsLegacyMessageType(string type) =>
         string.Equals(type, ControlAuthMessageType, StringComparison.Ordinal)
         || string.Equals(type, LeaseAcquireMessageType, StringComparison.Ordinal)

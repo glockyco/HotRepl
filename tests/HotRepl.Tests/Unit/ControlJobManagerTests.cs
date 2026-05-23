@@ -33,7 +33,10 @@ public class ControlJobManagerTests
         manager.StartJob("request-1", (_, _) => ValueTask.FromResult(ControlCommandResult.Empty));
 
         var error = Assert.Throws<InvalidOperationException>(() =>
-            manager.StartJob("request-2", (_, _) => ValueTask.FromResult(ControlCommandResult.Empty))
+            manager.StartJob(
+                "request-2",
+                (_, _) => ValueTask.FromResult(ControlCommandResult.Empty)
+            )
         );
 
         Assert.Equal("maxJobConcurrency", error.Message);

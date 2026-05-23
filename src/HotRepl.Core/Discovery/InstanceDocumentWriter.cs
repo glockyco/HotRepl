@@ -50,11 +50,7 @@ internal sealed class InstanceDocumentWriter : IDisposable
                 Runtime = host.Runtime,
                 Platform = host.Platform,
             },
-            ControlPlane = new ControlPlaneDocument
-            {
-                Supported = true,
-                ProtocolVersion = 2,
-            },
+            ControlPlane = new ControlPlaneDocument { Supported = true, ProtocolVersion = 2 },
         };
 
         var json = JsonConvert.SerializeObject(document, Formatting.Indented);
@@ -123,7 +119,6 @@ internal sealed class InstanceDocumentWriter : IDisposable
         return builder.ToString();
     }
 
-
     private sealed class InstanceDocument
     {
         [JsonProperty("schemaVersion")]
@@ -152,7 +147,6 @@ internal sealed class InstanceDocumentWriter : IDisposable
 
         [JsonProperty("controlPlane")]
         public ControlPlaneDocument ControlPlane { get; set; } = new();
-
     }
 
     private sealed class ProcessDocument
@@ -184,5 +178,4 @@ internal sealed class InstanceDocumentWriter : IDisposable
         [JsonProperty("protocolVersion")]
         public int ProtocolVersion { get; set; }
     }
-
 }
