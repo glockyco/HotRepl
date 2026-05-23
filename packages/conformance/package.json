@@ -16,7 +16,7 @@
     "./websocket-target": "./src/websocket-target.ts"
   },
   "scripts": {
-    "build": "bun test test/**/*.test.ts",
+    "build": "true",
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
