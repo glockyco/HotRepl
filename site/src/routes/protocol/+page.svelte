@@ -228,19 +228,20 @@
     align-items: center;
     justify-content: center;
     background: none;
-    border: 1px solid var(--border);
+    border: none;
     border-radius: 4px;
     font-size: 1.125rem;
     line-height: 1;
     color: var(--muted);
     cursor: pointer;
-    transition: color 0.15s, border-color 0.15s;
+    transition: color 0.15s, background-color 0.15s;
   }
 
   .sheet-close:hover {
     color: var(--text);
-    border-color: var(--accent);
+    background-color: oklch(1 0 0 / 8%);
   }
+
 
   .sheet-content {
     overflow-y: auto;
