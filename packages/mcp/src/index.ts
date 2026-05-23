@@ -90,6 +90,16 @@ export async function runStdioMcpServer(
   );
   const transport = new StdioServerTransport();
   await server.connect(transport);
+  // When the MCP transport closes for any reason (server.close(),
+  // peer-initiated transport close, etc.), release the HotRepl WebSocket
+  // so the Node event loop can drain. The library only chains the SDK's
+  // onclose hook here; process-level signals (SIGINT/SIGTERM/stdin EOF)
+  // are the bin's responsibility.
+  const previousOnClose = server.server.onclose?.bind(server.server);
+  server.server.onclose = (): void => {
+    previousOnClose?.();
+    closeManager();
+  };
   // Fire-and-forget: refine annotations once the backend is reachable.
   // Conservative defaults remain visible until the refresh succeeds.
   void refreshAnnotations();
