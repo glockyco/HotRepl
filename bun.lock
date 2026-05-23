@@ -80,6 +80,7 @@
         "@sveltejs/kit": "^2.0.0",
         "@sveltejs/vite-plugin-svelte": "^7.0.0",
         "@tailwindcss/vite": "^4.0.0",
+        "@types/node": "latest",
         "shiki": "^3.0.0",
         "svelte": "^5.0.0",
         "svelte-check": "^4.0.0",

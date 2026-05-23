@@ -11,6 +11,7 @@
     "cf-deploy": "wrangler deploy"
   },
   "devDependencies": {
+    "@types/node": "latest",
     "@hotrepl/protocol": "workspace:*",
     "@sveltejs/adapter-cloudflare": "^7.0.0",
     "@sveltejs/kit": "^2.0.0",
