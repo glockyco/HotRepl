@@ -7,14 +7,18 @@
     "access": "public"
   },
   "files": [
-    "src"
+    "dist"
   ],
   "sideEffects": false,
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "bun": "./src/index.ts",
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
   },
   "scripts": {
-    "build": "bun test test/**/*.test.ts",
+    "build": "tsup",
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
