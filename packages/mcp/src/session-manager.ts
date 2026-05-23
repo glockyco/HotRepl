@@ -39,4 +39,16 @@ export class SessionManager {
     });
     return session;
   }
+
+  /**
+   * Close the cached session, if any. After close the SessionManager can
+   * still be used: a subsequent getSession() will re-connect.
+   *
+   * Safe to call multiple times.
+   */
+  close(): void {
+    if (this.session === undefined) return;
+    this.session.close();
+    this.session = undefined;
+  }
 }

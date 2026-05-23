@@ -19,6 +19,15 @@ export interface CreateHotReplMcpServerResult {
    * Idempotent: concurrent calls share the in-flight refresh promise.
    */
   refreshAnnotations(): Promise<void>;
+  /**
+   * Close the underlying SessionManager session, if any. After close, the
+   * MCP server itself remains usable; a subsequent tool invocation triggers
+   * a fresh connect. Safe to call multiple times.
+   *
+   * This exists so long-running consumers (stdio bin under SIGTERM, test
+   * harnesses) can release the WebSocket without tearing down the server.
+   */
+  close(): void;
 }
 
 export async function createHotReplMcpServer(
@@ -70,13 +79,15 @@ export async function createHotReplMcpServer(
     return inflight;
   };
 
-  return { server, refreshAnnotations };
+  return { server, refreshAnnotations, close: () => manager.close() };
 }
 
 export async function runStdioMcpServer(
   options: SessionManagerOptions = {},
 ): Promise<() => Promise<void>> {
-  const { server, refreshAnnotations } = await createHotReplMcpServer(options);
+  const { server, refreshAnnotations, close: closeManager } = await createHotReplMcpServer(
+    options,
+  );
   const transport = new StdioServerTransport();
   await server.connect(transport);
   // Fire-and-forget: refine annotations once the backend is reachable.
@@ -87,6 +98,9 @@ export async function runStdioMcpServer(
   return async function shutdown(): Promise<void> {
     if (closed) return;
     closed = true;
+    // Close the MCP transport first so no further tool calls land, then
+    // release the HotRepl WebSocket so the event loop drains.
     await server.close();
+    closeManager();
   };
 }

@@ -157,4 +157,31 @@ describe("HotRepl MCP tools", () => {
   test("runStdioMcpServer is a callable async function", () => {
     expect(typeof runStdioMcpServer).toBe("function");
   });
+
+  test("createHotReplMcpServer.close closes the underlying SessionManager session", async () => {
+    const runtime = new FakeRuntime();
+    runtime.registerCommand(descriptor, () => ({ output: { ok: true } }));
+
+    const result = await createHotReplMcpServer({ runtime });
+    // Connect a client and invoke one tool so the SessionManager actually
+    // opens its session against the runtime.
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    const client = new Client({ name: "test", version: "0.0.0" }, { capabilities: {} });
+    await Promise.all([
+      result.server.connect(serverTransport),
+      client.connect(clientTransport),
+    ]);
+    await client.callTool({ name: "hotrepl_info", arguments: {} });
+
+    expect(typeof result.close).toBe("function");
+    result.close();
+
+    // After close, the runtime must reject further requests (FakeRuntime
+    // sets isClosed=true on close and rejects subsequent request() calls).
+    await expect(runtime.request({ type: "eval", id: "post-close", code: "1" }))
+      .rejects.toThrow(/closed/i);
+
+    await client.close();
+    await result.server.close();
+  });
 });
