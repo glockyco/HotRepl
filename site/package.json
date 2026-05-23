@@ -8,15 +8,17 @@
     "build": "vite build",
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-    "cf-deploy": "wrangler deploy"
+    "cf-deploy": "wrangler deploy",
+    "generate:assets": "bun ./scripts/generate-assets.ts"
   },
   "devDependencies": {
-    "@types/node": "latest",
     "@hotrepl/protocol": "workspace:*",
     "@sveltejs/adapter-cloudflare": "^7.0.0",
     "@sveltejs/kit": "^2.0.0",
     "@sveltejs/vite-plugin-svelte": "^7.0.0",
     "@tailwindcss/vite": "^4.0.0",
+    "@types/node": "latest",
+    "sharp": "^0.34.5",
     "shiki": "^3.0.0",
     "svelte": "^5.0.0",
     "svelte-check": "^4.0.0",

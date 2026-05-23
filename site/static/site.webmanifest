@@ -1,0 +1,27 @@
+{
+  "name": "HotRepl",
+  "short_name": "HotRepl",
+  "description": "Runtime C# REPL and typed command bridge for Unity games",
+  "start_url": "/",
+  "display": "browser",
+  "background_color": "#020507",
+  "theme_color": "#020507",
+  "icons": [
+    {
+      "src": "/icons/pwa-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/icons/pwa-maskable-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/pwa-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ]
+}

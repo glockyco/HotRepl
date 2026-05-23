@@ -1,6 +1,7 @@
 <script lang="ts">
   import MessageCard from "$lib/components/MessageCard.svelte";
   import ProtocolNav from "$lib/components/ProtocolNav.svelte";
+  import Seo from "$lib/components/Seo.svelte";
   import type { PageServerData } from "./$types";
 
   let { data }: { data: PageServerData } = $props();
@@ -15,13 +16,11 @@
   });
 </script>
 
-<svelte:head>
-  <title>Protocol Reference — HotRepl</title>
-  <meta
-    name="description"
-    content="Complete reference for the HotRepl v2 WebSocket protocol — all message types, JSON examples, and JSON Schemas."
-  />
-</svelte:head>
+<Seo
+  title="Protocol Reference — HotRepl"
+  description="Complete reference for the HotRepl v2 WebSocket protocol — all message types, JSON examples, and JSON Schemas."
+  path="/protocol/"
+/>
 
 <svelte:window
   onkeydown={(e) => {

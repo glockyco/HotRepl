@@ -81,6 +81,7 @@
         "@sveltejs/vite-plugin-svelte": "^7.0.0",
         "@tailwindcss/vite": "^4.0.0",
         "@types/node": "latest",
+        "sharp": "^0.34.5",
         "shiki": "^3.0.0",
         "svelte": "^5.0.0",
         "svelte-check": "^4.0.0",

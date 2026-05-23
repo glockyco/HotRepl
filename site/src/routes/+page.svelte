@@ -1,14 +1,30 @@
 <script lang="ts">
   import type { PageServerData } from "./$types";
+  import Seo from "$lib/components/Seo.svelte";
   let { data }: { data: PageServerData } = $props();
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: "HotRepl",
+    applicationCategory: "DeveloperApplication",
+    operatingSystem: "Windows, macOS, Linux",
+    url: "https://hotrepl.glockyco.com",
+    codeRepository: "https://github.com/glockyco/HotRepl",
+    description:
+      "Runtime C# REPL and typed command bridge for Unity games. Embed via BepInEx or MelonLoader, inspect and automate a running game from your terminal, scripts, or AI agents.",
+    author: { "@type": "Person", name: "glockyco" },
+  };
 </script>
 
+<Seo
+  title="HotRepl — Runtime C# REPL for Unity games"
+  description="Runtime C# REPL and typed command bridge for Unity games. Embed via BepInEx or MelonLoader, inspect and automate a running game from your terminal, scripts, or AI agents."
+  path="/"
+/>
 <svelte:head>
-  <title>HotRepl — Runtime C# REPL for Unity games</title>
-  <meta
-    name="description"
-    content="Runtime C# REPL and typed command bridge for Unity games. Embed via BepInEx or MelonLoader, inspect and automate a running game from your terminal, scripts, or AI agents."
-  />
+  <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+  {@html `<script type="application/ld+json">${JSON.stringify(jsonLd)}</script>`}
 </svelte:head>
 
 <!-- ── Hero ────────────────────────────────────────────────────────── -->
