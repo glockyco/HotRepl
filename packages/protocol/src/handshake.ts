@@ -1,4 +1,4 @@
-import { type Static, Type } from "@sinclair/typebox";
+import { type Static, Type } from "typebox";
 import { MESSAGE_TYPES, PROTOCOL_VERSION } from "./message-types";
 
 export const CancellationModeSchema = Type.Union([

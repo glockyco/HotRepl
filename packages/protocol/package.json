@@ -20,6 +20,6 @@
     "schemas:export": "bun ./scripts/export-schemas.ts"
   },
   "dependencies": {
-    "@sinclair/typebox": "^0.34.0"
+    "typebox": "^1.0.0"
   }
 }
