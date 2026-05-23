@@ -11,10 +11,16 @@ export interface HotReplMcpTool {
   name: string;
 }
 
-export async function createHotReplTools(manager: SessionManager): Promise<HotReplMcpTool[]> {
-  const session = await manager.getSession();
-  const commands = await listCommandDescriptors(session);
-  const runMutates = commands.some((command) => command.mutatesState);
+export function createHotReplTools(manager: SessionManager): HotReplMcpTool[] {
+  // Conservative MCP-spec defaults for the mutating tool. The backend's
+  // actual mutatesState is fetched lazily by refreshAnnotations (see
+  // createHotReplMcpServer) and applied via RegisteredTool.update(), which
+  // automatically emits notifications/tools/list_changed.
+  const conservativeRunAnnotations = {
+    destructiveHint: true,
+    readOnlyHint: false,
+  } satisfies ToolAnnotations;
+
   return [
     tool(
       "hotrepl_info",
@@ -79,7 +85,7 @@ export async function createHotReplTools(manager: SessionManager): Promise<HotRe
         const output = await current.run(String(args.name), args.args ?? {}, runOptions);
         return result(serializableResult(output));
       },
-      { destructiveHint: runMutates, readOnlyHint: !runMutates },
+      conservativeRunAnnotations,
     ),
     tool(
       "hotrepl_read_artifact",
@@ -120,7 +126,7 @@ function tool(
     : { name, description, inputSchema, handler, annotations };
 }
 
-async function listCommandDescriptors(session: Session) {
+export async function listCommandDescriptors(session: Session) {
   const response = await session.request({ type: "commands_list", id: "mcp-list-commands" });
   if (response.type !== "commands_list_result") {
     throw new Error(`Expected commands_list_result, got ${response.type}.`);

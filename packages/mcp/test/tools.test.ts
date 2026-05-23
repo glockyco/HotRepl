@@ -14,12 +14,12 @@ const descriptor = {
 };
 
 describe("HotRepl MCP tools", () => {
-  test("registers exactly the fixed v2 tools", async () => {
+  test("registers exactly the fixed v2 tools", () => {
     const runtime = new FakeRuntime({ supportsCompletion: true });
     runtime.registerCommand(descriptor, () => ({ output: { ok: true } }));
     const manager = new SessionManager({ runtime });
 
-    const tools = await createHotReplTools(manager);
+    const tools = createHotReplTools(manager);
 
     expect(tools.map((tool) => tool.name)).toEqual([
       "hotrepl_info",
@@ -34,13 +34,18 @@ describe("HotRepl MCP tools", () => {
     ]);
   });
 
-  test("derives hotrepl_run annotations from command descriptors", async () => {
+  test("registers hotrepl_run with conservative MCP-spec defaults", () => {
     const runtime = new FakeRuntime();
     runtime.registerCommand(descriptor, () => ({ output: { ok: true } }));
     const manager = new SessionManager({ runtime });
 
-    const tools = await createHotReplTools(manager);
+    const tools = createHotReplTools(manager);
     const run = tools.find((tool) => tool.name === "hotrepl_run");
+
+    // Conservative defaults match the MCP spec defaults:
+    // destructiveHint: true, readOnlyHint: false. These are deliberately
+    // independent of the backend's mutatesState — that refinement happens
+    // later via refreshAnnotations (Task 5).
 
     expect(run?.annotations).toMatchObject({
       destructiveHint: true,
@@ -52,7 +57,7 @@ describe("HotRepl MCP tools", () => {
     const runtime = new FakeRuntime();
     runtime.registerCommand(descriptor, () => ({ output: { ok: true } }));
     const manager = new SessionManager({ runtime });
-    const tools = await createHotReplTools(manager);
+    const tools = createHotReplTools(manager);
     const run = tools.find((tool) => tool.name === "hotrepl_run");
 
     const result = await run?.handler({ name: "world.export", args: { scene: "main" } });

@@ -12,7 +12,7 @@ export async function createHotReplMcpServer(
 ): Promise<McpServer> {
   const manager = new SessionManager(options);
   const server = new McpServer({ name: "hotrepl-mcp", version: "0.0.0" });
-  for (const tool of await createHotReplTools(manager)) {
+  for (const tool of createHotReplTools(manager)) {
     const config = {
       description: tool.description,
       inputSchema: tool.inputSchema,
