@@ -1,6 +1,6 @@
 {
   "name": "@hotrepl/cli",
-  "version": "2.0.0-alpha.0",
+  "version": "2.0.0",
   "description": "HotRepl v2 command-line client.",
   "type": "module",
   "publishConfig": {
@@ -21,9 +21,9 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@hotrepl/sdk": "2.0.0-alpha.0"
+    "@hotrepl/sdk": "2.0.0"
   },
   "devDependencies": {
-    "@hotrepl/testing": "2.0.0-alpha.0"
+    "@hotrepl/testing": "2.0.0"
   }
 }

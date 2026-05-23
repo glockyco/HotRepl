@@ -1,6 +1,6 @@
 {
   "name": "@hotrepl/conformance",
-  "version": "2.0.0-alpha.0",
+  "version": "2.0.0",
   "description": "Reusable conformance checks for HotRepl v2 runtimes.",
   "type": "module",
   "publishConfig": {
@@ -20,8 +20,8 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@hotrepl/protocol": "2.0.0-alpha.0",
-    "@hotrepl/sdk": "2.0.0-alpha.0",
-    "@hotrepl/testing": "2.0.0-alpha.0"
+    "@hotrepl/protocol": "2.0.0",
+    "@hotrepl/sdk": "2.0.0",
+    "@hotrepl/testing": "2.0.0"
   }
 }

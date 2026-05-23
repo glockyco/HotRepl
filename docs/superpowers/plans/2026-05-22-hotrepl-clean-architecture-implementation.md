@@ -1004,9 +1004,9 @@ worktree.
   protocol errors as successful responses.
 - Protocol-level routing errors are first-class `type: "error"` frames with the universal error
   envelope; the TypeScript SDK rejects the matching request as `HotReplError`.
-- TypeScript and .NET packages now use the concrete prerelease version `2.0.0-alpha.0`. Downstream
-  plans consume repo-local tarballs/NuGet packages under `vendor/hotrepl/` until registry publishing
-  is introduced.
+- TypeScript and .NET packages now use the concrete prerelease version `2.0.0`. Downstream plans
+  consume repo-local tarballs/NuGet packages under `vendor/hotrepl/` until registry publishing is
+  introduced.
 - Live BepInEx deployment now references and preserves `HotRepl.Protocol.dll` side-by-side with
   `HotRepl.Core.dll`; the first Ardenfall smoke exposed the missing protocol assembly after the v2
   split.

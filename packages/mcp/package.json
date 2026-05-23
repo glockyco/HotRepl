@@ -1,6 +1,6 @@
 {
   "name": "@hotrepl/mcp",
-  "version": "2.0.0-alpha.0",
+  "version": "2.0.0",
   "description": "HotRepl v2 MCP stdio server.",
   "type": "module",
   "publishConfig": {
@@ -21,11 +21,11 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@hotrepl/sdk": "2.0.0-alpha.0",
+    "@hotrepl/sdk": "2.0.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "zod": "^4.0.0"
   },
   "devDependencies": {
-    "@hotrepl/testing": "2.0.0-alpha.0"
+    "@hotrepl/testing": "2.0.0"
   }
 }
