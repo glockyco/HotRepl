@@ -2,7 +2,7 @@ import { type Static, Type } from "typebox";
 import { Value } from "typebox/value";
 import type { ErrorKind } from "./error-kinds";
 import { ERROR_KINDS } from "./error-kinds";
-import type { HandshakeMessage } from "./handshake";
+import { type HandshakeMessage, HandshakeMessageSchema } from "./handshake";
 import { MESSAGE_TYPES } from "./message-types";
 
 export type JsonObject = Record<string, unknown>;
@@ -85,131 +85,241 @@ export const JournalEntrySchema = Type.Object(
 );
 export type JournalEntry = Static<typeof JournalEntrySchema>;
 
-// ── Server-sent messages (unchanged interfaces — will be replaced in next step) ──
+// ── Server-sent messages ──────────────────────────────────────────────────────
 
-export interface EvalResultMessage {
-  type: typeof MESSAGE_TYPES.evalResult;
-  id: string;
-  hasValue: boolean;
-  value?: unknown;
-  valueType?: string;
-  stdout?: string;
-  durationMs: number;
-}
+export const EvalResultMessageSchema = Type.Object(
+  {
+    type: Type.Literal(MESSAGE_TYPES.evalResult),
+    id: Type.String(),
+    hasValue: Type.Boolean(),
+    value: Type.Optional(Type.Unknown()),
+    valueType: Type.Optional(Type.String()),
+    stdout: Type.Optional(Type.String()),
+    durationMs: Type.Number(),
+  },
+  { additionalProperties: false },
+);
+export type EvalResultMessage = Static<typeof EvalResultMessageSchema>;
 
-export interface EvalErrorMessage {
-  type: typeof MESSAGE_TYPES.evalError;
-  id: string;
-  error: HotReplErrorEnvelope;
-}
+export const EvalErrorMessageSchema = Type.Object(
+  {
+    type: Type.Literal(MESSAGE_TYPES.evalError),
+    id: Type.String(),
+    error: ErrorEnvelopeSchema,
+  },
+  { additionalProperties: false },
+);
+export type EvalErrorMessage = Static<typeof EvalErrorMessageSchema>;
 
-export interface CompleteResultMessage {
-  type: typeof MESSAGE_TYPES.completeResult;
-  id: string;
-  completions: string[];
-  durationMs: number;
-}
+export const CompleteResultMessageSchema = Type.Object(
+  {
+    type: Type.Literal(MESSAGE_TYPES.completeResult),
+    id: Type.String(),
+    completions: Type.Array(Type.String()),
+    durationMs: Type.Number(),
+  },
+  { additionalProperties: false },
+);
+export type CompleteResultMessage = Static<typeof CompleteResultMessageSchema>;
 
-export interface ResetResultMessage {
-  type: typeof MESSAGE_TYPES.resetResult;
-  id: string;
-  success: boolean;
-}
+export const ResetResultMessageSchema = Type.Object(
+  {
+    type: Type.Literal(MESSAGE_TYPES.resetResult),
+    id: Type.String(),
+    success: Type.Boolean(),
+  },
+  { additionalProperties: false },
+);
+export type ResetResultMessage = Static<typeof ResetResultMessageSchema>;
 
-export interface SubscribeResultMessage {
-  type: typeof MESSAGE_TYPES.subscribeResult;
-  id: string;
-  seq: number;
-  hasValue: boolean;
-  value?: unknown;
-  valueType?: string;
-  durationMs: number;
-  final: boolean;
-}
+export const SubscribeResultMessageSchema = Type.Object(
+  {
+    type: Type.Literal(MESSAGE_TYPES.subscribeResult),
+    id: Type.String(),
+    seq: Type.Number(),
+    hasValue: Type.Boolean(),
+    value: Type.Optional(Type.Unknown()),
+    valueType: Type.Optional(Type.String()),
+    durationMs: Type.Number(),
+    final: Type.Boolean(),
+  },
+  { additionalProperties: false },
+);
+export type SubscribeResultMessage = Static<typeof SubscribeResultMessageSchema>;
 
-export interface SubscribeErrorMessage {
-  type: typeof MESSAGE_TYPES.subscribeError;
-  id: string;
-  seq: number;
-  error: HotReplErrorEnvelope;
-  final: boolean;
-}
+export const SubscribeErrorMessageSchema = Type.Object(
+  {
+    type: Type.Literal(MESSAGE_TYPES.subscribeError),
+    id: Type.String(),
+    seq: Type.Number(),
+    error: ErrorEnvelopeSchema,
+    final: Type.Boolean(),
+  },
+  { additionalProperties: false },
+);
+export type SubscribeErrorMessage = Static<typeof SubscribeErrorMessageSchema>;
 
-export interface SessionEvictedMessage {
-  type: typeof MESSAGE_TYPES.sessionEvicted;
-  reason: string;
-  by?: { clientName?: string };
-}
+export const SessionEvictedMessageSchema = Type.Object(
+  {
+    type: Type.Literal(MESSAGE_TYPES.sessionEvicted),
+    reason: Type.String(),
+    by: Type.Optional(
+      Type.Object({ clientName: Type.Optional(Type.String()) }, { additionalProperties: false }),
+    ),
+  },
+  { additionalProperties: false },
+);
+export type SessionEvictedMessage = Static<typeof SessionEvictedMessageSchema>;
 
-export interface ProtocolErrorMessage {
-  type: typeof MESSAGE_TYPES.error;
-  id?: string;
-  error: HotReplErrorEnvelope;
-}
+export const ProtocolErrorMessageSchema = Type.Object(
+  {
+    type: Type.Literal(MESSAGE_TYPES.error),
+    id: Type.Optional(Type.String()),
+    error: ErrorEnvelopeSchema,
+  },
+  { additionalProperties: false },
+);
+export type ProtocolErrorMessage = Static<typeof ProtocolErrorMessageSchema>;
 
-export interface CommandsListResultMessage {
-  type: typeof MESSAGE_TYPES.commandsListResult;
-  id: string;
-  commands: CommandSummary[];
-  since?: string;
-}
+export const CommandsListResultMessageSchema = Type.Object(
+  {
+    type: Type.Literal(MESSAGE_TYPES.commandsListResult),
+    id: Type.String(),
+    commands: Type.Array(CommandSummarySchema),
+    since: Type.Optional(Type.String()),
+  },
+  { additionalProperties: false },
+);
+export type CommandsListResultMessage = Static<typeof CommandsListResultMessageSchema>;
 
-export interface CommandDescribeResultMessage {
-  type: typeof MESSAGE_TYPES.commandDescribeResult;
-  id: string;
-  descriptor: CommandDescriptor;
-}
+export const CommandDescribeResultMessageSchema = Type.Object(
+  {
+    type: Type.Literal(MESSAGE_TYPES.commandDescribeResult),
+    id: Type.String(),
+    descriptor: CommandDescriptorSchema,
+  },
+  { additionalProperties: false },
+);
+export type CommandDescribeResultMessage = Static<typeof CommandDescribeResultMessageSchema>;
 
-export interface CommandResultMessage {
-  type: typeof MESSAGE_TYPES.commandResult;
-  id: string;
-  status: "ok" | "failed";
-  output?: unknown;
-  artifacts: Record<string, ArtifactRef>;
-  error?: HotReplErrorEnvelope;
-  durationMs: number;
-}
+export const CommandResultMessageSchema = Type.Object(
+  {
+    type: Type.Literal(MESSAGE_TYPES.commandResult),
+    id: Type.String(),
+    status: Type.Union([Type.Literal("ok"), Type.Literal("failed")]),
+    output: Type.Optional(Type.Unknown()),
+    artifacts: Type.Record(Type.String(), ArtifactRefSchema),
+    error: Type.Optional(ErrorEnvelopeSchema),
+    durationMs: Type.Number(),
+  },
+  { additionalProperties: false },
+);
+export type CommandResultMessage = Static<typeof CommandResultMessageSchema>;
 
-export interface JobAcceptedMessage {
-  type: typeof MESSAGE_TYPES.jobAccepted;
-  id: string;
-  jobId: string;
-  state: "running";
-}
+export const JobAcceptedMessageSchema = Type.Object(
+  {
+    type: Type.Literal(MESSAGE_TYPES.jobAccepted),
+    id: Type.String(),
+    jobId: Type.String(),
+    state: Type.Literal("running"),
+  },
+  { additionalProperties: false },
+);
+export type JobAcceptedMessage = Static<typeof JobAcceptedMessageSchema>;
 
-export interface JobStatusResultMessage {
-  type: typeof MESSAGE_TYPES.jobStatusResult;
-  id: string;
-  jobId: string;
-  state: "running";
-  progress?: unknown;
-  error?: HotReplErrorEnvelope;
-}
+export const JobStatusResultMessageSchema = Type.Object(
+  {
+    type: Type.Literal(MESSAGE_TYPES.jobStatusResult),
+    id: Type.String(),
+    jobId: Type.String(),
+    state: Type.Literal("running"),
+    progress: Type.Optional(Type.Unknown()),
+    error: Type.Optional(ErrorEnvelopeSchema),
+  },
+  { additionalProperties: false },
+);
+export type JobStatusResultMessage = Static<typeof JobStatusResultMessageSchema>;
 
-export interface JobResultMessage {
-  type: typeof MESSAGE_TYPES.jobResult;
-  id: string;
-  jobId: string;
-  state: "done" | "failed" | "cancelled";
-  status: "ok" | "failed";
-  output?: unknown;
-  artifacts: Record<string, ArtifactRef>;
-  error?: HotReplErrorEnvelope;
-  durationMs: number;
-}
+export const JobResultMessageSchema = Type.Object(
+  {
+    type: Type.Literal(MESSAGE_TYPES.jobResult),
+    id: Type.String(),
+    jobId: Type.String(),
+    state: Type.Union([
+      Type.Literal("done"),
+      Type.Literal("failed"),
+      Type.Literal("cancelled"),
+    ]),
+    status: Type.Union([Type.Literal("ok"), Type.Literal("failed")]),
+    output: Type.Optional(Type.Unknown()),
+    artifacts: Type.Record(Type.String(), ArtifactRefSchema),
+    error: Type.Optional(ErrorEnvelopeSchema),
+    durationMs: Type.Number(),
+  },
+  { additionalProperties: false },
+);
+export type JobResultMessage = Static<typeof JobResultMessageSchema>;
 
-export interface JobCancelResultMessage {
-  type: typeof MESSAGE_TYPES.jobCancelResult;
-  id: string;
-  accepted: boolean;
-  state: "running" | "done" | "failed" | "cancelled";
-}
+export const JobCancelResultMessageSchema = Type.Object(
+  {
+    type: Type.Literal(MESSAGE_TYPES.jobCancelResult),
+    id: Type.String(),
+    accepted: Type.Boolean(),
+    state: Type.Union([
+      Type.Literal("running"),
+      Type.Literal("done"),
+      Type.Literal("failed"),
+      Type.Literal("cancelled"),
+    ]),
+  },
+  { additionalProperties: false },
+);
+export type JobCancelResultMessage = Static<typeof JobCancelResultMessageSchema>;
 
-export interface JournalQueryResultMessage {
-  type: typeof MESSAGE_TYPES.journalQueryResult;
-  id: string;
-  entries: JournalEntry[];
-}
+export const JournalQueryResultMessageSchema = Type.Object(
+  {
+    type: Type.Literal(MESSAGE_TYPES.journalQueryResult),
+    id: Type.String(),
+    entries: Type.Array(JournalEntrySchema),
+  },
+  { additionalProperties: false },
+);
+export type JournalQueryResultMessage = Static<typeof JournalQueryResultMessageSchema>;
+
+/** Sent by the server when a game assembly is hot-reloaded.
+ *  Currently unhandled by the SDK transport (dropped silently). */
+export const AssemblyReloadMessageSchema = Type.Object(
+  {
+    type: Type.Literal(MESSAGE_TYPES.assemblyReload),
+    assembly: Type.Optional(Type.String()),
+    message: Type.String(),
+  },
+  { additionalProperties: false },
+);
+export type AssemblyReloadMessage = Static<typeof AssemblyReloadMessageSchema>;
+
+// ── ServerMessage union ───────────────────────────────────────────────────────
+
+export const ServerMessageSchema = Type.Union([
+  HandshakeMessageSchema,
+  EvalResultMessageSchema,
+  EvalErrorMessageSchema,
+  CompleteResultMessageSchema,
+  ResetResultMessageSchema,
+  SubscribeResultMessageSchema,
+  SubscribeErrorMessageSchema,
+  SessionEvictedMessageSchema,
+  ProtocolErrorMessageSchema,
+  CommandsListResultMessageSchema,
+  CommandDescribeResultMessageSchema,
+  CommandResultMessageSchema,
+  JobAcceptedMessageSchema,
+  JobStatusResultMessageSchema,
+  JobResultMessageSchema,
+  JobCancelResultMessageSchema,
+  JournalQueryResultMessageSchema,
+  AssemblyReloadMessageSchema,
+]);
 
 export type ServerMessage =
   | HandshakeMessage
@@ -228,4 +338,5 @@ export type ServerMessage =
   | JobStatusResultMessage
   | JobResultMessage
   | JobCancelResultMessage
-  | JournalQueryResultMessage;
+  | JournalQueryResultMessage
+  | AssemblyReloadMessage;
