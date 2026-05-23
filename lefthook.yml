@@ -50,13 +50,13 @@ pre-push:
   parallel: false
   commands:
     bun-install:
-      run: bun install --frozen-lockfile
+      run: scripts/run-bun.sh install --frozen-lockfile
     bun-test:
-      run: bun run test
+      run: scripts/run-bun.sh run test
     bun-typecheck:
-      run: bun run typecheck
+      run: scripts/run-bun.sh run typecheck
     schemas-export:
-      run: bun run schemas:export
+      run: scripts/run-bun.sh run schemas:export
     dprint-check:
       run: dprint check
     typos:
