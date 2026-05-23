@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="HotRepl">
+  <rect width="64" height="64" rx="12" fill="oklch(0.11 0.01 240)" />
+  <path d="M18 38 30 16h16L36 30h10L28 52l6-14H18Z" fill="oklch(0.75 0.18 45)" />
+</svg>
