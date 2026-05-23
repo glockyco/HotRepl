@@ -4,7 +4,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { ToolListChangedNotificationSchema } from "@modelcontextprotocol/sdk/types.js";
 import { describe, expect, test } from "bun:test";
-import { createHotReplMcpServer } from "../src/index";
+import { createHotReplMcpServer, runStdioMcpServer } from "../src/index";
 import { SessionManager } from "../src/session-manager";
 import { createHotReplTools } from "../src/tools";
 
@@ -143,5 +143,18 @@ describe("HotRepl MCP tools", () => {
 
     await client.close();
     await server.close();
+  });
+  test("createHotReplMcpServer provides a functional server and refreshAnnotations handle", async () => {
+    const runtime = new FakeRuntime();
+    runtime.registerCommand(descriptor, () => ({ output: { ok: true } }));
+
+    const { server, refreshAnnotations } = await createHotReplMcpServer({ runtime });
+    expect(typeof refreshAnnotations).toBe("function");
+    expect(typeof server.close).toBe("function");
+    await server.close();
+  });
+
+  test("runStdioMcpServer is a callable async function", () => {
+    expect(typeof runStdioMcpServer).toBe("function");
   });
 });

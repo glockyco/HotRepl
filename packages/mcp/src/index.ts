@@ -73,10 +73,20 @@ export async function createHotReplMcpServer(
   return { server, refreshAnnotations };
 }
 
-export async function runStdioMcpServer(options: SessionManagerOptions = {}): Promise<void> {
+export async function runStdioMcpServer(
+  options: SessionManagerOptions = {},
+): Promise<() => Promise<void>> {
   const { server, refreshAnnotations } = await createHotReplMcpServer(options);
-  await server.connect(new StdioServerTransport());
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
   // Fire-and-forget: refine annotations once the backend is reachable.
   // Conservative defaults remain visible until the refresh succeeds.
   void refreshAnnotations();
+
+  let closed = false;
+  return async function shutdown(): Promise<void> {
+    if (closed) return;
+    closed = true;
+    await server.close();
+  };
 }
