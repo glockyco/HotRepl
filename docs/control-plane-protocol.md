@@ -91,9 +91,14 @@ Success returns `eval_result`; failure returns `eval_error` with `error`:
   "id": "watch-1",
   "code": "Time.frameCount",
   "intervalFrames": 1,
-  "limit": 10
+  "onChange": true,
+  "limit": 10,
+  "timeoutMs": 250
 }
 ```
+
+`onChange` (boolean, optional) triggers only when the expression value changes rather than every
+interval. `timeoutMs` (number, optional) bounds each tick.
 
 The server emits `subscribe_result` frames until `final: true`, or `subscribe_error` with `error`. A
 new client connection sends `session_evicted` to the old session and closes its subscriptions.

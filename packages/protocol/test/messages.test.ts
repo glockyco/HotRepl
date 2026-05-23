@@ -382,6 +382,8 @@ describe("client message schemas", () => {
         type: MESSAGE_TYPES.subscribe,
         id: "w1",
         code: "Time.frameCount",
+        onChange: true,
+        timeoutMs: 250,
       }),
     ).toBe(true);
   });

@@ -19,7 +19,13 @@
     "intervalFrames": {
       "type": "number"
     },
+    "onChange": {
+      "type": "boolean"
+    },
     "limit": {
+      "type": "number"
+    },
+    "timeoutMs": {
       "type": "number"
     }
   },

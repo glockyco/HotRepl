@@ -387,7 +387,9 @@ export const SubscribeMessageSchema = Type.Object(
     id: Type.String(),
     code: Type.String(),
     intervalFrames: Type.Optional(Type.Number()),
+    onChange: Type.Optional(Type.Boolean()),
     limit: Type.Optional(Type.Number()),
+    timeoutMs: Type.Optional(Type.Number()),
   },
   { additionalProperties: false },
 );
