@@ -10,41 +10,55 @@ contract for repeatable exports, tests, and agent workflows.
 
 ## Requirements
 
-- .NET 10.x for the Core test project.
-- Bun 1.3.14 for the TypeScript protocol, SDK, CLI, MCP, testing, and conformance packages.
-- Unity/BepInEx or MelonLoader assemblies only when building host adapters.
+- A Unity game running the BepInEx plugin (`HotRepl.BepInEx.dll`) or the MelonLoader mod
+  (`HotRepl.Host.MelonLoader.dll`). The plugin opens `ws://127.0.0.1:18590` by default.
+- Bun 1.3.14 or Node 20+ to consume the npm packages.
+
+## Install
+
+```bash
+# Programmatic use from TypeScript:
+bun add @hotrepl/sdk        # or npm install @hotrepl/sdk
+
+# Command line:
+bunx @hotrepl/cli info      # or npx -y @hotrepl/cli info
+```
+
+Wire the MCP server into your agent's config (Claude Desktop, Cursor, Zed, Codex, …):
+
+```json
+{
+  "mcpServers": {
+    "hotrepl": {
+      "command": "npx",
+      "args": ["-y", "@hotrepl/mcp"]
+    }
+  }
+}
+```
 
 ## Quickstart
 
-```bash
-bun install --frozen-lockfile
-dotnet tool restore
+```ts
+import { connect } from "@hotrepl/sdk";
 
-dotnet build src/HotRepl.Core/ --nologo -v q
-dotnet test tests/HotRepl.Tests/ --nologo -v q
-bun run test
-bun run typecheck
+const session = await connect(); // ws://127.0.0.1:18590 by default
+
+// Raw eval — any C# expression, on the game's main thread:
+const product = await session.eval<string>(
+  "UnityEngine.Application.productName",
+);
+// → { hasValue: true, value: "Ardenfall", valueType: "System.String", durationMs: 7 }
+
+// Typed, schema-validated game command:
+const preflight = await session.run<{ writable: boolean; freeMb: number }>(
+  "archive.preflight",
+  {},
+);
+// → { output: { writable: true, freeMb: 41213 }, artifacts: {} }
 ```
 
-A running host listens on `ws://127.0.0.1:18590` by default. The SDK and CLI use that URL unless
-`HOTREPL_URL` or an explicit URL is supplied.
-
-```bash
-# Inspect the runtime handshake.
-bun packages/cli/src/index.ts info --json
-
-# Evaluate C# on the game's main thread.
-bun packages/cli/src/index.ts eval 'UnityEngine.Application.productName'
-
-# Run a typed game command exposed by the host.
-bun packages/cli/src/index.ts run archive.preflight '{}'
-
-# Inspect recent eval/command results.
-bun packages/cli/src/index.ts journal --limit 10
-
-# Expose the fixed HotRepl tool set over MCP stdio.
-bun packages/mcp/src/index.ts
-```
+Set `HOTREPL_URL` (or pass `url:` to `connect`) to point at a non-default host.
 
 ## Integration paths
 
@@ -52,21 +66,9 @@ bun packages/mcp/src/index.ts
 | -------------- | ------------------------------------------------------------ | ---------------------------------------------------- |
 | Raw eval       | Interactive inspection and one-off repair snippets           | `Session.eval()` or `hotrepl eval`                   |
 | Typed commands | Repeatable game automation, exports, and artifact collection | `Session.run()`, `commands_list`, `command_describe` |
-| CLI            | Scripts and shell-driven local workflows                     | `packages/cli/src/index.ts`                          |
-| MCP            | Agent tools with a small stable tool catalog                 | `packages/mcp/src/index.ts`                          |
+| CLI            | Scripts and shell-driven local workflows                     | `@hotrepl/cli` (`hotrepl` binary)                    |
+| MCP            | Agent tools with a small stable tool catalog                 | `@hotrepl/mcp` (`hotrepl-mcp` binary)                |
 | Host embedding | New Unity loader adapters or test hosts                      | `IReplHost` + `ReplEngine.Tick()`                    |
-
-Minimal SDK usage:
-
-```ts
-import { connect } from "@hotrepl/sdk";
-
-const session = await connect({ url: "ws://127.0.0.1:18590" });
-const product = await session.eval("UnityEngine.Application.productName");
-const preflight = await session.run("archive.preflight", {});
-
-console.log(product.value, preflight.output);
-```
 
 ## Protocol
 
@@ -89,23 +91,6 @@ Runtime errors use a universal `error` envelope with closed `kind` values. Job c
 [`docs/control-plane-protocol.md`](docs/control-plane-protocol.md) for the full message inventory.
 
 The default security model is loopback binding plus single-client replacement.
-
-## TypeScript and .NET packages
-
-| Package                | Purpose                                                               |
-| ---------------------- | --------------------------------------------------------------------- |
-| `@hotrepl/protocol`    | Wire constants, TypeBox schemas, and message types                    |
-| `@hotrepl/sdk`         | `connect`, `Session`, `Artifact`, typed errors, WebSocket transport   |
-| `@hotrepl/testing`     | `FakeRuntime`, `MockSession`, recorder, and replay helpers (internal) |
-| `@hotrepl/conformance` | Protocol conformance suite for FakeRuntime (internal)                 |
-| `@hotrepl/cli`         | `hotrepl` command-line adapter over the SDK                           |
-| `@hotrepl/mcp`         | fixed nine-tool MCP stdio server over the SDK                         |
-
-Versions are managed by [changesets](https://github.com/changesets/changesets). The four publishable
-packages (`@hotrepl/protocol`, `@hotrepl/sdk`, `@hotrepl/cli`, `@hotrepl/mcp`) are released to npm
-under the `@hotrepl` org from `main`; `@hotrepl/testing` and `@hotrepl/conformance` stay
-workspace-internal. Each release lands as a tagged GitHub Release whose body is the package's
-CHANGELOG entry.
 
 ## Real consumers
 
@@ -158,19 +143,56 @@ BepInEx deploys `HotRepl.BepInEx.dll`, `HotRepl.Core.dll`, `HotRepl.Protocol.dll
 Newtonsoft.Json, and `mcs.dll` side-by-side. MelonLoader deploys the host, Core, Protocol, Roslyn
 evaluator, Unity helpers, Fleck, Newtonsoft.Json, and Roslyn dependencies in `Mods/`.
 
-## Contributing
+## Development
+
+For working on HotRepl itself, not just consuming it.
+
+### Setup
 
 ```bash
 brew install lefthook dprint actionlint commitlint typos
 bun install --frozen-lockfile
 dotnet tool restore
 lefthook install
+```
+
+.NET 10.x is required because `HotRepl.Tests` targets `net10.0`.
+
+### Verification
+
+```bash
 lefthook run pre-push --force
 ```
 
 `pre-push` mirrors CI: Bun install/tests/typecheck/schema export, dprint, typos, actionlint, C#
 build, and C# tests. See [`AGENTS.md`](AGENTS.md) for agent-specific constraints and targeted
 commands.
+
+### Running from source
+
+Inside a clone, the SDK example above just works because Bun resolves `@hotrepl/sdk` to the
+workspace copy. The CLI and MCP binaries don't exist on PATH until you publish (or `bun link`), so
+invoke their source entry points directly:
+
+```bash
+# CLI:
+bun packages/cli/src/index.ts info
+bun packages/cli/src/index.ts eval 'UnityEngine.Application.productName'
+bun packages/cli/src/index.ts run archive.preflight '{}'
+
+# MCP — point your client at the source file by absolute path:
+{
+  "mcpServers": {
+    "hotrepl": {
+      "command": "bun",
+      "args": ["/absolute/path/to/HotRepl/packages/mcp/src/index.ts"]
+    }
+  }
+}
+```
+
+The workspace packages export their `src/` directly via the `bun` condition in each `package.json`,
+so a Bun-driven build picks up source-level changes without needing a `bun run build`.
 
 ## Releases
 
@@ -200,8 +222,10 @@ On every push to `main`, the workflow:
    pushed and one GitHub Release per published package is created, with the CHANGELOG entry as its
    body.
 
-Publishing uses [npm trusted publishing via OIDC](https://docs.npmjs.com/trusted-publishers/) — no
-long-lived `NPM_TOKEN`. Provenance is generated automatically.
+`@hotrepl/testing` and `@hotrepl/conformance` are workspace-internal (`"private": true`) and never
+publish. Publishing uses
+[npm trusted publishing via OIDC](https://docs.npmjs.com/trusted-publishers/) — no long-lived
+`NPM_TOKEN`. Provenance is generated automatically.
 
 ## License
 
