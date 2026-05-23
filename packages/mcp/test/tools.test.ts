@@ -1,3 +1,4 @@
+import type { RuntimeTransport } from "@hotrepl/sdk";
 import { FakeRuntime } from "@hotrepl/testing";
 import { describe, expect, test } from "bun:test";
 import { SessionManager } from "../src/session-manager";
@@ -66,6 +67,32 @@ describe("HotRepl MCP tools", () => {
     expect(result?.content).toEqual([{
       type: "text",
       text: "{\"output\":{\"ok\":true},\"artifacts\":{}}",
+    }]);
+  });
+  test("tool invocation surfaces backend-unreachable as isError envelope", async () => {
+    // A runtime whose handshake() rejects — simulates a backend that is down.
+    // connect() calls handshake() first, so this causes manager.getSession() to reject.
+    const failingRuntime: RuntimeTransport = {
+      handshake: () => Promise.reject(new Error("HotRepl WebSocket connection failed.")),
+      request: () => Promise.reject(new Error("transport closed")),
+      watch: async function*() {
+        throw new Error("transport closed");
+      },
+      readArtifact: () => Promise.reject(new Error("transport closed")),
+      onSessionEvicted: () => () => {},
+      close: () => {},
+    };
+    const manager = new SessionManager({ runtime: failingRuntime });
+
+    const tools = createHotReplTools(manager);
+    const eval_ = tools.find((tool) => tool.name === "hotrepl_eval");
+    expect(eval_).toBeDefined();
+
+    const callResult = await eval_!.handler({ code: "1 + 1" });
+    expect(callResult.isError).toBe(true);
+    expect(callResult.content).toEqual([{
+      type: "text",
+      text: expect.stringContaining("HotRepl is not reachable"),
     }]);
   });
 });
