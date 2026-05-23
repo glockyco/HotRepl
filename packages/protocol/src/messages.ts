@@ -8,12 +8,12 @@ import { MESSAGE_TYPES } from "./message-types";
 type LiteralTuple<T extends readonly string[]> = T extends readonly [
   infer Head extends string,
   ...infer Tail extends readonly string[],
-]
-  ? [TLiteral<Head>, ...LiteralTuple<Tail>]
+] ? [TLiteral<Head>, ...LiteralTuple<Tail>]
   : [];
 type ErrorKindLiteralTuple = LiteralTuple<typeof ERROR_KINDS>;
-const ERROR_KIND_LITERALS = ERROR_KINDS.map((k) => Type.Literal(k)) as unknown as ErrorKindLiteralTuple;
-
+const ERROR_KIND_LITERALS = ERROR_KINDS.map((k) =>
+  Type.Literal(k)
+) as unknown as ErrorKindLiteralTuple;
 
 export type JsonObject = Record<string, unknown>;
 

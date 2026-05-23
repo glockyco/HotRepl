@@ -162,7 +162,13 @@ While running, the response is `job_status_result`. Once terminal, `job_status` 
 Cancel with `job_cancel`, which returns `job_cancel_result` and echoes the affected `jobId`:
 
 ```json
-{ "type": "job_cancel_result", "id": "jc-1", "jobId": "job-1", "accepted": true, "state": "running" }
+{
+  "type": "job_cancel_result",
+  "id": "jc-1",
+  "jobId": "job-1",
+  "accepted": true,
+  "state": "running"
+}
 ```
 
 ## Artifacts
@@ -212,8 +218,8 @@ clients may observe this as an unmatched server push.
 
 ### Cancel
 
-Cancel an active eval or subscription by its original request `id`.
-Not yet sent by the TypeScript SDK; available for custom transports.
+Cancel an active eval or subscription by its original request `id`. Not yet sent by the TypeScript
+SDK; available for custom transports.
 
 ```json
 { "type": "cancel", "id": "cancel-1", "targetId": "watch-1" }
