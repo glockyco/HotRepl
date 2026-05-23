@@ -48,12 +48,41 @@ $ hotrepl run archive.preflight '{}'
 {"writable":true,"freeMb":41213}
 `;
 
+const mcpConfigSource = `{
+  "mcpServers": {
+    "hotrepl": {
+      "command": "npx",
+      "args": ["-y", "@hotrepl/mcp"]
+    }
+  }
+}
+`;
+
+// Mirrors the nine tools registered in packages/mcp/src/tools.ts.
+const mcpToolsSource = `# Eval
+hotrepl_eval
+hotrepl_complete
+hotrepl_reset
+
+# Typed commands
+hotrepl_list_commands
+hotrepl_describe_command
+hotrepl_run
+
+# Inspection
+hotrepl_info
+hotrepl_read_artifact
+hotrepl_journal
+`;
+
 export async function load() {
-  const [sdkHtml, sdkResultHtml, cliHtml] = await Promise.all([
+  const [sdkHtml, sdkResultHtml, cliHtml, mcpConfigHtml, mcpToolsHtml] = await Promise.all([
     codeToHtml(sdkSource, { lang: "typescript", theme: THEME }),
     codeToHtml(sdkResult, { lang: "javascript", theme: THEME }),
     codeToHtml(cliSource, { lang: "shellsession", theme: THEME }),
+    codeToHtml(mcpConfigSource, { lang: "json", theme: THEME }),
+    codeToHtml(mcpToolsSource, { lang: "bash", theme: THEME }),
   ]);
 
-  return { sdkHtml, sdkResultHtml, cliHtml };
+  return { sdkHtml, sdkResultHtml, cliHtml, mcpConfigHtml, mcpToolsHtml };
 }

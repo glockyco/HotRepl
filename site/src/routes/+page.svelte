@@ -105,6 +105,23 @@
       {@html data.cliHtml}
     </div>
   </div>
+
+  <p class="example-caption">
+    Or wire the same runtime into your MCP-enabled coding agent:
+  </p>
+
+  <div class="example">
+    <div class="example-pane">
+      <span class="example-tag">MCP server config</span>
+      <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+      {@html data.mcpConfigHtml}
+    </div>
+    <div class="example-pane example-pane--result">
+      <span class="example-tag example-tag--result">↳ Tools the agent sees</span>
+      <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+      {@html data.mcpToolsHtml}
+    </div>
+  </div>
 </section>
 
 <!-- ── Integration paths ────────────────────────────────────────────────── -->
