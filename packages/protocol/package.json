@@ -2,6 +2,23 @@
   "name": "@hotrepl/protocol",
   "version": "2.0.0",
   "description": "Canonical HotRepl v2 wire protocol types and JSON Schemas.",
+  "keywords": [
+    "hotrepl",
+    "unity",
+    "csharp",
+    "websocket",
+    "protocol",
+    "typebox"
+  ],
+  "homepage": "https://hotrepl.glockyco.com",
+  "bugs": "https://github.com/glockyco/HotRepl/issues",
+  "license": "MIT",
+  "author": "Johann Glock",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/glockyco/HotRepl.git",
+    "directory": "packages/protocol"
+  },
   "type": "module",
   "publishConfig": {
     "access": "public"

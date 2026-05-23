@@ -2,6 +2,24 @@
   "name": "@hotrepl/sdk",
   "version": "2.0.0",
   "description": "Canonical TypeScript SDK for HotRepl v2 runtimes.",
+  "keywords": [
+    "hotrepl",
+    "unity",
+    "csharp",
+    "repl",
+    "websocket",
+    "sdk",
+    "client"
+  ],
+  "homepage": "https://hotrepl.glockyco.com",
+  "bugs": "https://github.com/glockyco/HotRepl/issues",
+  "license": "MIT",
+  "author": "Johann Glock",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/glockyco/HotRepl.git",
+    "directory": "packages/sdk"
+  },
   "type": "module",
   "publishConfig": {
     "access": "public"

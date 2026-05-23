@@ -1,7 +1,24 @@
 {
   "name": "@hotrepl/cli",
   "version": "2.0.0",
-  "description": "HotRepl v2 command-line client.",
+  "description": "HotRepl v2 command-line client — inspect and automate a running Unity game's REPL from your shell.",
+  "keywords": [
+    "hotrepl",
+    "unity",
+    "csharp",
+    "cli",
+    "repl",
+    "command-line"
+  ],
+  "homepage": "https://hotrepl.glockyco.com",
+  "bugs": "https://github.com/glockyco/HotRepl/issues",
+  "license": "MIT",
+  "author": "Johann Glock",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/glockyco/HotRepl.git",
+    "directory": "packages/cli"
+  },
   "type": "module",
   "publishConfig": {
     "access": "public"

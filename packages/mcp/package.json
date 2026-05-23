@@ -1,7 +1,24 @@
 {
   "name": "@hotrepl/mcp",
   "version": "2.0.0",
-  "description": "HotRepl v2 MCP stdio server.",
+  "description": "HotRepl v2 MCP stdio server — expose a running Unity game's REPL and typed commands to MCP-enabled agents.",
+  "keywords": [
+    "hotrepl",
+    "unity",
+    "mcp",
+    "model-context-protocol",
+    "ai-agents",
+    "stdio"
+  ],
+  "homepage": "https://hotrepl.glockyco.com",
+  "bugs": "https://github.com/glockyco/HotRepl/issues",
+  "license": "MIT",
+  "author": "Johann Glock",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/glockyco/HotRepl.git",
+    "directory": "packages/mcp"
+  },
   "type": "module",
   "publishConfig": {
     "access": "public"
