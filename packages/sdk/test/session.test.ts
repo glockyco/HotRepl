@@ -188,6 +188,7 @@ describe("Session", () => {
       watch: async function*() {},
       readArtifact: async () => new Uint8Array(),
       onSessionEvicted: () => () => undefined,
+      close: () => {},
     };
     const session = new Session(transport, runtime.handshakeMessage);
 
@@ -195,6 +196,20 @@ describe("Session", () => {
       kind: "invalid_request",
       code: "unknownMessageType",
     });
+  });
+  test("close() is idempotent and causes subsequent evals to reject", async () => {
+    const runtime = new FakeRuntime();
+    const session = await connect({ runtime });
+    expect(typeof session.close).toBe("function");
+
+    session.close();
+    // Second call must not throw.
+    expect(() => session.close()).not.toThrow();
+
+    // After close, requests should fail (transport is closed).
+    await expect(
+      session.eval("UnityEngine.Application.productName"),
+    ).rejects.toBeInstanceOf(Error);
   });
   test("session eviction notifies listeners and blocks later calls", async () => {
     const runtime = new FakeRuntime();

@@ -43,6 +43,7 @@ export interface RuntimeTransport {
   watch(request: Extract<RuntimeRequest, { type: "subscribe" }>): AsyncIterable<WatchWireMessage>;
   readArtifact(ref: ArtifactRef): Promise<Uint8Array>;
   onSessionEvicted(listener: (event: SessionEvictedMessage) => void): () => void;
+  close(): void;
 }
 
 export type WatchWireMessage = SubscribeResultMessage | SubscribeErrorMessage;
@@ -119,6 +120,7 @@ export class Session {
   private readonly evictionListeners = new Set<(event: SessionEvictedMessage) => void>();
   private sequence = 0;
   private evicted: SessionEvictedMessage | undefined;
+  private closed = false;
 
   constructor(transport: RuntimeTransport, handshake: HandshakeMessage) {
     this.transport = transport;
@@ -309,6 +311,15 @@ export class Session {
     return toResult<T>(response.output, response.artifacts, this.transport);
   }
 
+  /**
+   * Close the underlying transport. Safe to call multiple times;
+   * subsequent calls after the first are no-ops.
+   */
+  close(): void {
+    if (this.closed) return;
+    this.closed = true;
+    this.transport.close();
+  }
   private ensureActive(): void {
     if (this.evicted === undefined) return;
     throw new HotReplSessionEvicted(this.evicted);

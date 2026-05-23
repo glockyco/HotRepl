@@ -69,6 +69,7 @@ export class FakeRuntime implements RuntimeTransport {
   private evalHandler: (code: string) => { value?: unknown; valueType?: string } = () => ({});
   private activeRequests = 0;
   private nextJob = 0;
+  private isClosed = false;
 
   readonly handshakeMessage: HandshakeMessage;
 
@@ -135,7 +136,14 @@ export class FakeRuntime implements RuntimeTransport {
     return this.counters.get(counterKey(type, name)) ?? 0;
   }
 
+  close(): void {
+    this.isClosed = true;
+  }
+
   async request(request: RuntimeRequest): Promise<ServerMessage> {
+    if (this.isClosed) {
+      throw new Error("FakeRuntime: transport is closed");
+    }
     this.rejectQueueFull();
     this.activeRequests += 1;
     try {

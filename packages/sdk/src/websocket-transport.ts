@@ -142,6 +142,9 @@ export class WebSocketTransport implements RuntimeTransport {
     this.evictionListeners.add(listener);
     return () => this.evictionListeners.delete(listener);
   }
+  close(): void {
+    this.socket.close();
+  }
 
   private open(): Promise<WebSocketTransport> {
     return new Promise((resolve, reject) => {
