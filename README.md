@@ -1,5 +1,11 @@
 # HotRepl
 
+[![@hotrepl/sdk](https://img.shields.io/npm/v/@hotrepl/sdk.svg?label=%40hotrepl%2Fsdk)](https://www.npmjs.com/package/@hotrepl/sdk)
+[![@hotrepl/cli](https://img.shields.io/npm/v/@hotrepl/cli.svg?label=%40hotrepl%2Fcli)](https://www.npmjs.com/package/@hotrepl/cli)
+[![@hotrepl/mcp](https://img.shields.io/npm/v/@hotrepl/mcp.svg?label=%40hotrepl%2Fmcp)](https://www.npmjs.com/package/@hotrepl/mcp)
+[![@hotrepl/protocol](https://img.shields.io/npm/v/@hotrepl/protocol.svg?label=%40hotrepl%2Fprotocol)](https://www.npmjs.com/package/@hotrepl/protocol)
+[![license](https://img.shields.io/github/license/glockyco/HotRepl.svg)](LICENSE)
+
 HotRepl is a runtime C# REPL and typed command bridge for Unity games. It embeds in a game through
 BepInEx/Mono or MelonLoader/IL2CPP, runs work on Unity's main thread, and exposes a local WebSocket
 protocol for coding agents, CLIs, and MCP tools.
@@ -24,7 +30,7 @@ bun add @hotrepl/sdk        # or npm install @hotrepl/sdk
 bunx @hotrepl/cli info      # or npx -y @hotrepl/cli info
 ```
 
-Wire the MCP server into your agent's config (Claude Desktop, Cursor, Zed, Codex, …):
+Wire the MCP server into your agent's config — any MCP-compatible host accepts this block:
 
 ```json
 {
@@ -36,6 +42,21 @@ Wire the MCP server into your agent's config (Claude Desktop, Cursor, Zed, Codex
   }
 }
 ```
+
+Each published package has its own README with details: [`@hotrepl/sdk`](packages/sdk/README.md) ·
+[`@hotrepl/cli`](packages/cli/README.md) · [`@hotrepl/mcp`](packages/mcp/README.md) ·
+[`@hotrepl/protocol`](packages/protocol/README.md).
+
+## Troubleshooting
+
+| Symptom                                                             | Likely cause                                                                                                                                                                       |
+| ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `HotRepl WebSocket connection failed.` from CLI                     | Game isn't running, or the plugin/mod isn't loaded. Start the game and retry. The CLI exits 69 (`EX_UNAVAILABLE`).                                                                 |
+| MCP host doesn't list HotRepl's tools                               | Most often a JSON syntax error in the host's MCP config — any error typically disables every server silently. Re-validate, then fully quit and re-launch the host application.     |
+| Tool call returns `"HotRepl is not reachable…"`                     | Same root cause as the CLI symptom above: game/plugin not running. The MCP server itself is fine; the next tool call after the game starts will succeed.                           |
+| `Session was evicted: displaced.`                                   | HotRepl is single-client. Another CLI or MCP session connected and replaced this one. Close the displacing client, or accept the eviction; the next call reconnects automatically. |
+| Eval hangs                                                          | Mono.CSharp doesn't inject safepoints at loop back-edges, so a `while(true)` eval can't be aborted on timeout. Use `reset` (or restart the game) to recover.                       |
+| `varName * expr` parses oddly after `varName` is defined in an eval | `mcs.dll` interactive-parser bug: `x * 2` is read as a pointer-type declaration when `x` is in scope. Use `2 * x` instead.                                                         |
 
 ## Quickstart
 
