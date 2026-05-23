@@ -22,4 +22,22 @@ describe("MCP SessionManager", () => {
     expect(reconnected).not.toBe(first);
     expect(await manager.getSession()).toBe(reconnected);
   });
+
+  test("dedupes concurrent getSession calls so the backend sees one connect", async () => {
+    // Race scenario: refreshAnnotations and a tool handler both call
+    // getSession() before either completes. Without deduping, two
+    // connect()s run and the backend (BepInEx single-client policy)
+    // evicts the first session.
+    const runtime = new FakeRuntime();
+    const manager = new SessionManager({ runtime });
+
+    const [a, b] = await Promise.all([
+      manager.getSession(),
+      manager.getSession(),
+    ]);
+
+    // Both calls must yield the same Session. If connect() ran twice
+    // they would be distinct Session instances.
+    expect(a).toBe(b);
+  });
 });
