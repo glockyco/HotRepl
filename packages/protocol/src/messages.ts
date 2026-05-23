@@ -340,3 +340,134 @@ export type ServerMessage =
   | JobCancelResultMessage
   | JournalQueryResultMessage
   | AssemblyReloadMessage;
+
+// ── Client-sent messages ──────────────────────────────────────────────────────
+
+export const EvalMessageSchema = Type.Object(
+  {
+    type: Type.Literal(MESSAGE_TYPES.eval),
+    id: Type.String(),
+    code: Type.String(),
+    timeoutMs: Type.Optional(Type.Number()),
+  },
+  { additionalProperties: false },
+);
+export type EvalMessage = Static<typeof EvalMessageSchema>;
+
+export const CompleteMessageSchema = Type.Object(
+  {
+    type: Type.Literal(MESSAGE_TYPES.complete),
+    id: Type.String(),
+    code: Type.String(),
+    cursor: Type.Optional(Type.Number()),
+  },
+  { additionalProperties: false },
+);
+export type CompleteMessage = Static<typeof CompleteMessageSchema>;
+
+export const ResetMessageSchema = Type.Object(
+  { type: Type.Literal(MESSAGE_TYPES.reset), id: Type.String() },
+  { additionalProperties: false },
+);
+export type ResetMessage = Static<typeof ResetMessageSchema>;
+
+export const SubscribeMessageSchema = Type.Object(
+  {
+    type: Type.Literal(MESSAGE_TYPES.subscribe),
+    id: Type.String(),
+    code: Type.String(),
+    intervalFrames: Type.Optional(Type.Number()),
+    limit: Type.Optional(Type.Number()),
+  },
+  { additionalProperties: false },
+);
+export type SubscribeMessage = Static<typeof SubscribeMessageSchema>;
+
+/** Defined in C# CancelMessage; not yet used by the SDK RuntimeRequest.
+ *  Cancels an active eval or subscription by its request id. */
+export const CancelMessageSchema = Type.Object(
+  {
+    type: Type.Literal(MESSAGE_TYPES.cancel),
+    id: Type.String(),
+    targetId: Type.String(),
+  },
+  { additionalProperties: false },
+);
+export type CancelMessage = Static<typeof CancelMessageSchema>;
+
+export const CommandsListMessageSchema = Type.Object(
+  {
+    type: Type.Literal(MESSAGE_TYPES.commandsList),
+    id: Type.String(),
+    since: Type.Optional(Type.String()),
+  },
+  { additionalProperties: false },
+);
+export type CommandsListMessage = Static<typeof CommandsListMessageSchema>;
+
+export const CommandDescribeMessageSchema = Type.Object(
+  {
+    type: Type.Literal(MESSAGE_TYPES.commandDescribe),
+    id: Type.String(),
+    name: Type.String(),
+  },
+  { additionalProperties: false },
+);
+export type CommandDescribeMessage = Static<typeof CommandDescribeMessageSchema>;
+
+/** args must be a JSON object — the C# runtime deserializes into JObject. */
+export const CommandCallMessageSchema = Type.Object(
+  {
+    type: Type.Literal(MESSAGE_TYPES.commandCall),
+    id: Type.String(),
+    name: Type.String(),
+    args: JsonObjectSchema,
+    timeoutMs: Type.Optional(Type.Number()),
+  },
+  { additionalProperties: false },
+);
+export type CommandCallMessage = Static<typeof CommandCallMessageSchema>;
+
+export const JobStatusMessageSchema = Type.Object(
+  {
+    type: Type.Literal(MESSAGE_TYPES.jobStatus),
+    id: Type.String(),
+    jobId: Type.String(),
+  },
+  { additionalProperties: false },
+);
+export type JobStatusMessage = Static<typeof JobStatusMessageSchema>;
+
+export const JobCancelMessageSchema = Type.Object(
+  {
+    type: Type.Literal(MESSAGE_TYPES.jobCancel),
+    id: Type.String(),
+    jobId: Type.String(),
+  },
+  { additionalProperties: false },
+);
+export type JobCancelMessage = Static<typeof JobCancelMessageSchema>;
+
+export const JournalQueryMessageSchema = Type.Object(
+  {
+    type: Type.Literal(MESSAGE_TYPES.journalQuery),
+    id: Type.String(),
+    kind: Type.Optional(Type.Union([Type.Literal("eval"), Type.Literal("command")])),
+    limit: Type.Optional(Type.Number()),
+  },
+  { additionalProperties: false },
+);
+export type JournalQueryMessage = Static<typeof JournalQueryMessageSchema>;
+
+export type ClientMessage =
+  | EvalMessage
+  | CompleteMessage
+  | ResetMessage
+  | SubscribeMessage
+  | CancelMessage
+  | CommandsListMessage
+  | CommandDescribeMessage
+  | CommandCallMessage
+  | JobStatusMessage
+  | JobCancelMessage
+  | JournalQueryMessage;
