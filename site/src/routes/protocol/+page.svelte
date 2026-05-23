@@ -4,7 +4,15 @@
   import type { PageServerData } from "./$types";
 
   let { data }: { data: PageServerData } = $props();
-  let drawerOpen = $state(false);
+  let sheetOpen = $state(false);
+
+  // Lock body scroll while the sheet is open
+  $effect(() => {
+    document.body.style.overflow = sheetOpen ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  });
 </script>
 
 <svelte:head>
@@ -17,29 +25,53 @@
 
 <svelte:window
   onkeydown={(e) => {
-    if (e.key === "Escape") drawerOpen = false;
+    if (e.key === "Escape") sheetOpen = false;
   }}
 />
 
-<!-- Backdrop (mobile only) -->
+<!-- Backdrop -->
 <div
-  class="drawer-backdrop"
-  class:visible={drawerOpen}
+  class="sheet-backdrop"
+  class:visible={sheetOpen}
   role="presentation"
-  onclick={() => (drawerOpen = false)}
+  onclick={() => (sheetOpen = false)}
 ></div>
 
-<!-- Drawer panel (mobile only) -->
-<div class="drawer" class:open={drawerOpen} aria-hidden={!drawerOpen}>
-  <button
-    class="drawer-close"
-    onclick={() => (drawerOpen = false)}
-    aria-label="Close navigation"
-  >
-    ×
-  </button>
-  <ProtocolNav families={data.families} />
+<!-- Bottom sheet (mobile only) -->
+<div
+  id="proto-sheet"
+  class="bottom-sheet"
+  class:open={sheetOpen}
+  role="dialog"
+  aria-modal="true"
+  aria-label="Protocol reference navigation"
+  aria-hidden={!sheetOpen}
+>
+  <div class="sheet-header">
+    <div class="sheet-drag-handle" role="presentation"></div>
+    <button
+      class="sheet-close"
+      onclick={() => (sheetOpen = false)}
+      aria-label="Close navigation"
+    >×</button>
+  </div>
+  <div class="sheet-content">
+    <ProtocolNav families={data.families} />
+  </div>
 </div>
+
+<!-- FAB: persists while scrolling, mobile only -->
+<button
+  class="nav-fab"
+  class:hidden={sheetOpen}
+  onclick={() => (sheetOpen = true)}
+  aria-label="Open protocol navigation"
+  aria-expanded={sheetOpen}
+  aria-controls="proto-sheet"
+  aria-haspopup="dialog"
+>
+  ☰
+</button>
 
 <div class="layout">
   <!-- Sticky sidebar — desktop only -->
@@ -48,20 +80,6 @@
   </div>
 
   <div class="content">
-    <!-- Mobile menu trigger -->
-    <div class="mobile-menu-bar">
-      <button
-        class="menu-btn"
-        onclick={() => (drawerOpen = true)}
-        aria-label="Open protocol navigation"
-        aria-expanded={drawerOpen}
-        aria-controls="proto-drawer"
-      >
-        <span aria-hidden="true">☰</span>
-        Navigation
-      </button>
-    </div>
-
     <div class="content-header">
       <h1>Protocol Reference</h1>
       <p class="content-desc">
@@ -114,8 +132,42 @@
 </div>
 
 <style>
-  /* ── Drawer backdrop ── */
-  .drawer-backdrop {
+  /* ── FAB ────────────────────────────────────────────────────────────────── */
+  .nav-fab {
+    /* hidden on desktop; flex on mobile */
+    display: none;
+    position: fixed;
+    /* Respect iOS home indicator */
+    bottom: max(24px, calc(env(safe-area-inset-bottom) + 12px));
+    right: 20px;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: oklch(0.1 0 0);
+    border: none;
+    font-size: 1.25rem;
+    line-height: 1;
+    cursor: pointer;
+    z-index: 98;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 3px 12px oklch(0 0 0 / 45%);
+    transition: opacity 0.2s, transform 0.15s;
+  }
+
+  .nav-fab:hover {
+    transform: scale(1.08);
+  }
+
+  /* Fade out when sheet is open so it doesn't overlap the sheet */
+  .nav-fab.hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  /* ── Backdrop ───────────────────────────────────────────────────────────── */
+  .sheet-backdrop {
     display: none;
     position: fixed;
     inset: 0;
@@ -123,36 +175,55 @@
     z-index: 99;
   }
 
-  .drawer-backdrop.visible {
+  .sheet-backdrop.visible {
     display: block;
   }
 
-  /* ── Drawer panel ── */
-  .drawer {
+  /* ── Bottom sheet ───────────────────────────────────────────────────────── */
+  .bottom-sheet {
     position: fixed;
-    top: 52px; /* height of site header */
-    left: 0;
     bottom: 0;
-    width: 260px;
+    left: 0;
+    right: 0;
+    max-height: 78vh;
     background: var(--bg);
-    border-right: 1px solid var(--border);
+    border-radius: 16px 16px 0 0;
+    border-top: 1px solid var(--border);
     z-index: 100;
-    transform: translateX(-100%);
-    transition: transform 0.22s ease;
-    overflow-y: auto;
-    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    transform: translateY(100%);
+    transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
   }
 
-  .drawer.open {
-    transform: translateX(0);
+  .bottom-sheet.open {
+    transform: translateY(0);
   }
 
-  .drawer-close {
+  .sheet-header {
+    position: relative;
+    padding: 10px 48px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sheet-drag-handle {
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--border);
+  }
+
+  .sheet-close {
     position: absolute;
-    top: 10px;
-    right: 10px;
-    width: 28px;
-    height: 28px;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 30px;
+    height: 30px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -163,28 +234,59 @@
     line-height: 1;
     color: var(--muted);
     cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
   }
 
-  .drawer-close:hover {
+  .sheet-close:hover {
     color: var(--text);
     border-color: var(--accent);
   }
 
-  /* Hide drawer on desktop — sidebar takes over */
+  .sheet-content {
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex: 1;
+    /* Contain scrolling to the sheet — don't chain to the page behind */
+    overscroll-behavior: contain;
+    /* Reserve space for scrollbar so it never overlaps content */
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+
+  /* Override ProtocolNav's sticky-sidebar sizing when inside the sheet */
+  .sheet-content :global(.proto-nav) {
+    position: static;
+    height: auto;
+    width: 100%;
+    border-right: none;
+    padding: 8px 0 16px;
+  }
+
+  /* ── Responsive visibility ───────────────────────────────────────────────── */
   @media (min-width: 768px) {
-    .drawer,
-    .drawer-backdrop,
-    .mobile-menu-bar {
+    /* Desktop: hide everything mobile-specific */
+    .nav-fab,
+    .sheet-backdrop,
+    .bottom-sheet {
       display: none !important;
     }
   }
 
-  /* ── Layout ── */
+  @media (max-width: 767px) {
+    /* Mobile: show FAB */
+    .nav-fab {
+      display: flex;
+    }
+  }
+
+  /* ── Layout ─────────────────────────────────────────────────────────────── */
   .layout {
     display: flex;
+    /* Column by default (mobile) — no horizontal overflow */
     flex-direction: column;
     gap: 0;
-    /* Override site-main padding for full-bleed sidebar layout */
     margin: 0 -24px;
   }
 
@@ -204,44 +306,17 @@
     }
   }
 
-  /* ── Mobile menu bar ── */
-  .mobile-menu-bar {
-    padding: 12px 24px;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 24px;
-  }
-
-  .menu-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    color: var(--text);
-    padding: 8px 14px;
-    font-size: 0.875rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: border-color 0.15s, color 0.15s;
-  }
-
-  .menu-btn:hover {
-    border-color: var(--accent);
-    color: var(--accent);
-  }
-
-  /* ── Content area ── */
+  /* ── Content area ───────────────────────────────────────────────────────── */
   .content {
     flex: 1;
     padding: 32px 32px 64px;
     min-width: 0;
   }
 
-  /* On mobile: restore horizontal padding to content area */
   @media (max-width: 767px) {
     .content {
-      padding: 0 24px 64px;
+      /* Extra bottom padding so the FAB never obscures the last card */
+      padding: 24px 24px 100px;
     }
   }
 
@@ -282,7 +357,7 @@
     margin-bottom: 20px;
   }
 
-  /* Shared type cards */
+  /* ── Shared type cards ───────────────────────────────────────────────────── */
   .card {
     background: var(--surface);
     border: 1px solid var(--border);
