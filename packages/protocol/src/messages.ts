@@ -1,9 +1,19 @@
 import { type Static, Type } from "typebox";
-import { Value } from "typebox/value";
+import type { TLiteral } from "typebox";
 import type { ErrorKind } from "./error-kinds";
 import { ERROR_KINDS } from "./error-kinds";
 import { type HandshakeMessage, HandshakeMessageSchema } from "./handshake";
 import { MESSAGE_TYPES } from "./message-types";
+// Preserve literal tuple types for Type.Union — plain .map() loses tuple info in TypeBox 1.x
+type LiteralTuple<T extends readonly string[]> = T extends readonly [
+  infer Head extends string,
+  ...infer Tail extends readonly string[],
+]
+  ? [TLiteral<Head>, ...LiteralTuple<Tail>]
+  : [];
+type ErrorKindLiteralTuple = LiteralTuple<typeof ERROR_KINDS>;
+const ERROR_KIND_LITERALS = ERROR_KINDS.map((k) => Type.Literal(k)) as unknown as ErrorKindLiteralTuple;
+
 
 export type JsonObject = Record<string, unknown>;
 
@@ -15,7 +25,7 @@ export const JsonObjectSchema = Type.Record(Type.String(), Type.Unknown());
 /** Unified error envelope used in every failure response */
 export const ErrorEnvelopeSchema = Type.Object(
   {
-    kind: Type.Union(ERROR_KINDS.map((k) => Type.Literal(k))),
+    kind: Type.Union(ERROR_KIND_LITERALS),
     code: Type.String(),
     message: Type.String(),
     retryable: Type.Boolean(),
@@ -78,7 +88,7 @@ export const JournalEntrySchema = Type.Object(
     code: Type.Optional(Type.String()),
     success: Type.Boolean(),
     durationMs: Type.Number(),
-    errorKind: Type.Optional(Type.Union(ERROR_KINDS.map((k) => Type.Literal(k)))),
+    errorKind: Type.Optional(Type.Union(ERROR_KIND_LITERALS)),
     timestamp: Type.String(),
   },
   { additionalProperties: false },
