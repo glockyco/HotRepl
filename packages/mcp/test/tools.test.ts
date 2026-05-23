@@ -46,7 +46,7 @@ describe("HotRepl MCP tools", () => {
     // Conservative defaults match the MCP spec defaults:
     // destructiveHint: true, readOnlyHint: false. These are deliberately
     // independent of the backend's mutatesState — that refinement happens
-    // later via refreshAnnotations (Task 5).
+    // later via refreshAnnotations once the backend is reachable.
 
     expect(run?.annotations).toMatchObject({
       destructiveHint: true,
