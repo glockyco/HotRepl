@@ -4,6 +4,7 @@
   import type { PageServerData } from "./$types";
 
   let { data }: { data: PageServerData } = $props();
+  let drawerOpen = $state(false);
 </script>
 
 <svelte:head>
@@ -14,19 +15,53 @@
   />
 </svelte:head>
 
+<svelte:window
+  onkeydown={(e) => {
+    if (e.key === "Escape") drawerOpen = false;
+  }}
+/>
+
+<!-- Backdrop (mobile only) -->
+<div
+  class="drawer-backdrop"
+  class:visible={drawerOpen}
+  role="presentation"
+  onclick={() => (drawerOpen = false)}
+></div>
+
+<!-- Drawer panel (mobile only) -->
+<div class="drawer" class:open={drawerOpen} aria-hidden={!drawerOpen}>
+  <button
+    class="drawer-close"
+    onclick={() => (drawerOpen = false)}
+    aria-label="Close navigation"
+  >
+    ×
+  </button>
+  <ProtocolNav families={data.families} />
+</div>
+
 <div class="layout">
-  <!-- Sidebar: hidden on mobile, shown as sticky sidebar on desktop -->
+  <!-- Sticky sidebar — desktop only -->
   <div class="sidebar-wrap">
     <ProtocolNav families={data.families} />
   </div>
 
-  <!-- Mobile nav (collapsible) -->
-  <details class="mobile-nav">
-    <summary>Protocol navigation</summary>
-    <ProtocolNav families={data.families} />
-  </details>
-
   <div class="content">
+    <!-- Mobile menu trigger -->
+    <div class="mobile-menu-bar">
+      <button
+        class="menu-btn"
+        onclick={() => (drawerOpen = true)}
+        aria-label="Open protocol navigation"
+        aria-expanded={drawerOpen}
+        aria-controls="proto-drawer"
+      >
+        <span aria-hidden="true">☰</span>
+        Navigation
+      </button>
+    </div>
+
     <div class="content-header">
       <h1>Protocol Reference</h1>
       <p class="content-desc">
@@ -79,11 +114,84 @@
 </div>
 
 <style>
+  /* ── Drawer backdrop ── */
+  .drawer-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: oklch(0 0 0 / 55%);
+    z-index: 99;
+  }
+
+  .drawer-backdrop.visible {
+    display: block;
+  }
+
+  /* ── Drawer panel ── */
+  .drawer {
+    position: fixed;
+    top: 52px; /* height of site header */
+    left: 0;
+    bottom: 0;
+    width: 260px;
+    background: var(--bg);
+    border-right: 1px solid var(--border);
+    z-index: 100;
+    transform: translateX(-100%);
+    transition: transform 0.22s ease;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .drawer.open {
+    transform: translateX(0);
+  }
+
+  .drawer-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 1.125rem;
+    line-height: 1;
+    color: var(--muted);
+    cursor: pointer;
+  }
+
+  .drawer-close:hover {
+    color: var(--text);
+    border-color: var(--accent);
+  }
+
+  /* Hide drawer on desktop — sidebar takes over */
+  @media (min-width: 768px) {
+    .drawer,
+    .drawer-backdrop,
+    .mobile-menu-bar {
+      display: none !important;
+    }
+  }
+
+  /* ── Layout ── */
   .layout {
     display: flex;
+    flex-direction: column;
     gap: 0;
     /* Override site-main padding for full-bleed sidebar layout */
     margin: 0 -24px;
+  }
+
+  @media (min-width: 768px) {
+    .layout {
+      flex-direction: row;
+    }
   }
 
   .sidebar-wrap {
@@ -94,38 +202,47 @@
     .sidebar-wrap {
       display: block;
     }
-
-    .mobile-nav {
-      display: none;
-    }
   }
 
-  .mobile-nav {
-    padding: 12px 0;
+  /* ── Mobile menu bar ── */
+  .mobile-menu-bar {
+    padding: 12px 24px;
     border-bottom: 1px solid var(--border);
     margin-bottom: 24px;
   }
 
-  .mobile-nav summary {
+  .menu-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    padding: 8px 14px;
     font-size: 0.875rem;
-    font-weight: 700;
-    color: var(--accent);
+    font-weight: 600;
     cursor: pointer;
-    padding: 0 24px;
-    list-style: none;
+    transition: border-color 0.15s, color 0.15s;
   }
 
-  .mobile-nav :global(.proto-nav) {
-    position: static;
-    height: auto;
-    width: 100%;
-    border-right: none;
+  .menu-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
   }
 
+  /* ── Content area ── */
   .content {
     flex: 1;
     padding: 32px 32px 64px;
     min-width: 0;
+  }
+
+  /* On mobile: restore horizontal padding to content area */
+  @media (max-width: 767px) {
+    .content {
+      padding: 0 24px 64px;
+    }
   }
 
   .content-header {
@@ -165,7 +282,7 @@
     margin-bottom: 20px;
   }
 
-  /* Shared type cards reuse MessageCard styling inline */
+  /* Shared type cards */
   .card {
     background: var(--surface);
     border: 1px solid var(--border);
