@@ -1,0 +1,28 @@
+{
+  "type": "object",
+  "required": [
+    "type",
+    "id",
+    "completions",
+    "durationMs"
+  ],
+  "properties": {
+    "type": {
+      "type": "string",
+      "const": "complete_result"
+    },
+    "id": {
+      "type": "string"
+    },
+    "completions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "durationMs": {
+      "type": "number"
+    }
+  },
+  "additionalProperties": false
+}

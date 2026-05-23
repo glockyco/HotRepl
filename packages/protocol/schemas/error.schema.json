@@ -1,0 +1,87 @@
+{
+  "type": "object",
+  "required": [
+    "type",
+    "error"
+  ],
+  "properties": {
+    "type": {
+      "type": "string",
+      "const": "error"
+    },
+    "id": {
+      "type": "string"
+    },
+    "error": {
+      "type": "object",
+      "required": [
+        "kind",
+        "code",
+        "message",
+        "retryable"
+      ],
+      "properties": {
+        "kind": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "validation_failed"
+            },
+            {
+              "type": "string",
+              "const": "precondition_failed"
+            },
+            {
+              "type": "string",
+              "const": "conflict"
+            },
+            {
+              "type": "string",
+              "const": "timeout"
+            },
+            {
+              "type": "string",
+              "const": "cancelled"
+            },
+            {
+              "type": "string",
+              "const": "busy"
+            },
+            {
+              "type": "string",
+              "const": "unknown_command"
+            },
+            {
+              "type": "string",
+              "const": "unsupported_operation"
+            },
+            {
+              "type": "string",
+              "const": "artifact_missing"
+            },
+            {
+              "type": "string",
+              "const": "invalid_request"
+            },
+            {
+              "type": "string",
+              "const": "internal"
+            }
+          ]
+        },
+        "code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "retryable": {
+          "type": "boolean"
+        },
+        "details": {}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

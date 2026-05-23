@@ -1,0 +1,21 @@
+{
+  "type": "object",
+  "required": [
+    "type",
+    "id",
+    "targetId"
+  ],
+  "properties": {
+    "type": {
+      "type": "string",
+      "const": "cancel"
+    },
+    "id": {
+      "type": "string"
+    },
+    "targetId": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

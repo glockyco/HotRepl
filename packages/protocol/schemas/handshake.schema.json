@@ -1,5 +1,4 @@
 {
-  "additionalProperties": false,
   "type": "object",
   "required": [
     "type",
@@ -15,15 +14,14 @@
   ],
   "properties": {
     "type": {
-      "const": "handshake",
-      "type": "string"
+      "type": "string",
+      "const": "handshake"
     },
     "protocolVersion": {
-      "const": 2,
-      "type": "number"
+      "type": "number",
+      "const": 2
     },
     "host": {
-      "additionalProperties": false,
       "type": "object",
       "required": [
         "name",
@@ -40,10 +38,10 @@
         "platform": {
           "type": "string"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "evaluator": {
-      "additionalProperties": false,
       "type": "object",
       "required": [
         "name",
@@ -68,20 +66,21 @@
         "cancellation": {
           "anyOf": [
             {
-              "const": "cooperative",
-              "type": "string"
+              "type": "string",
+              "const": "cooperative"
             },
             {
-              "const": "hardAbort",
-              "type": "string"
+              "type": "string",
+              "const": "hardAbort"
             },
             {
-              "const": "unsupported",
-              "type": "string"
+              "type": "string",
+              "const": "unsupported"
             }
           ]
         }
-      }
+      },
+      "additionalProperties": false
     },
     "availableEvaluators": {
       "type": "array",
@@ -102,7 +101,6 @@
       }
     },
     "control": {
-      "additionalProperties": false,
       "type": "object",
       "required": [
         "supported",
@@ -119,10 +117,10 @@
         "schemaValidation": {
           "type": "boolean"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "limits": {
-      "additionalProperties": false,
       "type": "object",
       "required": [
         "maxMessageBytes",
@@ -134,57 +132,59 @@
       ],
       "properties": {
         "maxMessageBytes": {
-          "minimum": 1,
-          "type": "integer"
+          "type": "integer",
+          "minimum": 1
         },
         "maxQueuedCommands": {
-          "minimum": 0,
-          "type": "integer"
+          "type": "integer",
+          "minimum": 0
         },
         "maxResultLength": {
-          "minimum": 1,
-          "type": "integer"
+          "type": "integer",
+          "minimum": 1
         },
         "maxEnumerableElements": {
-          "minimum": 1,
-          "type": "integer"
+          "type": "integer",
+          "minimum": 1
         },
         "defaultEvalTimeoutMs": {
-          "minimum": 1,
-          "type": "integer"
+          "type": "integer",
+          "minimum": 1
         },
         "maxJobConcurrency": {
-          "minimum": 1,
-          "type": "integer"
+          "type": "integer",
+          "minimum": 1
         }
-      }
+      },
+      "additionalProperties": false
     },
     "enforces": {
       "type": "array",
       "items": {
         "anyOf": [
           {
-            "const": "maxMessageBytes",
-            "type": "string"
+            "type": "string",
+            "const": "maxMessageBytes"
           },
           {
-            "const": "maxQueuedCommands",
-            "type": "string"
+            "type": "string",
+            "const": "maxQueuedCommands"
           },
           {
-            "const": "maxResultLength",
-            "type": "string"
+            "type": "string",
+            "const": "maxResultLength"
           },
           {
-            "const": "maxEnumerableElements",
-            "type": "string"
+            "type": "string",
+            "const": "maxEnumerableElements"
           },
           {
-            "const": "maxJobConcurrency",
-            "type": "string"
+            "type": "string",
+            "const": "maxJobConcurrency"
           }
         ]
       }
     }
-  }
+  },
+  "additionalProperties": false
 }

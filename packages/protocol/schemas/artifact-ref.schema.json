@@ -1,0 +1,31 @@
+{
+  "type": "object",
+  "required": [
+    "uri",
+    "sha256",
+    "byteSize",
+    "contentType",
+    "finalized"
+  ],
+  "properties": {
+    "uri": {
+      "type": "string"
+    },
+    "path": {
+      "type": "string"
+    },
+    "sha256": {
+      "type": "string"
+    },
+    "byteSize": {
+      "type": "number"
+    },
+    "contentType": {
+      "type": "string"
+    },
+    "finalized": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}

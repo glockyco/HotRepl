@@ -1,0 +1,27 @@
+{
+  "type": "object",
+  "required": [
+    "type",
+    "id",
+    "code"
+  ],
+  "properties": {
+    "type": {
+      "type": "string",
+      "const": "subscribe"
+    },
+    "id": {
+      "type": "string"
+    },
+    "code": {
+      "type": "string"
+    },
+    "intervalFrames": {
+      "type": "number"
+    },
+    "limit": {
+      "type": "number"
+    }
+  },
+  "additionalProperties": false
+}

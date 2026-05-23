@@ -1,0 +1,31 @@
+{
+  "type": "object",
+  "required": [
+    "type",
+    "id",
+    "name",
+    "args"
+  ],
+  "properties": {
+    "type": {
+      "type": "string",
+      "const": "command_call"
+    },
+    "id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "args": {
+      "type": "object",
+      "patternProperties": {
+        "^.*$": {}
+      }
+    },
+    "timeoutMs": {
+      "type": "number"
+    }
+  },
+  "additionalProperties": false
+}

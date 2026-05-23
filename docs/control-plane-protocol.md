@@ -185,3 +185,27 @@ open metadata.
 
 Entries include `id`, `kind`, optional `name` or `code`, `success`, `durationMs`, optional
 `errorKind`, and `timestamp`.
+
+## Assembly Reload
+
+Sent by the server when a game assembly is hot-reloaded. Currently not handled by the SDK transport;
+clients may observe this as an unmatched server push.
+
+```json
+{
+  "type": "assembly_reload",
+  "assembly": "HotRepl.Plugin.dll",
+  "message": "Assembly reload complete."
+}
+```
+
+`assembly` is optional. `message` is always present.
+
+### Cancel
+
+Cancel an active eval or subscription by its original request `id`.
+Not yet sent by the TypeScript SDK; available for custom transports.
+
+```json
+{ "type": "cancel", "id": "cancel-1", "targetId": "watch-1" }
+```

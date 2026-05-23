@@ -1,0 +1,21 @@
+{
+  "type": "object",
+  "required": [
+    "type",
+    "id",
+    "success"
+  ],
+  "properties": {
+    "type": {
+      "type": "string",
+      "const": "reset_result"
+    },
+    "id": {
+      "type": "string"
+    },
+    "success": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}

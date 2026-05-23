@@ -1,0 +1,32 @@
+{
+  "type": "object",
+  "required": [
+    "type",
+    "id",
+    "hasValue",
+    "durationMs"
+  ],
+  "properties": {
+    "type": {
+      "type": "string",
+      "const": "eval_result"
+    },
+    "id": {
+      "type": "string"
+    },
+    "hasValue": {
+      "type": "boolean"
+    },
+    "value": {},
+    "valueType": {
+      "type": "string"
+    },
+    "stdout": {
+      "type": "string"
+    },
+    "durationMs": {
+      "type": "number"
+    }
+  },
+  "additionalProperties": false
+}

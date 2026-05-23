@@ -1,0 +1,17 @@
+{
+  "type": "object",
+  "required": [
+    "type",
+    "id"
+  ],
+  "properties": {
+    "type": {
+      "type": "string",
+      "const": "reset"
+    },
+    "id": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

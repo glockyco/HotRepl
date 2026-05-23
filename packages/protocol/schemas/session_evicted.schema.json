@@ -1,0 +1,26 @@
+{
+  "type": "object",
+  "required": [
+    "type",
+    "reason"
+  ],
+  "properties": {
+    "type": {
+      "type": "string",
+      "const": "session_evicted"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "by": {
+      "type": "object",
+      "properties": {
+        "clientName": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

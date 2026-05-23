@@ -1,0 +1,163 @@
+{
+  "type": "object",
+  "required": [
+    "type",
+    "id",
+    "jobId",
+    "state",
+    "status",
+    "artifacts",
+    "durationMs"
+  ],
+  "properties": {
+    "type": {
+      "type": "string",
+      "const": "job_result"
+    },
+    "id": {
+      "type": "string"
+    },
+    "jobId": {
+      "type": "string"
+    },
+    "state": {
+      "anyOf": [
+        {
+          "type": "string",
+          "const": "done"
+        },
+        {
+          "type": "string",
+          "const": "failed"
+        },
+        {
+          "type": "string",
+          "const": "cancelled"
+        }
+      ]
+    },
+    "status": {
+      "anyOf": [
+        {
+          "type": "string",
+          "const": "ok"
+        },
+        {
+          "type": "string",
+          "const": "failed"
+        }
+      ]
+    },
+    "output": {},
+    "artifacts": {
+      "type": "object",
+      "patternProperties": {
+        "^.*$": {
+          "type": "object",
+          "required": [
+            "uri",
+            "sha256",
+            "byteSize",
+            "contentType",
+            "finalized"
+          ],
+          "properties": {
+            "uri": {
+              "type": "string"
+            },
+            "path": {
+              "type": "string"
+            },
+            "sha256": {
+              "type": "string"
+            },
+            "byteSize": {
+              "type": "number"
+            },
+            "contentType": {
+              "type": "string"
+            },
+            "finalized": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    "error": {
+      "type": "object",
+      "required": [
+        "kind",
+        "code",
+        "message",
+        "retryable"
+      ],
+      "properties": {
+        "kind": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "validation_failed"
+            },
+            {
+              "type": "string",
+              "const": "precondition_failed"
+            },
+            {
+              "type": "string",
+              "const": "conflict"
+            },
+            {
+              "type": "string",
+              "const": "timeout"
+            },
+            {
+              "type": "string",
+              "const": "cancelled"
+            },
+            {
+              "type": "string",
+              "const": "busy"
+            },
+            {
+              "type": "string",
+              "const": "unknown_command"
+            },
+            {
+              "type": "string",
+              "const": "unsupported_operation"
+            },
+            {
+              "type": "string",
+              "const": "artifact_missing"
+            },
+            {
+              "type": "string",
+              "const": "invalid_request"
+            },
+            {
+              "type": "string",
+              "const": "internal"
+            }
+          ]
+        },
+        "code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "retryable": {
+          "type": "boolean"
+        },
+        "details": {}
+      },
+      "additionalProperties": false
+    },
+    "durationMs": {
+      "type": "number"
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,37 @@
+{
+  "type": "object",
+  "required": [
+    "type",
+    "id",
+    "seq",
+    "hasValue",
+    "durationMs",
+    "final"
+  ],
+  "properties": {
+    "type": {
+      "type": "string",
+      "const": "subscribe_result"
+    },
+    "id": {
+      "type": "string"
+    },
+    "seq": {
+      "type": "number"
+    },
+    "hasValue": {
+      "type": "boolean"
+    },
+    "value": {},
+    "valueType": {
+      "type": "string"
+    },
+    "durationMs": {
+      "type": "number"
+    },
+    "final": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}

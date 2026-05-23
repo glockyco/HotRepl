@@ -1,0 +1,26 @@
+{
+  "type": "object",
+  "required": [
+    "type",
+    "id",
+    "jobId",
+    "state"
+  ],
+  "properties": {
+    "type": {
+      "type": "string",
+      "const": "job_accepted"
+    },
+    "id": {
+      "type": "string"
+    },
+    "jobId": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string",
+      "const": "running"
+    }
+  },
+  "additionalProperties": false
+}

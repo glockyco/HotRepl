@@ -1,0 +1,57 @@
+{
+  "type": "object",
+  "required": [
+    "type",
+    "id",
+    "commands"
+  ],
+  "properties": {
+    "type": {
+      "type": "string",
+      "const": "commands_list_result"
+    },
+    "id": {
+      "type": "string"
+    },
+    "commands": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "majorVersion",
+          "kind",
+          "mutatesState"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "majorVersion": {
+            "type": "number"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "sync"
+              },
+              {
+                "type": "string",
+                "const": "job"
+              }
+            ]
+          },
+          "mutatesState": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "since": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

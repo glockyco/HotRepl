@@ -1,0 +1,42 @@
+{
+  "type": "object",
+  "required": [
+    "type",
+    "id",
+    "accepted",
+    "state"
+  ],
+  "properties": {
+    "type": {
+      "type": "string",
+      "const": "job_cancel_result"
+    },
+    "id": {
+      "type": "string"
+    },
+    "accepted": {
+      "type": "boolean"
+    },
+    "state": {
+      "anyOf": [
+        {
+          "type": "string",
+          "const": "running"
+        },
+        {
+          "type": "string",
+          "const": "done"
+        },
+        {
+          "type": "string",
+          "const": "failed"
+        },
+        {
+          "type": "string",
+          "const": "cancelled"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false
+}

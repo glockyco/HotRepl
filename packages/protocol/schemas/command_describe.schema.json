@@ -1,0 +1,21 @@
+{
+  "type": "object",
+  "required": [
+    "type",
+    "id",
+    "name"
+  ],
+  "properties": {
+    "type": {
+      "type": "string",
+      "const": "command_describe"
+    },
+    "id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,24 @@
+{
+  "type": "object",
+  "required": [
+    "type",
+    "id",
+    "code"
+  ],
+  "properties": {
+    "type": {
+      "type": "string",
+      "const": "eval"
+    },
+    "id": {
+      "type": "string"
+    },
+    "code": {
+      "type": "string"
+    },
+    "timeoutMs": {
+      "type": "number"
+    }
+  },
+  "additionalProperties": false
+}

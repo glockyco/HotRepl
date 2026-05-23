@@ -1,0 +1,32 @@
+{
+  "type": "object",
+  "required": [
+    "type",
+    "id"
+  ],
+  "properties": {
+    "type": {
+      "type": "string",
+      "const": "journal_query"
+    },
+    "id": {
+      "type": "string"
+    },
+    "kind": {
+      "anyOf": [
+        {
+          "type": "string",
+          "const": "eval"
+        },
+        {
+          "type": "string",
+          "const": "command"
+        }
+      ]
+    },
+    "limit": {
+      "type": "number"
+    }
+  },
+  "additionalProperties": false
+}

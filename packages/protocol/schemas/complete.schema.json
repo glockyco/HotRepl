@@ -1,0 +1,24 @@
+{
+  "type": "object",
+  "required": [
+    "type",
+    "id",
+    "code"
+  ],
+  "properties": {
+    "type": {
+      "type": "string",
+      "const": "complete"
+    },
+    "id": {
+      "type": "string"
+    },
+    "code": {
+      "type": "string"
+    },
+    "cursor": {
+      "type": "number"
+    }
+  },
+  "additionalProperties": false
+}

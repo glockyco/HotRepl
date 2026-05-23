@@ -1,0 +1,112 @@
+{
+  "type": "object",
+  "required": [
+    "type",
+    "id",
+    "entries"
+  ],
+  "properties": {
+    "type": {
+      "type": "string",
+      "const": "journal_query_result"
+    },
+    "id": {
+      "type": "string"
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "success",
+          "durationMs",
+          "timestamp"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "eval"
+              },
+              {
+                "type": "string",
+                "const": "command"
+              }
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "durationMs": {
+            "type": "number"
+          },
+          "errorKind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "validation_failed"
+              },
+              {
+                "type": "string",
+                "const": "precondition_failed"
+              },
+              {
+                "type": "string",
+                "const": "conflict"
+              },
+              {
+                "type": "string",
+                "const": "timeout"
+              },
+              {
+                "type": "string",
+                "const": "cancelled"
+              },
+              {
+                "type": "string",
+                "const": "busy"
+              },
+              {
+                "type": "string",
+                "const": "unknown_command"
+              },
+              {
+                "type": "string",
+                "const": "unsupported_operation"
+              },
+              {
+                "type": "string",
+                "const": "artifact_missing"
+              },
+              {
+                "type": "string",
+                "const": "invalid_request"
+              },
+              {
+                "type": "string",
+                "const": "internal"
+              }
+            ]
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
