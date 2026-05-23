@@ -1,8 +1,12 @@
 # HotRepl
 
-HotRepl is a runtime C# REPL and typed command bridge for Unity games. It runs inside a game through
-BepInEx/Mono or MelonLoader/IL2CPP, executes work on Unity's main thread, and exposes a v2 WebSocket
-protocol for coding agents, CLI automation, and MCP tools.
+HotRepl is a runtime C# REPL and typed command bridge for Unity games. It embeds in a game through
+BepInEx/Mono or MelonLoader/IL2CPP, runs work on Unity's main thread, and exposes a local WebSocket
+protocol for coding agents, CLIs, and MCP tools.
+
+Use HotRepl when you need to inspect or automate a running Unity game without building a one-off
+debug menu for every task. Raw eval is useful for exploration; typed commands are the stable
+contract for repeatable exports, tests, and agent workflows.
 
 ## Requirements
 
@@ -13,84 +17,105 @@ protocol for coding agents, CLI automation, and MCP tools.
 ## Quickstart
 
 ```bash
+bun install --frozen-lockfile
+dotnet tool restore
+
 dotnet build src/HotRepl.Core/ --nologo -v q
 dotnet test tests/HotRepl.Tests/ --nologo -v q
-bun install --frozen-lockfile
 bun run test
 bun run typecheck
 ```
 
-A running host listens on `ws://127.0.0.1:18590` by default. The TypeScript SDK also uses that URL
-unless `HOTREPL_URL` or an explicit URL is supplied.
+A running host listens on `ws://127.0.0.1:18590` by default. The SDK and CLI use that URL unless
+`HOTREPL_URL` or an explicit URL is supplied.
 
 ```bash
-bun packages/cli/src/index.ts info
-bun packages/cli/src/index.ts eval '1 + 1'
+# Inspect the runtime handshake.
+bun packages/cli/src/index.ts info --json
+
+# Evaluate C# on the game's main thread.
+bun packages/cli/src/index.ts eval 'UnityEngine.Application.productName'
+
+# Run a typed game command exposed by the host.
 bun packages/cli/src/index.ts run archive.preflight '{}'
+
+# Inspect recent eval/command results.
+bun packages/cli/src/index.ts journal --limit 10
+
+# Expose the fixed HotRepl tool set over MCP stdio.
 bun packages/mcp/src/index.ts
 ```
 
-## Protocol v2
+## Integration paths
 
-The server sends a `handshake` immediately after a WebSocket connection opens:
+| Path           | Use it for                                                   | Entry point                                          |
+| -------------- | ------------------------------------------------------------ | ---------------------------------------------------- |
+| Raw eval       | Interactive inspection and one-off repair snippets           | `Session.eval()` or `hotrepl eval`                   |
+| Typed commands | Repeatable game automation, exports, and artifact collection | `Session.run()`, `commands_list`, `command_describe` |
+| CLI            | Scripts and shell-driven local workflows                     | `packages/cli/src/index.ts`                          |
+| MCP            | Agent tools with a small stable tool catalog                 | `packages/mcp/src/index.ts`                          |
+| Host embedding | New Unity loader adapters or test hosts                      | `IReplHost` + `ReplEngine.Tick()`                    |
 
-```json
-{
-  "type": "handshake",
-  "protocolVersion": 2,
-  "host": { "name": "MelonLoader", "version": "0.x", "platform": "Unity IL2CPP" },
-  "evaluator": {
-    "name": "Roslyn.Script",
-    "languageVersion": "latest",
-    "persistentState": true,
-    "supportsCompletion": false,
-    "cancellation": "cooperative"
-  },
-  "control": { "supported": true, "commandsListChanged": false, "schemaValidation": false },
-  "limits": {
-    "maxMessageBytes": 4194304,
-    "maxQueuedCommands": 32,
-    "maxResultLength": 102400,
-    "maxEnumerableElements": 100,
-    "defaultEvalTimeoutMs": 10000,
-    "maxJobConcurrency": 1
-  },
-  "enforces": [
-    "maxMessageBytes",
-    "maxQueuedCommands",
-    "maxResultLength",
-    "maxEnumerableElements",
-    "maxJobConcurrency"
-  ]
-}
+Minimal SDK usage:
+
+```ts
+import { connect } from "@hotrepl/sdk";
+
+const session = await connect({ url: "ws://127.0.0.1:18590" });
+const product = await session.eval("UnityEngine.Application.productName");
+const preflight = await session.run("archive.preflight", {});
+
+console.log(product.value, preflight.output);
 ```
 
-All frames are UTF-8 JSON with a `type` discriminant and caller-assigned `id` where a response is
-expected. Runtime errors use a single `error` envelope with closed `kind` values. Typed commands use
-`commands_list`, `command_describe`, and `command_call`; job commands return `job_accepted`, then
-`job_status` returns either running state or the terminal `job_result`.
+## Protocol
 
-See [`docs/control-plane-protocol.md`](docs/control-plane-protocol.md) for the message inventory.
+The server sends a `handshake` frame immediately after the WebSocket connection opens. Every
+request/response frame is UTF-8 JSON with a `type` discriminant and a caller-assigned `id` when a
+response is expected.
 
-## TypeScript packages
+Core request families:
+
+```json
+{ "type": "eval", "id": "e1", "code": "1 + 1" }
+{ "type": "commands_list", "id": "c1" }
+{ "type": "command_describe", "id": "c2", "name": "archive.preflight" }
+{ "type": "command_call", "id": "c3", "name": "archive.preflight", "args": {} }
+{ "type": "journal_query", "id": "j1", "limit": 10 }
+```
+
+Runtime errors use a universal `error` envelope with closed `kind` values. Job commands return
+`job_accepted`; polling `job_status` eventually returns a terminal `job_result`. See
+[`docs/control-plane-protocol.md`](docs/control-plane-protocol.md) for the full message inventory.
+
+The default security model is loopback binding plus single-client replacement.
+
+## TypeScript and .NET packages
 
 | Package                | Purpose                                                             |
 | ---------------------- | ------------------------------------------------------------------- |
-| `@hotrepl/protocol`    | v2 constants, TypeBox schemas, and message types                    |
+| `@hotrepl/protocol`    | Wire constants, TypeBox schemas, and message types                  |
 | `@hotrepl/sdk`         | `connect`, `Session`, `Artifact`, typed errors, WebSocket transport |
 | `@hotrepl/testing`     | `FakeRuntime`, `MockSession`, recorder, and replay helpers          |
 | `@hotrepl/conformance` | Protocol conformance suite for FakeRuntime and optional real hosts  |
 | `@hotrepl/cli`         | `hotrepl` command-line adapter over the SDK                         |
 | `@hotrepl/mcp`         | fixed nine-tool MCP stdio server over the SDK                       |
 
-All TypeScript packages are versioned as `2.0.0-alpha.0` prerelease packages and are packable with
-`bun pm pack` from each `packages/*` directory. Downstream migrations that cannot use a registry yet
-should check the generated tarballs into `vendor/hotrepl/npm/` and depend on those relative
-`file:vendor/hotrepl/npm/*.tgz` paths rather than machine-local package paths.
+Packages are versioned as `2.0.0`. Until registry publishing exists, downstream consumers should
+check packed npm tarballs into `vendor/hotrepl/npm/` and local NuGet packages into
+`vendor/hotrepl/nuget/` instead of depending on machine-local paths.
 
-The .NET protocol/runtime packages use the same `2.0.0-alpha.0` prerelease version. `dotnet pack`
-for `src/HotRepl.Protocol/` and `src/HotRepl.Core/` produces local NuGet packages that consumers can
-check into `vendor/hotrepl/nuget/` and reference through a repo-local package source.
+## Real consumers
+
+- [Ardenfall Compendium](https://github.com/glockyco/ardenfall-compendium) uses the BepInEx/Mono
+  path for a static compendium export pipeline. It is the reference consumer for game-specific typed
+  commands, snapshot artifacts, and a Bun controller.
+- [Ancient Kingdoms Compendium & Mods](https://github.com/glockyco/ancient-kingdoms-mods) uses the
+  MelonLoader/IL2CPP path for data export and game automation. It is the reference consumer for
+  build-tool-driven host deployment and export orchestration.
+
+Both repositories keep their HotRepl packages vendored locally until public package publishing is
+introduced.
 
 ## Evaluation semantics
 
@@ -130,9 +155,9 @@ dotnet build src/HotRepl.Host.MelonLoader/HotRepl.Host.MelonLoader.csproj \
   -p:Il2CppAssembliesPath="/path/to/Game/MelonLoader/Il2CppAssemblies"
 ```
 
-BepInEx deploys `HotRepl.BepInEx.dll`, `HotRepl.Core.dll`, Fleck, Newtonsoft.Json, and `mcs.dll`
-side-by-side. MelonLoader deploys the host, Core, Roslyn evaluator, Unity helpers, Fleck,
-Newtonsoft.Json, and Roslyn dependencies in `Mods/`.
+BepInEx deploys `HotRepl.BepInEx.dll`, `HotRepl.Core.dll`, `HotRepl.Protocol.dll`, Fleck,
+Newtonsoft.Json, and `mcs.dll` side-by-side. MelonLoader deploys the host, Core, Protocol, Roslyn
+evaluator, Unity helpers, Fleck, Newtonsoft.Json, and Roslyn dependencies in `Mods/`.
 
 ## Contributing
 
@@ -144,8 +169,9 @@ lefthook install
 lefthook run pre-push --force
 ```
 
-`pre-push` mirrors CI: Bun tests/typecheck/schema export, dprint, typos, actionlint, C# build, and
-C# tests. See [`AGENTS.md`](AGENTS.md) for agent-specific constraints and targeted commands.
+`pre-push` mirrors CI: Bun install/tests/typecheck/schema export, dprint, typos, actionlint, C#
+build, and C# tests. See [`AGENTS.md`](AGENTS.md) for agent-specific constraints and targeted
+commands.
 
 ## License
 
