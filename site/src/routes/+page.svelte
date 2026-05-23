@@ -75,8 +75,36 @@
 <!-- ── Quickstart ──────────────────────────────────────────────────── -->
 <section class="section">
   <h2 class="section-title">Quickstart</h2>
-  <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-  {@html data.quickstartHtml}
+  <p class="section-lead">
+    With the BepInEx plugin (Mono) or MelonLoader mod (IL2CPP) loaded, your running game exposes
+    <code>ws://127.0.0.1:18590</code>. Talk to it from any process — TypeScript, shell, or an
+    MCP-enabled agent.
+  </p>
+
+  <div class="example">
+    <div class="example-pane">
+      <span class="example-tag">TypeScript SDK</span>
+      <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+      {@html data.sdkHtml}
+    </div>
+    <div class="example-pane example-pane--result">
+      <span class="example-tag example-tag--result">↳ Returned by the game</span>
+      <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+      {@html data.sdkResultHtml}
+    </div>
+  </div>
+
+  <p class="example-caption">
+    Same operations, same wire protocol, from your shell:
+  </p>
+
+  <div class="example example--single">
+    <div class="example-pane">
+      <span class="example-tag">CLI</span>
+      <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+      {@html data.cliHtml}
+    </div>
+  </div>
 </section>
 
 <!-- ── Integration paths ────────────────────────────────────────────────── -->
@@ -260,6 +288,79 @@
     text-transform: uppercase;
     color: var(--accent);
     margin-bottom: 20px;
+  }
+
+  .section-lead {
+    color: var(--muted);
+    font-size: 0.9375rem;
+    line-height: 1.7;
+    max-width: 760px;
+    margin-bottom: 24px;
+  }
+
+  .example-caption {
+    color: var(--muted);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin: 28px 0 12px;
+  }
+
+  /* ── Paired code / result example ── */
+  .example {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 12px;
+    align-items: stretch;
+  }
+
+  .example--single {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  @media (max-width: 900px) {
+    .example {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .example-pane {
+    position: relative;
+    min-width: 0;
+  }
+
+  .example-pane :global(.shiki) {
+    height: 100%;
+    margin: 0;
+    padding-top: 32px;
+    border: 1px solid var(--border);
+  }
+
+  .example-pane--result :global(.shiki) {
+    background-color: oklch(0.135 0.012 240) !important;
+    border-color: var(--accent-dim);
+  }
+
+  .example-tag {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    z-index: 1;
+    font-family: ui-monospace, "Cascadia Code", "Fira Code", monospace;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    background: var(--code-bg);
+    padding: 2px 8px;
+    border-radius: 4px;
+    pointer-events: none;
+  }
+
+  .example-tag--result {
+    color: var(--accent);
   }
 
   /* ── Table ── */
