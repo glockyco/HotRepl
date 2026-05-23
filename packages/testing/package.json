@@ -1,20 +1,14 @@
 {
   "name": "@hotrepl/testing",
   "version": "2.0.0",
-  "description": "Fake HotRepl v2 runtime and test helpers.",
+  "description": "Fake HotRepl v2 runtime and test helpers (workspace-internal).",
+  "private": true,
   "type": "module",
-  "publishConfig": {
-    "access": "public"
-  },
-  "files": [
-    "src"
-  ],
   "sideEffects": false,
   "exports": {
     ".": "./src/index.ts"
   },
   "scripts": {
-    "build": "true",
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
