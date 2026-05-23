@@ -156,6 +156,15 @@ export class WebSocketTransport implements RuntimeTransport {
       this.socket.addEventListener("error", () => {
         failOpen(new Error("HotRepl WebSocket connection failed."));
       });
+      // Belt-and-braces: undici's internal Node EventEmitter dispatches the
+      // 'error' event independently of addEventListener. Without a Node-style
+      // listener, EventEmitter re-throws synchronously and surfaces as an
+      // uncaughtException. The W3C listener above is still the one that runs
+      // user logic; this listener exists only to suppress the EventEmitter
+      // re-throw. In a browser this property is undefined and the cast
+      // short-circuits at the optional call.
+      (this.socket as unknown as { on?: (e: string, fn: () => void) => void })
+        .on?.("error", () => {});
       this.socket.addEventListener("close", () => {
         this.failAll(new Error("HotRepl WebSocket connection closed."));
       });

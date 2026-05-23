@@ -174,4 +174,25 @@ describe("WebSocket transport", () => {
       server.stop(true);
     }
   });
+  test("connect to an unreachable port rejects without uncaughtException", async () => {
+    const uncaught: unknown[] = [];
+    const onUncaught = (err: unknown) => uncaught.push(err);
+    process.on("uncaughtException", onUncaught);
+    process.on("unhandledRejection", onUncaught);
+
+    try {
+      await connect({ url: "ws://127.0.0.1:1" });
+      expect.unreachable();
+    } catch (error) {
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toContain("WebSocket connection failed");
+    }
+
+    // Let any deferred uncaught event surface before asserting.
+    await new Promise((resolve) => setImmediate(resolve));
+
+    process.off("uncaughtException", onUncaught);
+    process.off("unhandledRejection", onUncaught);
+    expect(uncaught).toEqual([]);
+  });
 });
