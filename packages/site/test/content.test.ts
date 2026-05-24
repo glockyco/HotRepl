@@ -47,4 +47,13 @@ describe("Phase 4 site content", () => {
       "MelonLoader/IL2CPP path — job-style export orchestration and artifact-driven data capture",
     );
   });
+
+  test("protocol reference explains when to use wire details", async () => {
+    const protocol = await readSiteFile("routes/protocol/+page.svelte");
+
+    expect(protocol).toContain("stable JSON-over-WebSocket protocol");
+    expect(protocol).toContain("Start higher-level first");
+    expect(protocol).toContain("Use this page for wire details");
+    expect(protocol).toContain("Artifacts stay by reference");
+  });
 });

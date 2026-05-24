@@ -479,12 +479,11 @@
     border-radius: var(--radius);
     padding: 16px 18px;
     text-decoration: none;
-    transition: border-color 0.15s, transform 0.15s;
+    transition: border-color 0.15s;
   }
 
   .path-card:hover {
     border-color: var(--accent);
-    transform: translateY(-1px);
   }
 
   .path-card__label {

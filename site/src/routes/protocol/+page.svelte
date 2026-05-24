@@ -82,8 +82,23 @@
     <div class="content-header">
       <h1>Protocol Reference</h1>
       <p class="content-desc">
-        HotRepl v2 — one WebSocket connection, JSON frames, all operations.
+        HotRepl v2 is a stable JSON-over-WebSocket protocol: one loopback connection, JSON frames,
+        and shared message shapes for eval, typed commands, jobs, artifacts, and journal queries.
       </p>
+      <div class="orientation-grid" aria-label="Protocol reference orientation">
+        <div class="orientation-card">
+          <strong>Start higher-level first</strong>
+          <span>Most consumers should use the SDKs, CLI, MCP server, or C# command authoring APIs.</span>
+        </div>
+        <div class="orientation-card">
+          <strong>Use this page for wire details</strong>
+          <span>Implement clients, debug raw frames, or verify exact request, response, and shared schemas.</span>
+        </div>
+        <div class="orientation-card">
+          <strong>Artifacts stay by reference</strong>
+          <span>Command descriptors and results expose JSON-schema-described metadata and artifact refs.</span>
+        </div>
+      </div>
     </div>
 
     {#each data.families as family (family.id)}
@@ -335,6 +350,40 @@
   .content-desc {
     font-size: 0.9375rem;
     color: var(--muted);
+  }
+
+  .orientation-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 20px;
+  }
+
+  .orientation-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+  }
+
+  .orientation-card strong {
+    display: block;
+    color: var(--accent);
+    font-size: 0.8125rem;
+    margin-bottom: 6px;
+  }
+
+  .orientation-card span {
+    display: block;
+    color: var(--muted);
+    font-size: 0.8125rem;
+    line-height: 1.5;
+  }
+
+  @media (max-width: 900px) {
+    .orientation-grid {
+      grid-template-columns: 1fr;
+    }
   }
 
   .family-section {
