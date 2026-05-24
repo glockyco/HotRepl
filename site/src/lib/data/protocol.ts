@@ -130,7 +130,7 @@ export const families: MessageFamily[] = [
   "availableEvaluators": ["Mono.CSharp"],
   "defaultUsings": ["System"],
   "helpers": ["String[] Help()"],
-  "control": { "supported": true, "commandsListChanged": false, "schemaValidation": false },
+  "control": { "supported": true, "commandsListChanged": false, "schemaValidation": true },
   "limits": {
     "maxMessageBytes": 4194304,
     "maxQueuedCommands": 32,

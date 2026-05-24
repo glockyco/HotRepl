@@ -23,7 +23,7 @@ The server sends `handshake` immediately after connection:
   "availableEvaluators": ["Mono.CSharp"],
   "defaultUsings": ["System"],
   "helpers": ["String[] Help()"],
-  "control": { "supported": true, "commandsListChanged": false, "schemaValidation": false },
+  "control": { "supported": true, "commandsListChanged": false, "schemaValidation": true },
   "limits": {
     "maxMessageBytes": 4194304,
     "maxQueuedCommands": 32,
@@ -63,10 +63,12 @@ Closed `kind` values are `validation_failed`, `precondition_failed`, `conflict`,
 `cancelled`, `busy`, `unknown_command`, `unsupported_operation`, `artifact_missing`,
 `invalid_request`, and `internal`.
 
-`control.schemaValidation: false` means the current C# runtime exposes schemas as metadata but does
-not validate command arguments or outputs itself. Output-size limits are still runtime-enforced:
-eval/subscription serialization truncates or caps values, while oversized command/job outputs fail
-with `internal/resultTooLarge` instead of returning a partial JSON object.
+`control.schemaValidation: true` means the runtime validates each `command_call` `args` payload
+against the command's `inputSchema` before invoking the handler. Bad inputs surface as a
+`command_result` with `status: "failed"` and a `validation_failed` error envelope. Output-size
+limits are still runtime-enforced: eval/subscription serialization truncates or caps values, while
+oversized command/job outputs fail with `internal/resultTooLarge` instead of returning a partial
+JSON object.
 
 ## Eval and reset
 

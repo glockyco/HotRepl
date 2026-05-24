@@ -46,7 +46,7 @@ On connection the server immediately sends:
   "availableEvaluators": ["Roslyn.Script", "Roslyn.Isolated"],
   "defaultUsings": ["System", "System.Linq", "UnityEngine"],
   "helpers": ["String[] Help()", "Object Inspect(Object obj, ...)", "..."],
-  "control": { "supported": true, "commandsListChanged": false, "schemaValidation": false },
+  "control": { "supported": true, "commandsListChanged": false, "schemaValidation": true },
   "limits": {
     "maxMessageBytes": 4194304,
     "maxQueuedCommands": 32,
