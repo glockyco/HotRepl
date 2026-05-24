@@ -30,11 +30,17 @@ internal sealed class TypedCommandAdapter<TArgs, TOutput> : ICompiledControlComm
         _inner = inner ?? throw new ArgumentNullException(nameof(inner));
         _serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
         _validator = validator ?? throw new ArgumentNullException(nameof(validator));
+        var attribute = (ControlCommandAttribute?)
+            Attribute.GetCustomAttribute(
+                inner.GetType(),
+                typeof(ControlCommandAttribute),
+                inherit: false
+            );
         Descriptor = new ControlCommandDescriptor(
-            name: inner.Name,
-            version: inner.Version,
-            kind: inner.Kind,
-            mutatesState: inner.MutatesState,
+            name: attribute?.Name ?? inner.Name,
+            version: attribute?.Version ?? inner.Version,
+            kind: attribute?.Kind ?? inner.Kind,
+            mutatesState: attribute?.MutatesState ?? inner.MutatesState,
             argsSchema: SchemaCache.For<TArgs>(),
             resultSchema: SchemaCache.For<TOutput>(),
             artifactsSchema: SchemaCache.AnyObject
