@@ -2424,7 +2424,7 @@ git commit -m "test(core): typed-command end-to-end round trip through router"
 
 ### A17: Full Core test sweep + ILRepack verification
 
-- [ ] **Step 1: Run the full test suite**
+- [x] **Step 1: Run the full test suite**
 
 ```bash
 dotnet test tests/HotRepl.Tests/ --nologo -v q
@@ -2433,7 +2433,7 @@ dotnet test tests/HotRepl.Tests/ --nologo -v q
 Expected: every test passes. If any test fails, fix it in place (most failures will be test-side
 references to old shapes that A15-Step 6 missed). Re-run until clean.
 
-- [ ] **Step 2: Build Release and inspect output**
+- [x] **Step 2: Build Release and inspect output**
 
 ```bash
 dotnet build src/HotRepl.Core/ -c Release --nologo -v q
@@ -2455,7 +2455,7 @@ NOT in output:
 If `NJsonSchema.dll` appears, the ILRepack target failed to delete it. `Namotion.Reflection.dll` is
 expected because it is intentionally not internalized.
 
-- [ ] **Step 3: Lefthook pre-push gate**
+- [x] **Step 3: Lefthook pre-push gate**
 
 ```bash
 lefthook run pre-push --force
@@ -2463,7 +2463,7 @@ lefthook run pre-push --force
 
 Expected: green across the board.
 
-- [ ] **Step 4: Commit (if any cleanup landed)**
+- [x] **Step 4: Commit (if any cleanup landed)**
 
 ```bash
 git status
@@ -2472,6 +2472,8 @@ git diff
 git add -A
 git commit -m "chore(core): test/lint cleanup after typed-command refactor"
 ```
+
+No cleanup landed during the verification sweep, so no A17 cleanup commit was needed.
 
 ---
 
