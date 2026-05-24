@@ -533,7 +533,7 @@ export const sharedTypes: SharedTypeDef[] = [
   {
     name: "CommandDescriptor",
     description:
-      "Full metadata for a registered typed command including JSON schemas for its input and output.",
+      "Full metadata for a registered typed command including JSON schemas for its input, output, and artifacts.",
     schema: CommandDescriptorSchema,
     example: `{
   "name": "archive.preflight",

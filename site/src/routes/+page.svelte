@@ -154,6 +154,11 @@
           <td><code>session.run()</code> / <code>command_call</code></td>
         </tr>
         <tr>
+          <td>C# SDK</td>
+          <td>.NET build tools and automation</td>
+          <td><code>HotRepl.Sdk</code></td>
+        </tr>
+        <tr>
           <td>CLI</td>
           <td>Shell scripts, local workflows</td>
           <td><code>@hotrepl/cli</code></td>
@@ -171,6 +176,9 @@
       </tbody>
     </table>
   </div>
+  <p class="section-lead" style="margin-top: 1rem;">
+    Authoring typed commands? See <a href="https://github.com/glockyco/HotRepl/blob/main/docs/authoring-commands.md" rel="noopener noreferrer">docs/authoring-commands.md</a> for handler shapes, artifact attachment, and testing with <code>HandlerHarness</code>.
+  </p>
 </section>
 
 <!-- ── Real consumers ─────────────────────────────────────────────────── -->
