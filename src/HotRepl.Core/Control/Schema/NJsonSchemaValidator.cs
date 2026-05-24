@@ -9,7 +9,7 @@ namespace HotRepl.Control.Schema;
 /// NJsonSchema parses the schema and validates the args. Validation
 /// errors are projected to strings for the wire-shape diagnostic.
 /// </summary>
-internal sealed class NJsonSchemaValidator : IControlCommandValidator
+public sealed class NJsonSchemaValidator : IControlCommandValidator
 {
     /// <inheritdoc />
     public SchemaValidationResult Validate(JObject args, JsonSchema schema)
