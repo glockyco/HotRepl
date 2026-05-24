@@ -137,8 +137,7 @@
 <section class="section" id="paths">
   <h2 class="section-title">Choose your path</h2>
   <p class="section-lead">
-    Start from the surface that matches the job. All paths use the same loopback runtime and typed
-    command catalog.
+    All paths use the same runtime and command catalog.
   </p>
 
   <div class="path-grid">
@@ -189,7 +188,7 @@
     </a>
     <a class="path-card" href="/protocol/">
       <span class="path-card__label">Protocol reference</span>
-      <strong>Client implementation and frame debugging</strong>
+      <strong>Client implementers and frame debugging</strong>
       <code>command_call</code>
     </a>
   </div>

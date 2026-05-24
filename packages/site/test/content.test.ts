@@ -38,8 +38,9 @@ describe("Phase 4 site content", () => {
     expect(page).toContain("@hotrepl/cli");
     expect(page).toContain("@hotrepl/mcp");
     expect(page).toContain("Author typed commands");
-    expect(page).toContain("Protocol reference");
+    expect(page).toContain("Client implementers and frame debugging");
     expect(page).toContain("Artifacts are references, not payloads");
+    expect(page).toContain("All paths use the same runtime and command catalog.");
     expect(page).toContain(
       "BepInEx/Mono path — typed export commands with snapshot artifact references",
     );
@@ -48,12 +49,18 @@ describe("Phase 4 site content", () => {
     );
   });
 
-  test("protocol reference explains when to use wire details", async () => {
+  test("protocol reference orients without card chrome", async () => {
     const protocol = await readSiteFile("routes/protocol/+page.svelte");
 
-    expect(protocol).toContain("stable JSON-over-WebSocket protocol");
-    expect(protocol).toContain("Start higher-level first");
-    expect(protocol).toContain("Use this page for wire details");
-    expect(protocol).toContain("Artifacts stay by reference");
+    expect(protocol).toContain("HotRepl is a JSON-over-WebSocket protocol");
+    expect(protocol).toContain(
+      "Most consumers should start with SDKs, CLI, MCP, or typed command authoring",
+    );
+    expect(protocol).toContain(
+      "Use this page when implementing a client, debugging frames, or verifying exact schema shapes",
+    );
+    expect(protocol).toContain("Artifact refs keep large outputs out of JSON frames");
+    expect(protocol).not.toContain("orientation-card");
+    expect(protocol).not.toContain("Start higher-level first");
   });
 });

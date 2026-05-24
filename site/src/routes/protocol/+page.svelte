@@ -82,23 +82,14 @@
     <div class="content-header">
       <h1>Protocol Reference</h1>
       <p class="content-desc">
-        HotRepl v2 is a stable JSON-over-WebSocket protocol: one loopback connection, JSON frames,
-        and shared message shapes for eval, typed commands, jobs, artifacts, and journal queries.
+        HotRepl is a JSON-over-WebSocket protocol: one loopback connection, JSON frames, and shared
+        message shapes for eval, typed commands, jobs, artifacts, and journal queries.
       </p>
-      <div class="orientation-grid" aria-label="Protocol reference orientation">
-        <div class="orientation-card">
-          <strong>Start higher-level first</strong>
-          <span>Most consumers should use the SDKs, CLI, MCP server, or C# command authoring APIs.</span>
-        </div>
-        <div class="orientation-card">
-          <strong>Use this page for wire details</strong>
-          <span>Implement clients, debug raw frames, or verify exact request, response, and shared schemas.</span>
-        </div>
-        <div class="orientation-card">
-          <strong>Artifacts stay by reference</strong>
-          <span>Command descriptors and results expose JSON-schema-described metadata and artifact refs.</span>
-        </div>
-      </div>
+      <ul class="orientation-list">
+        <li>Most consumers should start with SDKs, CLI, MCP, or typed command authoring.</li>
+        <li>Use this page when implementing a client, debugging frames, or verifying exact schema shapes.</li>
+        <li>Artifact refs keep large outputs out of JSON frames.</li>
+      </ul>
     </div>
 
     {#each data.families as family (family.id)}
@@ -352,40 +343,17 @@
     color: var(--muted);
   }
 
-  .orientation-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 12px;
-    margin-top: 20px;
-  }
-
-  .orientation-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 14px 16px;
-  }
-
-  .orientation-card strong {
-    display: block;
-    color: var(--accent);
-    font-size: 0.8125rem;
-    margin-bottom: 6px;
-  }
-
-  .orientation-card span {
-    display: block;
+  .orientation-list {
+    margin: 16px 0 0;
+    padding-left: 1.1rem;
     color: var(--muted);
-    font-size: 0.8125rem;
-    line-height: 1.5;
+    font-size: 0.875rem;
+    line-height: 1.6;
   }
 
-  @media (max-width: 900px) {
-    .orientation-grid {
-      grid-template-columns: 1fr;
-    }
+  .orientation-list li + li {
+    margin-top: 4px;
   }
-
   .family-section {
     padding: 32px 0;
     border-top: 1px solid var(--border);
