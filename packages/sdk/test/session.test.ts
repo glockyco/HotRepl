@@ -40,7 +40,7 @@ describe("Session", () => {
     });
   });
 
-  test("run caches descriptors and returns sync command output", async () => {
+  test("run caches catalog and returns sync command output", async () => {
     const runtime = new FakeRuntime();
     runtime.registerCommand(syncDescriptor, async (args) => ({
       output: { value: args.value * 2 },
@@ -52,7 +52,8 @@ describe("Session", () => {
 
     expect(first.output.value).toBe(4);
     expect(second.output.value).toBe(6);
-    expect(runtime.requestCount("command_describe", "math.double")).toBe(1);
+    expect(runtime.requestCount("commands_list")).toBe(1);
+    expect(runtime.requestCount("command_describe", "math.double")).toBe(0);
   });
 
   test("run waits for job commands by polling job_status", async () => {

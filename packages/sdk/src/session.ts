@@ -4,6 +4,8 @@ import type {
   CommandDescribeResultMessage,
   CommandDescriptor,
   CommandResultMessage,
+  CommandsListResultMessage,
+  CommandSummary,
   CompleteResultMessage,
   EvalErrorMessage,
   EvalResultMessage,
@@ -117,6 +119,7 @@ export class Session {
   readonly handshake: HandshakeMessage;
   private readonly transport: RuntimeTransport;
   private readonly descriptors: DescriptorCache = new Map();
+  private catalog: CommandSummary[] | undefined;
   private readonly evictionListeners = new Set<(event: SessionEvictedMessage) => void>();
   private sequence = 0;
   private evicted: SessionEvictedMessage | undefined;
@@ -148,7 +151,7 @@ export class Session {
     options: RunOptions = {},
   ): Promise<Result<T> | JobHandle<T>> {
     this.ensureActive();
-    const descriptor = await this.describeCommand(name);
+    const catalogEntry = await this.getCatalogEntry(name);
     const request: RuntimeRequest = {
       type: "command_call",
       id: this.nextId("cmd"),
@@ -158,7 +161,7 @@ export class Session {
     if (options.timeoutMs !== undefined) request.timeoutMs = options.timeoutMs;
     const response = await this.request<CommandResultMessage | JobAcceptedMessage>(request);
 
-    if (descriptor.kind === "sync") {
+    if (catalogEntry.kind === "sync") {
       if (response.type !== MESSAGE_TYPES.commandResult) {
         throw protocolError("unexpectedResponse", "Expected command_result.");
       }
@@ -256,6 +259,25 @@ export class Session {
     return new Artifact(ref, this.transport);
   }
 
+  async listCommands(): Promise<CommandSummary[]> {
+    this.ensureActive();
+    if (this.catalog !== undefined) return this.catalog;
+    const response = await this.request<CommandsListResultMessage>({
+      type: "commands_list",
+      id: this.nextId("list"),
+    });
+    this.catalog = response.commands;
+    return this.catalog;
+  }
+
+  async getCatalogEntry(name: string): Promise<CommandSummary> {
+    const commands = await this.listCommands();
+    const entry = commands.find((command) => command.name === name);
+    if (entry === undefined) {
+      throw protocolError("commandNotFound", `Command '${name}' is not registered.`);
+    }
+    return entry;
+  }
   async describeCommand(name: string): Promise<CommandDescriptor> {
     const cached = this.descriptors.get(name);
     if (cached !== undefined) return cached;
