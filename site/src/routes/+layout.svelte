@@ -8,13 +8,6 @@
     <nav class="nav-inner" aria-label="Main navigation">
       <a class="wordmark" href="/">HotRepl</a>
       <a class="nav-link" href="/#quickstart">Quickstart</a>
-      <a
-        class="nav-link"
-        href="https://github.com/glockyco/HotRepl/blob/main/docs/authoring-commands.md"
-        rel="noopener noreferrer"
-      >
-        Authoring Commands
-      </a>
       <a class="nav-link" href="/protocol/">Protocol</a>
       <a class="nav-link" href="https://github.com/glockyco/HotRepl" rel="noopener noreferrer">
         GitHub

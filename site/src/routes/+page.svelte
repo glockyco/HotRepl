@@ -3,6 +3,9 @@
   import Seo from "$lib/components/Seo.svelte";
   let { data }: { data: PageServerData } = $props();
 
+  const description =
+    "Live Unity automation for runtime C# eval, typed commands, artifact references, SDKs, CLI workflows, and MCP-enabled coding agents.";
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
@@ -11,15 +14,14 @@
     operatingSystem: "Windows, macOS, Linux",
     url: "https://hotrepl.glockyco.com",
     codeRepository: "https://github.com/glockyco/HotRepl",
-    description:
-      "Runtime C# REPL and typed command bridge for Unity games. Embed via BepInEx or MelonLoader, inspect and automate a running game from your terminal, scripts, or AI agents.",
+    description,
     author: { "@type": "Person", name: "glockyco" },
   };
 </script>
 
 <Seo
-  title="HotRepl — Runtime C# REPL for Unity games"
-  description="Runtime C# REPL and typed command bridge for Unity games. Embed via BepInEx or MelonLoader, inspect and automate a running game from your terminal, scripts, or AI agents."
+  title="HotRepl — Live Unity automation over WebSocket"
+  {description}
   path="/"
 />
 <svelte:head>
@@ -30,10 +32,11 @@
 <!-- ── Hero ────────────────────────────────────────────────────────── -->
 <section class="hero">
   <h1 class="hero-title">HotRepl</h1>
-  <p class="hero-tagline">Runtime C# REPL and typed command bridge for Unity games</p>
+  <p class="hero-tagline">Live Unity automation over WebSocket</p>
   <p class="hero-desc">
-    Embed in any Unity game via BepInEx or MelonLoader. Inspect and automate a running game from
-    your terminal, scripts, or AI agents — without rebuilding.
+    Embed in any Unity game via BepInEx or MelonLoader. Inspect the live runtime with C# eval,
+    expose stable typed commands, attach artifact references, and drive everything from SDKs,
+    shell scripts, or MCP-enabled agents.
   </p>
   <div class="hero-install">
     <span class="hero-install-prompt">$</span>
@@ -54,26 +57,26 @@
 </section>
 
 <!-- ── Feature cards ──────────────────────────────────────────────────── -->
-<section class="features">
+<section class="features" aria-label="HotRepl capabilities">
   <div class="feature-card">
-    <h3>Raw Eval</h3>
+    <h3>Inspect the live runtime</h3>
     <p>
-      Write C# on the game's main thread. Inspect live objects, run one-off repair snippets,
-      explore the runtime interactively.
+      Run C# on the game's main thread to inspect objects, diagnose state, and apply one-off repair
+      snippets without rebuilding.
     </p>
   </div>
   <div class="feature-card">
-    <h3>Typed Commands</h3>
+    <h3>Ship typed commands</h3>
     <p>
-      Schema-validated operations registered by the host. Stable contract for repeatable exports,
-      tests, and agent workflows.
+      Register schema-validated host operations for repeatable exports, tests, and automation that
+      survive beyond an interactive eval session.
     </p>
   </div>
   <div class="feature-card">
-    <h3>Agent &amp; MCP Ready</h3>
+    <h3>Automate from SDKs and agents</h3>
     <p>
-      Connect via WebSocket SDK, CLI, or the nine-tool MCP stdio server. Plug into any coding
-      agent, script, or automation pipeline.
+      TypeScript SDK, C# SDK, CLI, and MCP all speak the same loopback WebSocket protocol and see the
+      same command catalog.
     </p>
   </div>
 </section>
