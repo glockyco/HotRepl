@@ -6,6 +6,7 @@ using HotRepl.UnityCommands.Models;
 namespace HotRepl.UnityCommands.Commands;
 
 /// <summary>Reports basic Unity application/runtime metadata.</summary>
+[ControlCommand(UnityCommandCatalogNames.AppInfo)]
 public sealed class UnityAppInfoCommand : IControlCommandHandler<EmptyArgs, UnityAppInfo>
 {
     /// <inheritdoc />

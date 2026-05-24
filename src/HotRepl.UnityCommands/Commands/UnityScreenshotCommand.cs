@@ -10,6 +10,7 @@ using HotRepl.UnityCommands.Screenshots;
 namespace HotRepl.UnityCommands.Commands;
 
 /// <summary>Captures the current frame as a PNG command artifact.</summary>
+[ControlCommand(UnityCommandCatalogNames.ScreenshotCapture, Kind = ControlCommandKind.Job)]
 public sealed class UnityScreenshotCommand
     : IControlCommandHandler<UnityScreenshotArgs, UnityScreenshotResult>
 {

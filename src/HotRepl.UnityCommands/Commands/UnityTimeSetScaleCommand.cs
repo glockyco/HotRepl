@@ -6,6 +6,7 @@ using HotRepl.UnityCommands.Models;
 namespace HotRepl.UnityCommands.Commands;
 
 /// <summary>Sets UnityEngine.Time.timeScale.</summary>
+[ControlCommand(UnityCommandCatalogNames.TimeSetScale, MutatesState = true)]
 public sealed class UnityTimeSetScaleCommand
     : IControlCommandHandler<UnitySetTimeScaleArgs, UnitySetTimeScaleResult>
 {

@@ -6,6 +6,7 @@ using HotRepl.UnityCommands.Models;
 namespace HotRepl.UnityCommands.Commands;
 
 /// <summary>Finds a Unity GameObject and returns a JSON-friendly snapshot.</summary>
+[ControlCommand(UnityCommandCatalogNames.GameObjectFind)]
 public sealed class UnityGameObjectFindCommand
     : IControlCommandHandler<UnityGameObjectFindArgs, UnityGameObjectFindResult>
 {
