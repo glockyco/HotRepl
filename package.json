@@ -9,6 +9,7 @@
     "typecheck": "bun run --filter './packages/*' typecheck",
     "schemas:export": "bun run --cwd packages/protocol schemas:export",
     "changeset": "changeset",
+    "version": "changeset version && dprint fmt packages/*/CHANGELOG.md",
     "release": "bun run build && changeset publish"
   },
   "devDependencies": {

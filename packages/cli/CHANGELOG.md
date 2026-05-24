@@ -4,7 +4,9 @@
 
 ### Major Changes
 
-- [`f6a4dcf`](https://github.com/glockyco/HotRepl/commit/f6a4dcf0e3a752914845f99b5aa00edbd7712d4b) Thanks [@glockyco](https://github.com/glockyco)! - Make `hotrepl` behave like a well-mannered Unix CLI.
+- [`f6a4dcf`](https://github.com/glockyco/HotRepl/commit/f6a4dcf0e3a752914845f99b5aa00edbd7712d4b)
+  Thanks [@glockyco](https://github.com/glockyco)! - Make `hotrepl` behave like a well-mannered Unix
+  CLI.
 
   - Exit codes now follow `sysexits.h` (`64` `EX_USAGE`, `69` `EX_UNAVAILABLE`, `70` `EX_SOFTWARE`,
     `73` `EX_CANTCREAT`) instead of arbitrary `1`. CI scripts that branched on `exit 1` from
@@ -13,8 +15,8 @@
   - The session opened by the CLI is now closed before the process returns, so `node hotrepl info`
     exits cleanly instead of hanging on the open WebSocket.
   - Errors print on stderr; stdout stays parseable JSON when `--json` is requested.
-  - The `hotrepl` bin now resolves to the compiled `dist/bin.js` instead of the source `src/index.ts`,
-    matching the `dist/` build emitted by `tsup`.
+  - The `hotrepl` bin now resolves to the compiled `dist/bin.js` instead of the source
+    `src/index.ts`, matching the `dist/` build emitted by `tsup`.
 
   Migration:
 
@@ -33,5 +35,6 @@
 
 ### Patch Changes
 
-- Updated dependencies [[`f6a4dcf`](https://github.com/glockyco/HotRepl/commit/f6a4dcf0e3a752914845f99b5aa00edbd7712d4b)]:
+- Updated dependencies
+  [[`f6a4dcf`](https://github.com/glockyco/HotRepl/commit/f6a4dcf0e3a752914845f99b5aa00edbd7712d4b)]:
   - @hotrepl/sdk@3.0.0

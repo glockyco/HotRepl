@@ -4,17 +4,19 @@
 
 ### Major Changes
 
-- [`f6a4dcf`](https://github.com/glockyco/HotRepl/commit/f6a4dcf0e3a752914845f99b5aa00edbd7712d4b) Thanks [@glockyco](https://github.com/glockyco)! - Make the HotRepl MCP stdio server safe to run as a long-lived agent backend.
+- [`f6a4dcf`](https://github.com/glockyco/HotRepl/commit/f6a4dcf0e3a752914845f99b5aa00edbd7712d4b)
+  Thanks [@glockyco](https://github.com/glockyco)! - Make the HotRepl MCP stdio server safe to run
+  as a long-lived agent backend.
 
   - The `hotrepl-mcp` bin now installs proper signal handlers and exits cleanly on `SIGINT`,
     `SIGTERM`, and stdin EOF; an internal watchdog enforces the graceful-shutdown deadline.
   - `createHotReplMcpServer` returns `CreateHotReplMcpServerResult`, which exposes the new shutdown
-    handle and a `listCommandDescriptors` helper. Consumers that embed the MCP server should hold the
-    result and call its shutdown method when the host process tears down.
+    handle and a `listCommandDescriptors` helper. Consumers that embed the MCP server should hold
+    the result and call its shutdown method when the host process tears down.
   - Tools are registered synchronously with conservative defaults at startup, so MCP clients see the
     full tool catalog immediately rather than after the backend connects.
-  - `hotrepl_run` tool annotations now refresh in the background once the backend connects, so agents
-    see accurate destructive/idempotency hints without paying a connection cost up front.
+  - `hotrepl_run` tool annotations now refresh in the background once the backend connects, so
+    agents see accurate destructive/idempotency hints without paying a connection cost up front.
   - Concurrent `getSession` calls are deduped so the backend does not evict its own session.
   - Backend failures surface as `isError: true` tool results (per MCP spec) instead of throwing RPC
     errors.
@@ -33,5 +35,6 @@
 
 ### Patch Changes
 
-- Updated dependencies [[`f6a4dcf`](https://github.com/glockyco/HotRepl/commit/f6a4dcf0e3a752914845f99b5aa00edbd7712d4b)]:
+- Updated dependencies
+  [[`f6a4dcf`](https://github.com/glockyco/HotRepl/commit/f6a4dcf0e3a752914845f99b5aa00edbd7712d4b)]:
   - @hotrepl/sdk@3.0.0

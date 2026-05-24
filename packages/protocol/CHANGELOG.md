@@ -4,8 +4,9 @@
 
 ### Major Changes
 
-- [`f6a4dcf`](https://github.com/glockyco/HotRepl/commit/f6a4dcf0e3a752914845f99b5aa00edbd7712d4b) Thanks [@glockyco](https://github.com/glockyco)! - Rebuild the protocol surface around TypeBox schemas and bring v2 validation in line with the
-  runtime.
+- [`f6a4dcf`](https://github.com/glockyco/HotRepl/commit/f6a4dcf0e3a752914845f99b5aa00edbd7712d4b)
+  Thanks [@glockyco](https://github.com/glockyco)! - Rebuild the protocol surface around TypeBox
+  schemas and bring v2 validation in line with the runtime.
 
   - Every message type now ships with a paired `*Schema` constant. The existing exported type names
     remain (`EvalResultMessage`, `CommandDescriptor`, …) but are now
