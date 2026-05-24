@@ -34,7 +34,7 @@ public class TypedCommandAdapterTests
         public bool MutatesState => false;
 
         public ValueTask<ControlCommandResult<GreetResult>> ExecuteAsync(
-            ControlCommandContext context,
+            ControlCommandContext<GreetResult> context,
             GreetArgs args,
             CancellationToken cancellationToken
         ) => new(ControlCommandResult.Ok(new GreetResult { Greeting = $"Hello, {args.Name}!" }));
@@ -148,13 +148,13 @@ public class TypedCommandAdapterTests
         public bool MutatesState => false;
 
         public ValueTask<ControlCommandResult<GreetResult>> ExecuteAsync(
-            ControlCommandContext context,
+            ControlCommandContext<GreetResult> context,
             GreetArgs args,
             CancellationToken cancellationToken
         )
         {
             _onCall(args);
-            return new(ControlCommandResult.Ok(new GreetResult()));
+            return new(context.Ok(new GreetResult()));
         }
     }
 
@@ -166,7 +166,7 @@ public class TypedCommandAdapterTests
         public bool MutatesState => false;
 
         public async ValueTask<ControlCommandResult<GreetResult>> ExecuteAsync(
-            ControlCommandContext context,
+            ControlCommandContext<GreetResult> context,
             EmptyArgs args,
             CancellationToken cancellationToken
         )
@@ -178,7 +178,7 @@ public class TypedCommandAdapterTests
                 "text/plain",
                 cancellationToken
             );
-            return ControlCommandResult.Ok(new GreetResult(), "manifest", artifact);
+            return context.Ok(new GreetResult(), "manifest", artifact);
         }
     }
 
@@ -190,9 +190,9 @@ public class TypedCommandAdapterTests
         public bool MutatesState => false;
 
         public ValueTask<ControlCommandResult<GreetResult>> ExecuteAsync(
-            ControlCommandContext context,
+            ControlCommandContext<GreetResult> context,
             EmptyArgs args,
             CancellationToken cancellationToken
-        ) => new(ControlCommandResult.PreconditionFailed<GreetResult>("notReady", "Not ready."));
+        ) => new(context.PreconditionFailed("notReady", "Not ready."));
     }
 }

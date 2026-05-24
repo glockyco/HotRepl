@@ -22,7 +22,7 @@ public sealed class UnityAppInfoCommand : IControlCommandHandler<EmptyArgs, Unit
 
     /// <inheritdoc />
     public ValueTask<ControlCommandResult<UnityAppInfo>> ExecuteAsync(
-        ControlCommandContext context,
+        ControlCommandContext<UnityAppInfo> context,
         EmptyArgs args,
         CancellationToken cancellationToken
     ) =>

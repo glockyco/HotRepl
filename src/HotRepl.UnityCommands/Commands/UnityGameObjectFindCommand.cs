@@ -23,7 +23,7 @@ public sealed class UnityGameObjectFindCommand
 
     /// <inheritdoc />
     public ValueTask<ControlCommandResult<UnityGameObjectFindResult>> ExecuteAsync(
-        ControlCommandContext context,
+        ControlCommandContext<UnityGameObjectFindResult> context,
         UnityGameObjectFindArgs args,
         CancellationToken cancellationToken
     )

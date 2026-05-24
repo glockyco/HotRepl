@@ -23,7 +23,7 @@ public sealed class UnityTimeSetScaleCommand
 
     /// <inheritdoc />
     public ValueTask<ControlCommandResult<UnitySetTimeScaleResult>> ExecuteAsync(
-        ControlCommandContext context,
+        ControlCommandContext<UnitySetTimeScaleResult> context,
         UnitySetTimeScaleArgs args,
         CancellationToken cancellationToken
     )

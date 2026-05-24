@@ -71,41 +71,4 @@ public static class ControlCommandResult
         TOutput output,
         IReadOnlyDictionary<string, ArtifactRef> artifacts
     ) => new() { Output = output, Artifacts = artifacts };
-
-    /// <summary>Failure: argument schema or business-rule violation; handler did not act.</summary>
-    public static ControlCommandResult<TOutput> ValidationFailed<TOutput>(
-        string code,
-        string message,
-        object? details = null
-    ) =>
-        Failed<TOutput>(
-            new ControlCommandDiagnostic(
-                ControlCommandDiagnosticKind.ValidationFailed,
-                code,
-                message,
-                Retryable: false,
-                Details: details
-            )
-        );
-
-    /// <summary>Failure: a runtime precondition was not satisfied.</summary>
-    public static ControlCommandResult<TOutput> PreconditionFailed<TOutput>(
-        string code,
-        string message,
-        object? details = null
-    ) =>
-        Failed<TOutput>(
-            new ControlCommandDiagnostic(
-                ControlCommandDiagnosticKind.PreconditionFailed,
-                code,
-                message,
-                Retryable: false,
-                Details: details
-            )
-        );
-
-    /// <summary>Failure constructed from an explicit diagnostic.</summary>
-    public static ControlCommandResult<TOutput> Failed<TOutput>(
-        ControlCommandDiagnostic diagnostic
-    ) => new() { Succeeded = false, Diagnostics = new[] { diagnostic } };
 }

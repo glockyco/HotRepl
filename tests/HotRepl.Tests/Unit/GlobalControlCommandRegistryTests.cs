@@ -59,7 +59,7 @@ public class GlobalControlCommandRegistryTests
         public bool MutatesState => false;
 
         public ValueTask<ControlCommandResult<EmptyArgs>> ExecuteAsync(
-            ControlCommandContext context,
+            ControlCommandContext<EmptyArgs> context,
             EmptyArgs args,
             CancellationToken cancellationToken
         ) => new(ControlCommandResult.Ok(new EmptyArgs()));

@@ -38,7 +38,7 @@ public sealed class UnityScreenshotCommand
 
     /// <inheritdoc />
     public async ValueTask<ControlCommandResult<UnityScreenshotResult>> ExecuteAsync(
-        ControlCommandContext context,
+        ControlCommandContext<UnityScreenshotResult> context,
         UnityScreenshotArgs args,
         CancellationToken cancellationToken
     )
@@ -48,7 +48,7 @@ public sealed class UnityScreenshotCommand
             .ConfigureAwait(true);
         if (!capture.Succeeded)
         {
-            return Failure(capture.FailureKind);
+            return Failure(context, capture.FailureKind);
         }
 
         var screenshot = capture.Screenshot;
@@ -56,7 +56,7 @@ public sealed class UnityScreenshotCommand
             .Artifacts.WriteAsync("screenshot", screenshot.Png, "image/png", cancellationToken)
             .ConfigureAwait(true);
 
-        return ControlCommandResult.Ok(
+        return context.Ok(
             new UnityScreenshotResult { Width = screenshot.Width, Height = screenshot.Height },
             "screenshot",
             artifact
@@ -64,21 +64,20 @@ public sealed class UnityScreenshotCommand
     }
 
     private static ControlCommandResult<UnityScreenshotResult> Failure(
+        ControlCommandContext<UnityScreenshotResult> context,
         UnityScreenshotFailureKind failureKind
     ) =>
         failureKind switch
         {
-            UnityScreenshotFailureKind.PngEncodingUnsupported =>
-                ControlCommandResult.PreconditionFailed<UnityScreenshotResult>(
-                    "pngEncodingUnsupported",
-                    "Unity PNG encoding is not available in this runtime."
-                ),
-            UnityScreenshotFailureKind.SuperSizeUnsupported =>
-                ControlCommandResult.PreconditionFailed<UnityScreenshotResult>(
-                    "screenshotSuperSizeUnsupported",
-                    "This Unity runtime does not expose supersampled screenshot capture; retry with superSize = 1."
-                ),
-            _ => ControlCommandResult.PreconditionFailed<UnityScreenshotResult>(
+            UnityScreenshotFailureKind.PngEncodingUnsupported => context.PreconditionFailed(
+                "pngEncodingUnsupported",
+                "Unity PNG encoding is not available in this runtime."
+            ),
+            UnityScreenshotFailureKind.SuperSizeUnsupported => context.PreconditionFailed(
+                "screenshotSuperSizeUnsupported",
+                "This Unity runtime does not expose supersampled screenshot capture; retry with superSize = 1."
+            ),
+            _ => context.PreconditionFailed(
                 "screenshotUnsupported",
                 "A loader coroutine host is required for end-of-frame screenshot capture."
             ),

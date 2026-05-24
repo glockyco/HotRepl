@@ -317,7 +317,7 @@ public class ControlRoutingTests
         public bool MutatesState => false;
 
         public ValueTask<ControlCommandResult<EchoResult>> ExecuteAsync(
-            ControlCommandContext context,
+            ControlCommandContext<EchoResult> context,
             EchoArgs args,
             CancellationToken cancellationToken
         ) => new(ControlCommandResult.Ok(new EchoResult { Value = args.Value }));
@@ -331,7 +331,7 @@ public class ControlRoutingTests
         public bool MutatesState => true;
 
         public ValueTask<ControlCommandResult<EchoResult>> ExecuteAsync(
-            ControlCommandContext context,
+            ControlCommandContext<EchoResult> context,
             EchoArgs args,
             CancellationToken cancellationToken
         ) => new(ControlCommandResult.Ok(new EchoResult { Value = args.Value }));
@@ -345,7 +345,7 @@ public class ControlRoutingTests
         public bool MutatesState => false;
 
         public ValueTask<ControlCommandResult<EchoResult>> ExecuteAsync(
-            ControlCommandContext context,
+            ControlCommandContext<EchoResult> context,
             EmptyArgs args,
             CancellationToken cancellationToken
         ) => throw new InvalidOperationException("boom");
@@ -359,7 +359,7 @@ public class ControlRoutingTests
         public bool MutatesState => false;
 
         public ValueTask<ControlCommandResult<EchoResult>> ExecuteAsync(
-            ControlCommandContext context,
+            ControlCommandContext<EchoResult> context,
             EmptyArgs args,
             CancellationToken cancellationToken
         ) => new(ControlCommandResult.Ok(new EchoResult { Value = new string('x', 64) }));
@@ -373,7 +373,7 @@ public class ControlRoutingTests
         public bool MutatesState => false;
 
         public ValueTask<ControlCommandResult<EchoResult>> ExecuteAsync(
-            ControlCommandContext context,
+            ControlCommandContext<EchoResult> context,
             EmptyArgs args,
             CancellationToken cancellationToken
         )
@@ -401,7 +401,7 @@ public class ControlRoutingTests
         public bool MutatesState => false;
 
         public ValueTask<ControlCommandResult<EchoResult>> ExecuteAsync(
-            ControlCommandContext context,
+            ControlCommandContext<EchoResult> context,
             EmptyArgs args,
             CancellationToken cancellationToken
         ) => new(ControlCommandResult.Ok(new EchoResult { Value = new string('x', 64) }));

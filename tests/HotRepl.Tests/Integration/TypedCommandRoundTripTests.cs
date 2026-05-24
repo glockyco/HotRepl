@@ -90,7 +90,7 @@ public sealed class TypedCommandRoundTripTests
         public bool MutatesState => false;
 
         public ValueTask<ControlCommandResult<EchoResult>> ExecuteAsync(
-            ControlCommandContext context,
+            ControlCommandContext<EchoResult> context,
             EchoArgs args,
             CancellationToken cancellationToken
         )
