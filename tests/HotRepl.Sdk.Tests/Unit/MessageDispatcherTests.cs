@@ -1,8 +1,8 @@
 using System;
-using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using HotRepl.Sdk.Internal;
+using HotRepl.Sdk.Tests.Fakes;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -27,43 +27,5 @@ public sealed class MessageDispatcherTests
 
         Assert.Equal("command_result", response["type"]!.ToString());
         Assert.Equal("req-1", response["id"]!.ToString());
-    }
-
-    private sealed class FakeFrameChannel : IDuplexFrameChannel
-    {
-        private readonly Queue<string?> _incoming = new();
-        private readonly SemaphoreSlim _signal = new(0);
-        private bool _disposed;
-
-        public List<string> Sent { get; } = new();
-
-        public void EnqueueIncoming(string? json)
-        {
-            _incoming.Enqueue(json);
-            _signal.Release();
-        }
-
-        public async Task<string?> ReceiveAsync(CancellationToken cancellationToken)
-        {
-            await _signal.WaitAsync(cancellationToken);
-            return _incoming.Dequeue();
-        }
-
-        public Task SendAsync(string json, CancellationToken cancellationToken)
-        {
-            Sent.Add(json);
-            return Task.CompletedTask;
-        }
-
-        public ValueTask DisposeAsync()
-        {
-            if (!_disposed)
-            {
-                _disposed = true;
-                _signal.Dispose();
-            }
-
-            return ValueTask.CompletedTask;
-        }
     }
 }
