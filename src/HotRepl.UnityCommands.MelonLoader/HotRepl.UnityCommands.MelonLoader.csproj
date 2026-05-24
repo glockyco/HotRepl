@@ -6,6 +6,7 @@
     <AnalysisMode>Recommended</AnalysisMode>
     <RootNamespace>HotRepl.UnityCommands.MelonLoader</RootNamespace>
     <AssemblyName>HotRepl.UnityCommands.MelonLoader</AssemblyName>
+    <Description>Canonical sample mod demonstrating HotRepl typed-command authoring for Unity games running MelonLoader and IL2CPP.</Description>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>

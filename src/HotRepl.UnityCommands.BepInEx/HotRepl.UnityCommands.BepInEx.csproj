@@ -6,6 +6,7 @@
     <AnalysisMode>Recommended</AnalysisMode>
     <RootNamespace>HotRepl.UnityCommands.BepInEx</RootNamespace>
     <AssemblyName>HotRepl.UnityCommands.BepInEx</AssemblyName>
+    <Description>Canonical sample plugin demonstrating HotRepl typed-command authoring for Unity games running BepInEx and Mono.</Description>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
