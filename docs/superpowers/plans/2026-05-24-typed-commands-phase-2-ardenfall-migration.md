@@ -13,8 +13,14 @@ WebSocket client to the current HotRepl wire shape (`commands_list`, `majorVersi
 artifact maps, terminal `job_result` from `job_status`). Do not adopt `@hotrepl/sdk` in this phase;
 dependency/package wiring is not required to validate the typed command authoring API.
 
-**Tech Stack:** C# `netstandard2.1`, HotRepl.Core 3.0.0, Newtonsoft.Json, DataAnnotations,
+**Tech Stack:** C# `netstandard2.1`, HotRepl.Core 3.0.0, Newtonsoft.Json metadata for schemas,
 BepInEx/Unity Mono, Bun/TypeScript controller, xUnit mod tests.
+
+**Implementation updates from review:** Ardenfall uses Newtonsoft
+`[JsonProperty(..., Required = ...)]` rather than DataAnnotations to avoid a new mod reference;
+handlers still validate blank required strings before lookup. The controller/deploy cutover also
+keeps HotRepl loopback-only by default (`HOTREPL_BIND_HOST:-127.0.0.1`) because the current protocol
+has no auth or lease handshake.
 
 ---
 
@@ -142,15 +148,13 @@ public sealed class RunBeginArgs
 Create `mod/src/Control/Args/RunIdArgs.cs`:
 
 ```csharp
-using System.ComponentModel.DataAnnotations;
 using Newtonsoft.Json;
 
 namespace ArdenfallCompendium.Control.Args;
 
 public sealed class RunIdArgs
 {
-    [JsonProperty("runId")]
-    [Required]
+    [JsonProperty("runId", Required = Required.Always)]
     public string RunId { get; set; } = string.Empty;
 }
 ```
@@ -158,19 +162,16 @@ public sealed class RunIdArgs
 Create `mod/src/Control/Args/EntityPlanArgs.cs`:
 
 ```csharp
-using System.ComponentModel.DataAnnotations;
 using Newtonsoft.Json;
 
 namespace ArdenfallCompendium.Control.Args;
 
 public sealed class EntityPlanArgs
 {
-    [JsonProperty("runId")]
-    [Required]
+    [JsonProperty("runId", Required = Required.Always)]
     public string RunId { get; set; } = string.Empty;
 
-    [JsonProperty("entity")]
-    [Required]
+    [JsonProperty("entity", Required = Required.Always)]
     public string Entity { get; set; } = string.Empty;
 }
 ```
@@ -178,27 +179,22 @@ public sealed class EntityPlanArgs
 Create `mod/src/Control/Args/EntityExportBatchArgs.cs`:
 
 ```csharp
-using System.ComponentModel.DataAnnotations;
 using Newtonsoft.Json;
 
 namespace ArdenfallCompendium.Control.Args;
 
 public sealed class EntityExportBatchArgs
 {
-    [JsonProperty("runId")]
-    [Required]
+    [JsonProperty("runId", Required = Required.Always)]
     public string RunId { get; set; } = string.Empty;
 
-    [JsonProperty("entity")]
-    [Required]
+    [JsonProperty("entity", Required = Required.Always)]
     public string Entity { get; set; } = string.Empty;
 
-    [JsonProperty("offset")]
-    [Range(0, int.MaxValue)]
+    [JsonProperty("offset", Required = Required.Always)]
     public int Offset { get; set; }
 
-    [JsonProperty("limit")]
-    [Range(1, int.MaxValue)]
+    [JsonProperty("limit", Required = Required.Always)]
     public int Limit { get; set; }
 }
 ```
@@ -206,7 +202,8 @@ public sealed class EntityExportBatchArgs
 - [ ] **Step 3: Add result DTOs**
 
 Create one public type per file under `mod/src/Control/Results/`. Every property must carry
-`[JsonProperty("lowerCamelName")]`.
+`[JsonProperty("lowerCamelName", Required = ...)]` so generated output schemas advertise required
+fields; nullable output properties use `Required.AllowNull`.
 
 Required result shapes:
 
@@ -354,49 +351,20 @@ Convert `EntityPlanCommand` and `EntityExportBatchCommand`.
 `ControlCommandResult<EntityExportBatchResult>?`. It should read `args.Offset`, `args.Limit`,
 `args.RunId`, and `args.Entity`, not `JObject`.
 
-- [ ] **Step 5: Add registry/router validation test**
+- [ ] **Step 5: Add registry and typed-validation tests**
 
-Create `mod-tests/TypedCommandRegistryTests.cs` with two tests:
+Create `mod-tests/TypedCommandRegistryTests.cs` with tests that:
 
-```csharp
-[Fact]
-public void Describe_GeneratesLowerCamelInputSchema()
-{
-    var registry = new GlobalControlCommandRegistry();
-    using var registration = registry.Register<RunBeginArgs, RunBeginResult>(
-        new RunBeginCommand(new CompendiumRunManager(), "/tmp"));
+- assert generated schemas use lower-camel names and required output fields;
+- assert `entity.exportBatch` is advertised as a mutating job with required `runId`, `entity`,
+  `offset`, and `limit` args;
+- call `EntityExportBatchCommand` directly with blank `runId` and blank `entity` to verify typed
+  validation diagnostics (`runIdRequired`, `entityRequired`) are returned before run lookup or
+  entity planning logic.
 
-    var descriptor = Assert.Single(registry.Describe(), d => d.Name == "run.begin");
-    Assert.Equal(1, descriptor.Version);
-    Assert.True(descriptor.ArgsSchema.ToString().Contains("outputBaseDir"));
-    Assert.DoesNotContain("OutputBaseDir", descriptor.ArgsSchema.ToString());
-}
-```
-
-```csharp
-[Fact]
-public async Task Router_RejectsInvalidBatchArgsBeforeHandlerRuns()
-{
-    var registry = new GlobalControlCommandRegistry();
-    using var registration = registry.Register<EntityExportBatchArgs, EntityExportBatchResult>(
-        new EntityExportBatchCommand(new CompendiumRunManager(), new FakeItemExtractionCache()));
-    var router = new ControlCommandRouter(registry);
-
-    var response = Assert.IsType<CommandResultMessage>(
-        await router.Execute(new CommandCallMessage
-        {
-            Id = "req-1",
-            Name = "entity.exportBatch",
-            Args = JObject.Parse("{\"runId\":\"run-1\",\"entity\":\"item\",\"offset\":0,\"limit\":0}")
-        }, CancellationToken.None));
-
-    Assert.Equal("failed", response.Status);
-    Assert.Equal("validation_failed", response.Error!.Kind);
-}
-```
-
-If `ControlCommandRouter.Execute` is synchronous in the consumed HotRepl DLL, adapt the `await` away
-without changing the assertion intent.
+`ControlCommandRouter` is internal to HotRepl.Core in the consumed DLL, so Ardenfall's downstream
+coverage stays at the public registry/handler boundary. HotRepl.Core owns router-level schema
+validation tests.
 
 - [ ] **Step 6: Run C# tests**
 
@@ -600,3 +568,30 @@ docs(spec): record Ardenfall typed-command migration
 - The plan explicitly removes old auth/lease/job-result request protocol.
 - The plan avoids touching unrelated item/stat/category user edits in the Ardenfall checkout.
 - Verification commands cover C#, controller tests, and TypeScript typecheck.
+
+## Closeout evidence
+
+Implementation followed the reviewed adjustments:
+
+- Ardenfall uses Newtonsoft `Required` metadata rather than DataAnnotations and keeps blank-string
+  validation in handlers.
+- Controller tests were moved first to the current v3 wire shape (`handshake`, `commands_list`,
+  `job_accepted`, terminal `job_result` from `job_status`, `output`, artifact maps).
+- `hotrepl:deploy` now defaults `HOTREPL_BIND_HOST` to `127.0.0.1`; local setup can still override
+  it explicitly.
+
+Observed verification from `/Users/joaichberger/Projects/ardenfall-compendium`:
+
+```bash
+bun test controller/test
+dotnet test mod-tests/ArdenfallCompendium.Tests.csproj --nologo -v q
+dotnet build mod/ArdenfallCompendium.csproj -c Debug --nologo -v q
+bun run typecheck
+bun run hotrepl:setup
+bun run hotrepl:export
+```
+
+Live export published `snapshots/snapshots/0.0.10.91-20260524-1022238608580` with counts
+`{ item: 1273, stat-type: 20, item-category: 7, item-tag: 28 }`, diagnostics
+`{ fatal: 0, diagnostic: 1807 }`, `pipeline/dist/data.sqlite` at 6,238,208 bytes, 1,779 asset refs,
+and `game.quit` completed.

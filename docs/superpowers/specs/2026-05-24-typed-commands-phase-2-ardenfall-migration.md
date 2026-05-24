@@ -36,8 +36,8 @@ The migration is a clean cutover: no compatibility shim, no duplicate command na
   - `run.finalize`
   - `run.discard`
   - `game.quit`
-- Replace manual `JObject` args parsing with typed DTOs annotated with `Newtonsoft.Json` and
-  DataAnnotations attributes.
+- Replace manual `JObject` args parsing with typed DTOs annotated with `Newtonsoft.Json`
+  `[JsonProperty]` metadata.
 - Preserve existing lower-camel wire names through `[JsonProperty]` attributes so the controller
   keeps sending `{ "runId": ... }`, not `{ "RunId": ... }`.
 - Preserve the controller choreography: preflight or wait-for-world, begin, plan, per-batch job,
@@ -86,16 +86,15 @@ Args classes live under `mod/src/Control/Args/`; result classes live under
 ```csharp
 public sealed class RunIdArgs
 {
-    [JsonProperty("runId")]
-    [Required]
+    [JsonProperty("runId", Required = Required.Always)]
     public string RunId { get; set; } = string.Empty;
 }
 ```
 
-Validation that is purely structural (`runId` required, `offset >= 0`, `limit > 0`, required
-`entity`) is expressed through DataAnnotations and handled by HotRepl before the handler runs.
-Domain validation remains in handlers (`unknownRun`, unsupported entity values, finalized runs,
-missing plans, incomplete chunks).
+Required property presence is expressed through Newtonsoft metadata and handled by HotRepl before
+the handler runs. Empty-string/domain validation remains in handlers (`runIdRequired`,
+`entityRequired`, `unknownRun`, unsupported entity values, finalized runs, missing plans, incomplete
+chunks). This keeps the mod free of a new DataAnnotations runtime/reference requirement.
 
 ### 3.2 Diagnostics and results
 
@@ -142,7 +141,9 @@ interface CommandResult<TOutput = Record<string, unknown>> {
 ```
 
 Expected command/domain failures throw `ControlCommandError` built from the returned `error`
-envelope. Orchestration continues to treat them as failures.
+envelope. Orchestration continues to treat them as failures. The deploy helper now defaults
+HotRepl's bind host to `127.0.0.1`. Operators can still opt into a broader bind host through
+`HOTREPL_BIND_HOST`, but Phase 2 does not reintroduce protocol-level auth or leases.
 
 ### 3.4 Command inventory
 
@@ -165,8 +166,9 @@ C# tests cover command behavior directly against typed handlers:
 
 - typed args are passed directly for happy-path unit coverage;
 - invalid domain values return failed `ControlCommandResult<T>` diagnostics;
-- one registry/router test exercises generated schemas and server-side validation for bad JSON
-  input;
+- registry tests assert generated schema casing, required input fields, required output fields, and
+  job/mutation metadata;
+- direct handler tests assert blank required strings fail with typed validation diagnostics;
 - artifact-producing commands assert named artifact dictionaries instead of arrays.
 
 TypeScript tests cover the controller protocol cutover with a fake WebSocket server:
@@ -201,7 +203,32 @@ Run `bun run hotrepl:setup` when the local `.env` points at the Ardenfall instal
 - Existing controller export tests and mod command tests pass after migration.
 - HotRepl roadmap/spec files and Ardenfall docs/roadmap identify the phase as migrated.
 
-## 5. Risks and decisions
+## 5. Implementation closeout
+
+Ardenfall migrated with the clean cutover described above. The final implementation uses Newtonsoft
+`Required` metadata for generated required fields and explicit handler checks for blank `runId` /
+`entity` values. The controller stays raw WebSocket but now consumes `handshake`, `commands_list`,
+`job_accepted`, terminal `job_result` from `job_status`, `output`, and artifact maps.
+
+Verification completed in `/Users/joaichberger/Projects/ardenfall-compendium`:
+
+```bash
+bun test controller/test
+dotnet test mod-tests/ArdenfallCompendium.Tests.csproj --nologo -v q
+dotnet build mod/ArdenfallCompendium.csproj -c Debug --nologo -v q
+bun run typecheck
+bun run hotrepl:setup
+bun run hotrepl:export
+```
+
+The setup run used the local `.env`'s explicit `HOTREPL_BIND_HOST=0.0.0.0`; the committed script
+default remains loopback-only. The live export published
+`snapshots/snapshots/0.0.10.91-20260524-1022238608580` from Ardenfall Demo `0.0.10.91`, with counts
+`{ item: 1273, stat-type: 20, item-category: 7, item-tag: 28 }`, diagnostics
+`{ fatal: 0, diagnostic: 1807 }`, `pipeline/dist/data.sqlite` at 6,238,208 bytes, 1,779 asset refs,
+and a completed `game.quit`.
+
+## 6. Risks and decisions
 
 - **Lower-camel wire names:** use `[JsonProperty]` everywhere. This avoids a controller-breaking
   PascalCase switch and keeps schema output stable for agents.
@@ -215,3 +242,6 @@ Run `bun run hotrepl:setup` when the local `.env` points at the Ardenfall instal
 - **User edits in Ardenfall:** the checkout currently has unrelated item/stat/category changes. The
   migration must avoid reverting them and keep edits focused to control/controller/docs files unless
   a test update must adapt around the changed code.
+- **Loopback default:** because protocol v2/v3 has no auth or lease handshake, Ardenfall deployment
+  defaults to `127.0.0.1`. Operators who need host-reachable automation must opt in with
+  `HOTREPL_BIND_HOST` and provide a trusted external network boundary.
