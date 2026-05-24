@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using HotRepl.Control.Internal;
 
 namespace HotRepl.Control;
 
@@ -16,10 +15,4 @@ public interface IControlCommandRegistry
     /// <c>OnDeinitializeMelon</c>.
     /// </summary>
     IDisposable Register<TArgs, TOutput>(IControlCommandHandler<TArgs, TOutput> handler);
-
-    /// <summary>
-    /// Internal lookup used by the router. Returns the compiled dispatch
-    /// shape, not the consumer-facing typed shape.
-    /// </summary>
-    bool TryGet(string name, out ICompiledControlCommand? handler);
 }

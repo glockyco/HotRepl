@@ -5,7 +5,7 @@ using HotRepl.Control.Internal;
 namespace HotRepl.Control;
 
 /// <summary>Default command registry used by hosts that expose no control-plane commands.</summary>
-public sealed class EmptyControlCommandRegistry : IControlCommandRegistry
+public sealed class EmptyControlCommandRegistry : IControlCommandRegistry, ICompiledRegistry
 {
     /// <summary>Process-wide singleton.</summary>
     public static EmptyControlCommandRegistry Instance { get; } = new();
@@ -21,7 +21,7 @@ public sealed class EmptyControlCommandRegistry : IControlCommandRegistry
         NullRegistration.Instance;
 
     /// <inheritdoc />
-    public bool TryGet(string name, out ICompiledControlCommand? handler)
+    bool ICompiledRegistry.TryGet(string name, out ICompiledControlCommand? handler)
     {
         handler = null;
         return false;

@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using HotRepl.Control;
+using HotRepl.Control.Internal;
 using Xunit;
 
 namespace HotRepl.Tests.Unit;
@@ -19,7 +20,7 @@ public class RegistryTypedRegisterTests
             ControlCommandContext context,
             EmptyArgs args,
             CancellationToken cancellationToken
-        ) => new(ControlCommandResult<EmptyArgs>.Ok(new EmptyArgs()));
+        ) => new(ControlCommandResult.Ok(new EmptyArgs()));
     }
 
     [Fact]
@@ -58,7 +59,7 @@ public class RegistryTypedRegisterTests
         var registry = new GlobalControlCommandRegistry();
         using var _ = registry.Register(new Cmd());
 
-        Assert.True(registry.TryGet("test.cmd", out var handler));
+        Assert.True(((ICompiledRegistry)registry).TryGet("test.cmd", out var handler));
         Assert.NotNull(handler);
         Assert.Equal("test.cmd", handler!.Descriptor.Name);
     }

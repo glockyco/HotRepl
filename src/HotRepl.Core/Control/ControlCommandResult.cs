@@ -7,8 +7,8 @@ namespace HotRepl.Control;
 /// <summary>
 /// Result returned by a typed control-command handler. Carries the
 /// typed <typeparamref name="TOutput"/>, top-level artifact references,
-/// and a diagnostic list. The adapter projects this onto the wire
-/// shape consumed by clients.
+/// and a diagnostic list. The adapter projects this onto the wire shape
+/// consumed by clients.
 /// </summary>
 public sealed class ControlCommandResult<TOutput>
 {
@@ -38,14 +38,21 @@ public sealed class ControlCommandResult<TOutput>
 
     /// <summary>True for handler-reported success.</summary>
     public bool Succeeded { get; init; } = true;
+}
 
-    // ---- factories ----
-
+/// <summary>
+/// Non-generic factory helpers for <see cref="ControlCommandResult{TOutput}"/>.
+/// Use these in handler bodies so the compiler infers <c>TOutput</c> from the
+/// argument — e.g. <c>ControlCommandResult.Ok(new MyOutput { ... })</c>.
+/// </summary>
+public static class ControlCommandResult
+{
     /// <summary>Success with no artifacts and no diagnostics.</summary>
-    public static ControlCommandResult<TOutput> Ok(TOutput output) => new() { Output = output };
+    public static ControlCommandResult<TOutput> Ok<TOutput>(TOutput output) =>
+        new() { Output = output };
 
     /// <summary>Success with a single artifact attached at the top level.</summary>
-    public static ControlCommandResult<TOutput> Ok(
+    public static ControlCommandResult<TOutput> Ok<TOutput>(
         TOutput output,
         string artifactName,
         ArtifactRef artifact
@@ -60,18 +67,18 @@ public sealed class ControlCommandResult<TOutput>
         };
 
     /// <summary>Success with a pre-built artifact dictionary.</summary>
-    public static ControlCommandResult<TOutput> Ok(
+    public static ControlCommandResult<TOutput> Ok<TOutput>(
         TOutput output,
         IReadOnlyDictionary<string, ArtifactRef> artifacts
     ) => new() { Output = output, Artifacts = artifacts };
 
     /// <summary>Failure: argument schema or business-rule violation; handler did not act.</summary>
-    public static ControlCommandResult<TOutput> ValidationFailed(
+    public static ControlCommandResult<TOutput> ValidationFailed<TOutput>(
         string code,
         string message,
         object? details = null
     ) =>
-        Failed(
+        Failed<TOutput>(
             new ControlCommandDiagnostic(
                 ControlCommandDiagnosticKind.ValidationFailed,
                 code,
@@ -82,12 +89,12 @@ public sealed class ControlCommandResult<TOutput>
         );
 
     /// <summary>Failure: a runtime precondition was not satisfied.</summary>
-    public static ControlCommandResult<TOutput> PreconditionFailed(
+    public static ControlCommandResult<TOutput> PreconditionFailed<TOutput>(
         string code,
         string message,
         object? details = null
     ) =>
-        Failed(
+        Failed<TOutput>(
             new ControlCommandDiagnostic(
                 ControlCommandDiagnosticKind.PreconditionFailed,
                 code,
@@ -98,6 +105,7 @@ public sealed class ControlCommandResult<TOutput>
         );
 
     /// <summary>Failure constructed from an explicit diagnostic.</summary>
-    public static ControlCommandResult<TOutput> Failed(ControlCommandDiagnostic diagnostic) =>
-        new() { Succeeded = false, Diagnostics = new[] { diagnostic } };
+    public static ControlCommandResult<TOutput> Failed<TOutput>(
+        ControlCommandDiagnostic diagnostic
+    ) => new() { Succeeded = false, Diagnostics = new[] { diagnostic } };
 }

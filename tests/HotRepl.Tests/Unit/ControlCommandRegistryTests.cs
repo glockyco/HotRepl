@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using HotRepl.Control;
+using HotRepl.Control.Internal;
 using HotRepl.Evaluator;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -14,7 +15,12 @@ public class ControlCommandRegistryTests
     public void EmptyRegistry_DescribesNoCommands()
     {
         Assert.Empty(EmptyControlCommandRegistry.Instance.Describe());
-        Assert.False(EmptyControlCommandRegistry.Instance.TryGet("archive.preflight", out _));
+        Assert.False(
+            ((ICompiledRegistry)EmptyControlCommandRegistry.Instance).TryGet(
+                "archive.preflight",
+                out _
+            )
+        );
     }
 
     [Theory]

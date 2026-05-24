@@ -2,7 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using HotRepl.Control;
-using Newtonsoft.Json.Linq;
+using HotRepl.Control.Internal;
 using Xunit;
 
 namespace HotRepl.Tests.Unit;
@@ -32,7 +32,7 @@ public class GlobalControlCommandRegistryTests
         var registration = registry.Register(new Handler("archive.info"));
         registration.Dispose();
 
-        Assert.False(registry.TryGet("archive.info", out _));
+        Assert.False(((ICompiledRegistry)registry).TryGet("archive.info", out _));
     }
 
     [Fact]
@@ -46,26 +46,22 @@ public class GlobalControlCommandRegistryTests
         });
     }
 
-    private sealed class Handler : IControlCommandHandler
+    private sealed class Handler : IControlCommandHandler<EmptyArgs, EmptyArgs>
     {
         public Handler(string name)
         {
-            Descriptor = new ControlCommandDescriptor(
-                name,
-                1,
-                ControlCommandKind.Synchronous,
-                mutatesState: false,
-                argsSchema: JObject.Parse("{\"type\":\"object\"}"),
-                resultSchema: JObject.Parse("{\"type\":\"object\"}")
-            );
+            Name = name;
         }
 
-        public ControlCommandDescriptor Descriptor { get; }
+        public string Name { get; }
+        public int Version => 1;
+        public ControlCommandKind Kind => ControlCommandKind.Synchronous;
+        public bool MutatesState => false;
 
-        public ValueTask<ControlCommandResult> ExecuteAsync(
+        public ValueTask<ControlCommandResult<EmptyArgs>> ExecuteAsync(
             ControlCommandContext context,
-            JObject args,
+            EmptyArgs args,
             CancellationToken cancellationToken
-        ) => ValueTask.FromResult(ControlCommandResult.Empty);
+        ) => new(ControlCommandResult.Ok(new EmptyArgs()));
     }
 }

@@ -1,8 +1,8 @@
 using System;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using HotRepl.Control;
+using HotRepl.Control.Internal;
 using HotRepl.Control.Jobs;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -18,7 +18,7 @@ public class ControlJobManagerTests
 
         var job = manager.StartJob(
             "request-1",
-            (_, _) => ValueTask.FromResult(ControlCommandResult.Empty)
+            (_, _) => ValueTask.FromResult(CompiledCommandResult.Empty)
         );
 
         Assert.Equal("running", job.State);
@@ -30,12 +30,12 @@ public class ControlJobManagerTests
     public void StartJob_RejectsWhenRunningJobConcurrencyIsExhausted()
     {
         var manager = new ControlJobManager(maxEventBuffer: 100, maxRunningJobs: 1);
-        manager.StartJob("request-1", (_, _) => ValueTask.FromResult(ControlCommandResult.Empty));
+        manager.StartJob("request-1", (_, _) => ValueTask.FromResult(CompiledCommandResult.Empty));
 
         var error = Assert.Throws<InvalidOperationException>(() =>
             manager.StartJob(
                 "request-2",
-                (_, _) => ValueTask.FromResult(ControlCommandResult.Empty)
+                (_, _) => ValueTask.FromResult(CompiledCommandResult.Empty)
             )
         );
 
@@ -50,10 +50,11 @@ public class ControlJobManagerTests
             "request-1",
             (_, _) =>
                 ValueTask.FromResult(
-                    new ControlCommandResult(
-                        new JObject { ["ok"] = true },
-                        Array.Empty<HotRepl.Control.Artifacts.ArtifactRef>(),
-                        Array.Empty<ControlCommandError>()
+                    new CompiledCommandResult(
+                        Succeeded: true,
+                        Output: new JObject { ["ok"] = true },
+                        Artifacts: Array.Empty<HotRepl.Control.Artifacts.ArtifactRef>(),
+                        Diagnostics: Array.Empty<ControlCommandError>()
                     )
                 )
         );
@@ -93,7 +94,7 @@ public class ControlJobManagerTests
             {
                 started.SetResult();
                 await Task.Delay(TimeSpan.FromSeconds(30), token);
-                return ControlCommandResult.Empty;
+                return CompiledCommandResult.Empty;
             }
         );
 
@@ -119,11 +120,11 @@ public class ControlJobManagerTests
         var manager = new ControlJobManager(maxEventBuffer: 100);
         var job = manager.StartJob(
             "request-1",
-            (context, _) =>
+            (env, _) =>
             {
-                context.Report(new JObject { ["step"] = 1 }, "step 1");
-                context.Report(new JObject { ["step"] = 2 }, "step 2");
-                return ValueTask.FromResult(ControlCommandResult.Empty);
+                env.ProgressSink(new JObject { ["step"] = 1 }, "step 1");
+                env.ProgressSink(new JObject { ["step"] = 2 }, "step 2");
+                return ValueTask.FromResult(CompiledCommandResult.Empty);
             }
         );
         await manager.RunAsync(job.JobId);
@@ -146,11 +147,14 @@ public class ControlJobManagerTests
         var manager = new ControlJobManager(maxEventBuffer: 3);
         var job = manager.StartJob(
             "request-1",
-            (context, _) =>
+            (env, _) =>
             {
                 for (var i = 0; i < 5; i++)
-                    context.Report(new JObject { ["step"] = i }, $"step {i}");
-                return ValueTask.FromResult(ControlCommandResult.Empty);
+                {
+                    env.ProgressSink(new JObject { ["step"] = i }, $"step {i}");
+                }
+
+                return ValueTask.FromResult(CompiledCommandResult.Empty);
             }
         );
 

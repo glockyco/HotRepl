@@ -3,11 +3,12 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using HotRepl.Control;
+using HotRepl.Control.Artifacts;
 using HotRepl.Control.Jobs;
 using HotRepl.Protocol;
 using Newtonsoft.Json.Linq;
 using Xunit;
-using ControlArtifactRef = HotRepl.Control.Artifacts.ArtifactRef;
+using ArtifactRef = HotRepl.Control.Artifacts.ArtifactRef;
 
 namespace HotRepl.Tests.Unit;
 
@@ -16,7 +17,8 @@ public class ControlRoutingTests
     [Fact]
     public void List_ReturnsCommandSummariesFromRegistry()
     {
-        var router = new ControlCommandRouter(new FakeRegistry(new EchoHandler()));
+        var registry = NewRegistry(r => r.Register(new EchoCommand()));
+        var router = new ControlCommandRouter(registry);
 
         var result = router.List("list-1");
 
@@ -32,7 +34,8 @@ public class ControlRoutingTests
     [Fact]
     public void Describe_ReturnsOneDescriptorByName()
     {
-        var router = new ControlCommandRouter(new FakeRegistry(new EchoHandler()));
+        var registry = NewRegistry(r => r.Register(new EchoCommand()));
+        var router = new ControlCommandRouter(registry);
 
         var result = Assert.IsType<CommandDescribeResultMessage>(
             router.Describe(new CommandDescribeMessage { Id = "describe-1", Name = "archive.echo" })
@@ -44,24 +47,6 @@ public class ControlRoutingTests
         Assert.Equal(1, result.Descriptor.MajorVersion);
         Assert.Equal("sync", result.Descriptor.Kind);
         Assert.Equal("object", result.Descriptor.InputSchema["type"]!.Value<string>());
-    }
-
-    [Fact]
-    public void Describe_PreservesCommandArtifactSchema()
-    {
-        var router = new ControlCommandRouter(new FakeRegistry(new JobHandler()));
-
-        var result = Assert.IsType<CommandDescribeResultMessage>(
-            router.Describe(
-                new CommandDescribeMessage { Id = "describe-1", Name = "archive.export" }
-            )
-        );
-
-        Assert.Equal(
-            "array",
-            result.Descriptor.ArtifactsSchema["required"]!.Type.ToString().ToLowerInvariant()
-        );
-        Assert.Equal("items", result.Descriptor.ArtifactsSchema["required"]![0]!.Value<string>());
     }
 
     [Fact]
@@ -83,12 +68,13 @@ public class ControlRoutingTests
     [Fact]
     public void Execute_KnownSynchronousCommand_ReturnsCommandResult()
     {
-        var router = new ControlCommandRouter(new FakeRegistry(new EchoHandler()));
+        var registry = NewRegistry(r => r.Register(new EchoCommand()));
+        var router = new ControlCommandRouter(registry);
         var message = new CommandCallMessage
         {
             Id = "cmd-1",
             Name = "archive.echo",
-            Args = JObject.Parse("{\"value\":\"ok\"}"),
+            Args = JObject.Parse("{\"Value\":\"ok\"}"),
             TimeoutMs = 5000,
         };
 
@@ -98,14 +84,15 @@ public class ControlRoutingTests
         Assert.Equal(MessageType.CommandResult, ok.Type);
         Assert.Equal("cmd-1", ok.Id);
         Assert.Equal("ok", ok.Status);
-        Assert.Equal("ok", ok.Output!["value"]!.Value<string>());
+        Assert.Equal("ok", ok.Output!["Value"]!.Value<string>());
     }
 
     [Fact]
     public void Execute_AppliesConfiguredCommandOutputLimits()
     {
+        var registry = NewRegistry(r => r.Register(new LargeOutputCommand()));
         var router = new ControlCommandRouter(
-            new FakeRegistry(new LargeOutputHandler()),
+            registry,
             config: new ReplConfig { MaxResultLength = 16 }
         );
 
@@ -119,25 +106,28 @@ public class ControlRoutingTests
     [Fact]
     public void Execute_MutatingCommandDoesNotRequireLease()
     {
-        var router = new ControlCommandRouter(new FakeRegistry(new MutatingEchoHandler()));
+        var registry = NewRegistry(r => r.Register(new MutatingEchoCommand()));
+        var router = new ControlCommandRouter(registry);
+
         var result = router.Execute(
             new CommandCallMessage
             {
                 Id = "cmd-1",
                 Name = "archive.mutate",
-                Args = JObject.Parse("{\"value\":\"ok\"}"),
+                Args = JObject.Parse("{\"Value\":\"ok\"}"),
             },
             Guid.NewGuid()
         );
 
         var ok = Assert.IsType<CommandResultMessage>(result);
-        Assert.Equal("ok", ok.Output!["value"]!.Value<string>());
+        Assert.Equal("ok", ok.Output!["Value"]!.Value<string>());
     }
 
     [Fact]
     public void Execute_HandlerException_ReturnsInternalCommandError()
     {
-        var router = new ControlCommandRouter(new FakeRegistry(new ThrowingHandler()));
+        var registry = NewRegistry(r => r.Register(new ThrowingCommand()));
+        var router = new ControlCommandRouter(registry);
         var message = new CommandCallMessage { Id = "cmd-1", Name = "archive.throw" };
 
         var result = router.Execute(message);
@@ -154,7 +144,8 @@ public class ControlRoutingTests
     public void Execute_JobCommand_ReturnsCommandAccepted()
     {
         var jobs = new ControlJobManager(maxEventBuffer: 100);
-        var router = new ControlCommandRouter(new FakeRegistry(new JobHandler()), jobs: jobs);
+        var registry = NewRegistry(r => r.Register(new JobCommand()));
+        var router = new ControlCommandRouter(registry, jobs: jobs);
 
         var result = router.Execute(
             new CommandCallMessage { Id = "cmd-1", Name = "archive.export" }
@@ -171,7 +162,8 @@ public class ControlRoutingTests
     public void JobStatus_ReturnsCurrentState()
     {
         var jobs = new ControlJobManager(maxEventBuffer: 100);
-        var router = new ControlCommandRouter(new FakeRegistry(new JobHandler()), jobs: jobs);
+        var registry = NewRegistry(r => r.Register(new JobCommand()));
+        var router = new ControlCommandRouter(registry, jobs: jobs);
         var accepted = Assert.IsType<JobAcceptedMessage>(
             router.Execute(new CommandCallMessage { Id = "cmd-1", Name = "archive.export" })
         );
@@ -190,7 +182,8 @@ public class ControlRoutingTests
     public async Task JobStatus_AfterCompletion_ReturnsTerminalJobResult()
     {
         var jobs = new ControlJobManager(maxEventBuffer: 100);
-        var router = new ControlCommandRouter(new FakeRegistry(new JobHandler()), jobs: jobs);
+        var registry = NewRegistry(r => r.Register(new JobCommand()));
+        var router = new ControlCommandRouter(registry, jobs: jobs);
         var accepted = Assert.IsType<JobAcceptedMessage>(
             router.Execute(new CommandCallMessage { Id = "cmd-1", Name = "archive.export" })
         );
@@ -205,7 +198,7 @@ public class ControlRoutingTests
         Assert.Equal(MessageType.JobResult, ok.Type);
         Assert.Equal("done", ok.State);
         Assert.Equal("ok", ok.Status);
-        Assert.Equal("done", ok.Output!["value"]!.Value<string>());
+        Assert.Equal("done", ok.Output!["Value"]!.Value<string>());
     }
 
     [Fact]
@@ -213,11 +206,8 @@ public class ControlRoutingTests
     {
         var jobs = new ControlJobManager(maxEventBuffer: 100);
         var recorded = new List<ControlCommandJournalEntry>();
-        var router = new ControlCommandRouter(
-            new FakeRegistry(new JobHandler()),
-            jobs: jobs,
-            onCommandResult: recorded.Add
-        );
+        var registry = NewRegistry(r => r.Register(new JobCommand()));
+        var router = new ControlCommandRouter(registry, jobs: jobs, onCommandResult: recorded.Add);
         var accepted = Assert.IsType<JobAcceptedMessage>(
             router.Execute(new CommandCallMessage { Id = "cmd-1", Name = "archive.export" })
         );
@@ -239,8 +229,9 @@ public class ControlRoutingTests
     public async Task JobStatus_AppliesConfiguredTerminalOutputLimits()
     {
         var jobs = new ControlJobManager(maxEventBuffer: 100);
+        var registry = NewRegistry(r => r.Register(new LargeJobCommand()));
         var router = new ControlCommandRouter(
-            new FakeRegistry(new LargeJobHandler()),
+            registry,
             jobs: jobs,
             config: new ReplConfig { MaxResultLength = 16 }
         );
@@ -264,7 +255,8 @@ public class ControlRoutingTests
     public void JobCancel_ReturnsAcknowledgement()
     {
         var jobs = new ControlJobManager(maxEventBuffer: 100);
-        var router = new ControlCommandRouter(new FakeRegistry(new JobHandler()), jobs: jobs);
+        var registry = NewRegistry(r => r.Register(new JobCommand()));
+        var router = new ControlCommandRouter(registry, jobs: jobs);
         var accepted = Assert.IsType<JobAcceptedMessage>(
             router.Execute(new CommandCallMessage { Id = "cmd-1", Name = "archive.export" })
         );
@@ -279,187 +271,120 @@ public class ControlRoutingTests
         Assert.Equal("running", result.State);
     }
 
-    private sealed class FakeRegistry : IControlCommandRegistry
+    private static GlobalControlCommandRegistry NewRegistry(
+        Action<GlobalControlCommandRegistry> configure
+    )
     {
-        private readonly IControlCommandHandler _handler;
-
-        public FakeRegistry(IControlCommandHandler handler) => _handler = handler;
-
-        public IReadOnlyList<ControlCommandDescriptor> Describe() => new[] { _handler.Descriptor };
-
-        public bool TryGet(string name, out IControlCommandHandler handler)
-        {
-            handler = _handler;
-            return string.Equals(name, _handler.Descriptor.Name, StringComparison.Ordinal);
-        }
+        var registry = new GlobalControlCommandRegistry();
+        configure(registry);
+        return registry;
     }
 
-    private sealed class EchoHandler : IControlCommandHandler
+    private sealed class EchoArgs
     {
-        public ControlCommandDescriptor Descriptor { get; } =
-            new(
-                "archive.echo",
-                1,
-                ControlCommandKind.Synchronous,
-                mutatesState: false,
-                argsSchema: JObject.Parse("{\"type\":\"object\"}"),
-                resultSchema: JObject.Parse("{\"type\":\"object\"}")
-            );
+        public string Value { get; set; } = "";
+    }
 
-        public ValueTask<ControlCommandResult> ExecuteAsync(
+    private sealed class EchoResult
+    {
+        public string Value { get; set; } = "";
+    }
+
+    private sealed class EchoCommand : IControlCommandHandler<EchoArgs, EchoResult>
+    {
+        public string Name => "archive.echo";
+        public int Version => 1;
+        public ControlCommandKind Kind => ControlCommandKind.Synchronous;
+        public bool MutatesState => false;
+
+        public ValueTask<ControlCommandResult<EchoResult>> ExecuteAsync(
             ControlCommandContext context,
-            JObject args,
+            EchoArgs args,
             CancellationToken cancellationToken
-        )
-        {
-            return ValueTask.FromResult(
-                new ControlCommandResult(
-                    new JObject { ["value"] = args["value"]?.Value<string>() ?? "" },
-                    Array.Empty<HotRepl.Control.Artifacts.ArtifactRef>(),
-                    Array.Empty<ControlCommandError>()
-                )
-            );
-        }
+        ) => new(ControlCommandResult.Ok(new EchoResult { Value = args.Value }));
     }
 
-    private sealed class ThrowingHandler : IControlCommandHandler
+    private sealed class MutatingEchoCommand : IControlCommandHandler<EchoArgs, EchoResult>
     {
-        public ControlCommandDescriptor Descriptor { get; } =
-            new(
-                "archive.throw",
-                1,
-                ControlCommandKind.Synchronous,
-                mutatesState: false,
-                argsSchema: JObject.Parse("{\"type\":\"object\"}"),
-                resultSchema: JObject.Parse("{\"type\":\"object\"}")
-            );
+        public string Name => "archive.mutate";
+        public int Version => 1;
+        public ControlCommandKind Kind => ControlCommandKind.Synchronous;
+        public bool MutatesState => true;
 
-        public ValueTask<ControlCommandResult> ExecuteAsync(
+        public ValueTask<ControlCommandResult<EchoResult>> ExecuteAsync(
             ControlCommandContext context,
-            JObject args,
+            EchoArgs args,
+            CancellationToken cancellationToken
+        ) => new(ControlCommandResult.Ok(new EchoResult { Value = args.Value }));
+    }
+
+    private sealed class ThrowingCommand : IControlCommandHandler<EmptyArgs, EchoResult>
+    {
+        public string Name => "archive.throw";
+        public int Version => 1;
+        public ControlCommandKind Kind => ControlCommandKind.Synchronous;
+        public bool MutatesState => false;
+
+        public ValueTask<ControlCommandResult<EchoResult>> ExecuteAsync(
+            ControlCommandContext context,
+            EmptyArgs args,
             CancellationToken cancellationToken
         ) => throw new InvalidOperationException("boom");
     }
 
-    private sealed class MutatingEchoHandler : IControlCommandHandler
+    private sealed class LargeOutputCommand : IControlCommandHandler<EmptyArgs, EchoResult>
     {
-        public ControlCommandDescriptor Descriptor { get; } =
-            new(
-                "archive.mutate",
-                1,
-                ControlCommandKind.Synchronous,
-                mutatesState: true,
-                argsSchema: JObject.Parse("{\"type\":\"object\"}"),
-                resultSchema: JObject.Parse("{\"type\":\"object\"}")
-            );
+        public string Name => "archive.largeOutput";
+        public int Version => 1;
+        public ControlCommandKind Kind => ControlCommandKind.Synchronous;
+        public bool MutatesState => false;
 
-        public ValueTask<ControlCommandResult> ExecuteAsync(
+        public ValueTask<ControlCommandResult<EchoResult>> ExecuteAsync(
             ControlCommandContext context,
-            JObject args,
+            EmptyArgs args,
+            CancellationToken cancellationToken
+        ) => new(ControlCommandResult.Ok(new EchoResult { Value = new string('x', 64) }));
+    }
+
+    private sealed class JobCommand : IControlCommandHandler<EmptyArgs, EchoResult>
+    {
+        public string Name => "archive.export";
+        public int Version => 1;
+        public ControlCommandKind Kind => ControlCommandKind.Job;
+        public bool MutatesState => false;
+
+        public ValueTask<ControlCommandResult<EchoResult>> ExecuteAsync(
+            ControlCommandContext context,
+            EmptyArgs args,
             CancellationToken cancellationToken
         )
         {
-            return ValueTask.FromResult(
-                new ControlCommandResult(
-                    new JObject { ["value"] = args["value"]?.Value<string>() ?? "" },
-                    Array.Empty<ControlArtifactRef>(),
-                    Array.Empty<ControlCommandError>()
-                )
+            var artifact = new ArtifactRef(
+                "items",
+                "file:///tmp/items.json",
+                "/tmp/items.json",
+                "application/json",
+                10,
+                "sha",
+                true
+            );
+            return new(
+                ControlCommandResult.Ok(new EchoResult { Value = "done" }, "items", artifact)
             );
         }
     }
 
-    private sealed class LargeOutputHandler : IControlCommandHandler
+    private sealed class LargeJobCommand : IControlCommandHandler<EmptyArgs, EchoResult>
     {
-        public ControlCommandDescriptor Descriptor { get; } =
-            new(
-                "archive.largeOutput",
-                1,
-                ControlCommandKind.Synchronous,
-                mutatesState: false,
-                argsSchema: JObject.Parse("{\"type\":\"object\"}"),
-                resultSchema: JObject.Parse("{\"type\":\"object\"}")
-            );
+        public string Name => "archive.largeJob";
+        public int Version => 1;
+        public ControlCommandKind Kind => ControlCommandKind.Job;
+        public bool MutatesState => false;
 
-        public ValueTask<ControlCommandResult> ExecuteAsync(
+        public ValueTask<ControlCommandResult<EchoResult>> ExecuteAsync(
             ControlCommandContext context,
-            JObject args,
+            EmptyArgs args,
             CancellationToken cancellationToken
-        )
-        {
-            return ValueTask.FromResult(
-                new ControlCommandResult(
-                    new JObject { ["value"] = new string('x', 64) },
-                    Array.Empty<ControlArtifactRef>(),
-                    Array.Empty<ControlCommandError>()
-                )
-            );
-        }
-    }
-
-    private sealed class JobHandler : IControlCommandHandler
-    {
-        public ControlCommandDescriptor Descriptor { get; } =
-            new(
-                "archive.export",
-                1,
-                ControlCommandKind.Job,
-                mutatesState: false,
-                argsSchema: JObject.Parse("{\"type\":\"object\"}"),
-                resultSchema: JObject.Parse("{\"type\":\"object\"}"),
-                artifactsSchema: JObject.Parse("{\"type\":\"object\",\"required\":[\"items\"]}")
-            );
-
-        public ValueTask<ControlCommandResult> ExecuteAsync(
-            ControlCommandContext context,
-            JObject args,
-            CancellationToken cancellationToken
-        )
-        {
-            return ValueTask.FromResult(
-                new ControlCommandResult(
-                    new JObject { ["value"] = "done" },
-                    new[]
-                    {
-                        new ControlArtifactRef(
-                            "items",
-                            "file:///tmp/items.json",
-                            "/tmp/items.json",
-                            "application/json",
-                            10,
-                            "sha",
-                            true
-                        ),
-                    },
-                    Array.Empty<ControlCommandError>()
-                )
-            );
-        }
-    }
-
-    private sealed class LargeJobHandler : IControlCommandHandler
-    {
-        public ControlCommandDescriptor Descriptor { get; } =
-            new(
-                "archive.largeJob",
-                1,
-                ControlCommandKind.Job,
-                mutatesState: false,
-                argsSchema: JObject.Parse("{\"type\":\"object\"}"),
-                resultSchema: JObject.Parse("{\"type\":\"object\"}")
-            );
-
-        public ValueTask<ControlCommandResult> ExecuteAsync(
-            ControlCommandContext context,
-            JObject args,
-            CancellationToken cancellationToken
-        ) =>
-            ValueTask.FromResult(
-                new ControlCommandResult(
-                    new JObject { ["value"] = new string('x', 64) },
-                    Array.Empty<ControlArtifactRef>(),
-                    Array.Empty<ControlCommandError>()
-                )
-            );
+        ) => new(ControlCommandResult.Ok(new EchoResult { Value = new string('x', 64) }));
     }
 }

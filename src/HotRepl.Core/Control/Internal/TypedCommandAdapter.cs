@@ -64,32 +64,10 @@ internal sealed class TypedCommandAdapter<TArgs, TOutput> : ICompiledControlComm
         }
 
         // 2. Deserialize typed args (EmptyArgs is special-cased).
-        TArgs typedArgs;
-        if (typeof(TArgs) == typeof(EmptyArgs))
-        {
-            typedArgs = default!;
-        }
-        else
-        {
-            typedArgs =
-                args.ToObject<TArgs>(_serializer)
-                ?? throw new InvalidOperationException(
-                    $"Newtonsoft deserialized {typeof(TArgs).Name} as null."
-                );
-        }
+        var typedArgs = DeserializeArgs(args);
 
         // 3. Build the typed context.
-        IProgress<ControlCommandProgress> progress = compiledContext.ProgressSink is null
-            ? SilentProgress.Instance
-            : new ProgressSinkAdapter(compiledContext.ProgressSink);
-
-        var typedContext = new ControlCommandContext(
-            requestId: compiledContext.RequestId,
-            timeout: compiledContext.Timeout,
-            jobId: compiledContext.JobId,
-            progress: progress,
-            artifacts: compiledContext.Artifacts
-        );
+        var typedContext = BuildHandlerContext(compiledContext);
 
         // 4. Run the handler. ConfigureAwait(true) keeps continuations
         //    on the Unity sync context.
@@ -110,6 +88,33 @@ internal sealed class TypedCommandAdapter<TArgs, TOutput> : ICompiledControlComm
             Output: outputJson,
             Artifacts: artifactList,
             Diagnostics: diagnostics
+        );
+    }
+
+    private TArgs DeserializeArgs(JObject args)
+    {
+        if (typeof(TArgs) == typeof(EmptyArgs))
+        {
+            return default!;
+        }
+
+        return args.ToObject<TArgs>(_serializer)
+            ?? throw new InvalidOperationException(
+                $"Newtonsoft deserialized {typeof(TArgs).Name} as null."
+            );
+    }
+
+    private static ControlCommandContext BuildHandlerContext(CompiledCommandContext compiled)
+    {
+        IProgress<ControlCommandProgress> progress = compiled.ProgressSink is null
+            ? SilentProgress.Instance
+            : new ProgressSinkAdapter(compiled.ProgressSink);
+        return new ControlCommandContext(
+            requestId: compiled.RequestId,
+            timeout: compiled.Timeout,
+            jobId: compiled.JobId,
+            progress: progress,
+            artifacts: compiled.Artifacts
         );
     }
 

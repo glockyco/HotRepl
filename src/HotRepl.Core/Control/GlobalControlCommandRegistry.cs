@@ -12,7 +12,7 @@ namespace HotRepl.Control;
 /// control commands. Typed handlers passed to <c>Register</c> are
 /// wrapped in a <see cref="TypedCommandAdapter{TArgs,TOutput}"/>.
 /// </summary>
-public sealed class GlobalControlCommandRegistry : IControlCommandRegistry
+public sealed class GlobalControlCommandRegistry : IControlCommandRegistry, ICompiledRegistry
 {
     private readonly object _sync = new();
     private readonly Dictionary<string, ICompiledControlCommand> _handlers = new(
@@ -76,7 +76,7 @@ public sealed class GlobalControlCommandRegistry : IControlCommandRegistry
     }
 
     /// <inheritdoc />
-    public bool TryGet(string name, out ICompiledControlCommand? handler)
+    bool ICompiledRegistry.TryGet(string name, out ICompiledControlCommand? handler)
     {
         lock (_sync)
         {

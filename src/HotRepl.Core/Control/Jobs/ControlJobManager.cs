@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using HotRepl.Control.Artifacts;
+using HotRepl.Control.Internal;
 using Newtonsoft.Json.Linq;
 
 namespace HotRepl.Control.Jobs;
@@ -23,24 +24,29 @@ internal sealed class ControlJobManager
 
     public ControlJob StartJob(
         string requestId,
-        Func<ControlJobExecutionContext, CancellationToken, ValueTask<ControlCommandResult>> execute
+        Func<JobExecutionEnvironment, CancellationToken, ValueTask<CompiledCommandResult>> execute
     ) => StartJob(Guid.Empty, requestId, execute);
 
     public ControlJob StartJob(
         Guid connectionId,
         string requestId,
-        Func<ControlJobExecutionContext, CancellationToken, ValueTask<ControlCommandResult>> execute
+        Func<JobExecutionEnvironment, CancellationToken, ValueTask<CompiledCommandResult>> execute
     )
     {
         if (execute == null)
+        {
             throw new ArgumentNullException(nameof(execute));
+        }
 
         var jobId = Guid.NewGuid().ToString("N");
         var state = new JobState(jobId, connectionId, requestId, execute);
         lock (_sync)
         {
             if (RunningJobCountLocked() >= _maxRunningJobs)
+            {
                 throw new InvalidOperationException("maxJobConcurrency");
+            }
+
             _jobs.Add(jobId, state);
             AddEventLocked(state, ControlJobStates.Running, progress: null, message: null);
         }
@@ -55,41 +61,27 @@ internal sealed class ControlJobManager
         {
             state = RequireJob(jobId);
             if (IsTerminal(state.State))
+            {
                 return;
+            }
         }
 
         try
         {
-            var context = new ControlJobExecutionContext(state.JobId, state.RequestId, Report);
-            var result = await state
-                .Execute(context, state.Cancellation.Token)
-                .ConfigureAwait(false);
-            lock (_sync)
-            {
-                state.Result = result.Result;
-                state.Artifacts = result.Artifacts.ToArray();
-                state.Diagnostics = result.Diagnostics.ToArray();
-                TransitionLocked(state, ControlJobStates.Completed, message: null);
-            }
+            var env = new JobExecutionEnvironment(state.JobId, Report, state.Artifacts);
+            var result = await state.Execute(env, state.Cancellation.Token).ConfigureAwait(false);
+            CompleteJobLocked(state, result);
         }
         catch (OperationCanceledException) when (state.Cancellation.IsCancellationRequested)
         {
             lock (_sync)
+            {
                 TransitionLocked(state, ControlJobStates.Cancelled, message: null);
+            }
         }
         catch (Exception ex)
         {
-            lock (_sync)
-            {
-                state.Error = new ControlCommandError(
-                    "internal",
-                    "handlerException",
-                    ex.Message,
-                    Retryable: false,
-                    Details: new JObject()
-                );
-                TransitionLocked(state, ControlJobStates.Failed, message: ex.Message);
-            }
+            FailJobWithException(state, ex);
         }
 
         void Report(JObject? progress, string? message)
@@ -102,13 +94,49 @@ internal sealed class ControlJobManager
         }
     }
 
+    private void CompleteJobLocked(JobState state, CompiledCommandResult result)
+    {
+        lock (_sync)
+        {
+            state.Result = result.Output;
+            state.ArtifactList = result.Artifacts.ToArray();
+            state.Diagnostics = result.Diagnostics.ToArray();
+            if (!result.Succeeded)
+            {
+                state.Error = result.Diagnostics.Count > 0 ? result.Diagnostics[0] : null;
+                TransitionLocked(state, ControlJobStates.Failed, message: state.Error?.Message);
+            }
+            else
+            {
+                TransitionLocked(state, ControlJobStates.Completed, message: null);
+            }
+        }
+    }
+
+    private void FailJobWithException(JobState state, Exception ex)
+    {
+        lock (_sync)
+        {
+            state.Error = new ControlCommandError(
+                "internal",
+                "handlerException",
+                ex.Message,
+                Retryable: false,
+                Details: new JObject()
+            );
+            TransitionLocked(state, ControlJobStates.Failed, message: ex.Message);
+        }
+    }
+
     public bool Cancel(string jobId)
     {
         lock (_sync)
         {
             var state = RequireJob(jobId);
             if (IsTerminal(state.State))
+            {
                 return false;
+            }
 
             state.Cancellation.Cancel();
             return true;
@@ -125,7 +153,7 @@ internal sealed class ControlJobManager
                 state.State,
                 state.Progress,
                 state.Result,
-                state.Artifacts,
+                state.ArtifactList,
                 state.Diagnostics,
                 state.Error
             );
@@ -158,7 +186,10 @@ internal sealed class ControlJobManager
     private JobState RequireJob(string jobId)
     {
         if (!_jobs.TryGetValue(jobId, out var state))
+        {
             throw new KeyNotFoundException($"Unknown control job '{jobId}'.");
+        }
+
         return state;
     }
 
@@ -179,7 +210,9 @@ internal sealed class ControlJobManager
             new ControlJobEvent(state.JobId, ++state.NextSequence, eventState, progress, message)
         );
         while (state.Events.Count > _maxEventBuffer)
+        {
             state.Events.Dequeue();
+        }
     }
 
     private static bool IsTerminal(string state) =>
@@ -195,9 +228,9 @@ internal sealed class ControlJobManager
             Guid connectionId,
             string requestId,
             Func<
-                ControlJobExecutionContext,
+                JobExecutionEnvironment,
                 CancellationToken,
-                ValueTask<ControlCommandResult>
+                ValueTask<CompiledCommandResult>
             > execute
         )
         {
@@ -205,22 +238,24 @@ internal sealed class ControlJobManager
             ConnectionId = connectionId;
             RequestId = requestId;
             Execute = execute;
+            Artifacts = new InMemoryArtifactWriter();
         }
 
         public string JobId { get; }
         public Guid ConnectionId { get; }
         public string RequestId { get; }
         public Func<
-            ControlJobExecutionContext,
+            JobExecutionEnvironment,
             CancellationToken,
-            ValueTask<ControlCommandResult>
+            ValueTask<CompiledCommandResult>
         > Execute { get; }
         public CancellationTokenSource Cancellation { get; } = new();
         public string State { get; set; } = ControlJobStates.Running;
         public long NextSequence { get; set; }
         public JObject? Progress { get; set; }
         public JObject? Result { get; set; }
-        public ArtifactRef[] Artifacts { get; set; } = Array.Empty<ArtifactRef>();
+        public InMemoryArtifactWriter Artifacts { get; }
+        public ArtifactRef[] ArtifactList { get; set; } = Array.Empty<ArtifactRef>();
         public ControlCommandError[] Diagnostics { get; set; } = Array.Empty<ControlCommandError>();
         public ControlCommandError? Error { get; set; }
         public Queue<ControlJobEvent> Events { get; } = new();

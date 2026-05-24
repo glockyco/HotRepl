@@ -37,12 +37,7 @@ public class TypedCommandAdapterTests
             ControlCommandContext context,
             GreetArgs args,
             CancellationToken cancellationToken
-        ) =>
-            new(
-                ControlCommandResult<GreetResult>.Ok(
-                    new GreetResult { Greeting = $"Hello, {args.Name}!" }
-                )
-            );
+        ) => new(ControlCommandResult.Ok(new GreetResult { Greeting = $"Hello, {args.Name}!" }));
     }
 
     private static readonly JsonSerializer Serializer = JsonSerializer.CreateDefault();
@@ -159,7 +154,7 @@ public class TypedCommandAdapterTests
         )
         {
             _onCall(args);
-            return new(ControlCommandResult<GreetResult>.Ok(new GreetResult()));
+            return new(ControlCommandResult.Ok(new GreetResult()));
         }
     }
 
@@ -183,7 +178,7 @@ public class TypedCommandAdapterTests
                 "text/plain",
                 cancellationToken
             );
-            return ControlCommandResult<GreetResult>.Ok(new GreetResult(), "manifest", artifact);
+            return ControlCommandResult.Ok(new GreetResult(), "manifest", artifact);
         }
     }
 
@@ -198,6 +193,6 @@ public class TypedCommandAdapterTests
             ControlCommandContext context,
             EmptyArgs args,
             CancellationToken cancellationToken
-        ) => new(ControlCommandResult<GreetResult>.PreconditionFailed("notReady", "Not ready."));
+        ) => new(ControlCommandResult.PreconditionFailed<GreetResult>("notReady", "Not ready."));
     }
 }
