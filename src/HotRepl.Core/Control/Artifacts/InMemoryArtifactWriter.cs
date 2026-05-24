@@ -65,11 +65,7 @@ public sealed class InMemoryArtifactWriter : IArtifactWriter
         var buffer = new byte[BufferSize];
         int read;
         while (
-            (
-                read = await stream
-                    .ReadAsync(buffer.AsMemory(), cancellationToken)
-                    .ConfigureAwait(false)
-            ) > 0
+            (read = await ReadAsync(stream, buffer, cancellationToken).ConfigureAwait(false)) > 0
         )
         {
             hash.AppendData(buffer, 0, read);
@@ -113,11 +109,8 @@ public sealed class InMemoryArtifactWriter : IArtifactWriter
             var buffer = new byte[BufferSize];
             int read;
             while (
-                (
-                    read = await stream
-                        .ReadAsync(buffer.AsMemory(), cancellationToken)
-                        .ConfigureAwait(false)
-                ) > 0
+                (read = await ReadAsync(stream, buffer, cancellationToken).ConfigureAwait(false))
+                > 0
             )
             {
                 hash.AppendData(buffer, 0, read);
@@ -183,6 +176,19 @@ public sealed class InMemoryArtifactWriter : IArtifactWriter
             Sha256: sha256,
             Finalized: true
         );
+
+    private static Task<int> ReadAsync(
+        Stream stream,
+        byte[] buffer,
+        CancellationToken cancellationToken
+    )
+    {
+#if NETSTANDARD2_0
+        return stream.ReadAsync(buffer, 0, buffer.Length, cancellationToken);
+#else
+        return stream.ReadAsync(buffer.AsMemory(), cancellationToken).AsTask();
+#endif
+    }
 
     private static void ValidateLogicalName(string logicalName)
     {

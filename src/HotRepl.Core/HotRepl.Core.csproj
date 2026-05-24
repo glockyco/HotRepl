@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>netstandard2.1</TargetFramework>
+    <TargetFrameworks>netstandard2.0;netstandard2.1</TargetFrameworks>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <AnalysisMode>Recommended</AnalysisMode>
@@ -25,6 +25,14 @@
 
     <!-- JSON schema generation (ILRepack-internalized with its Namotion.Reflection dependency) -->
     <PackageReference Include="NJsonSchema" PrivateAssets="all" />
+    <PackageReference
+      Include="System.Memory"
+      Condition="'$(TargetFramework)' == 'netstandard2.0'"
+    />
+    <PackageReference
+      Include="System.Threading.Tasks.Extensions"
+      Condition="'$(TargetFramework)' == 'netstandard2.0'"
+    />
 
     <!-- ILRepack for internalizing NJsonSchema + Namotion.Reflection -->
     <PackageReference Include="ILRepack.Lib.MSBuild.Task" PrivateAssets="all" />

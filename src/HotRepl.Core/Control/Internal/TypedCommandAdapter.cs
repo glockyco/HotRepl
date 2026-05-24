@@ -192,9 +192,7 @@ internal sealed class TypedCommandAdapter<TArgs, TOutput> : ICompiledControlComm
 
     private static string ConvertKeyPatternToRegex(string keyPattern)
     {
-        return "^"
-            + Regex.Escape(keyPattern).Replace("<stem>", "[^.]+", StringComparison.Ordinal)
-            + "$";
+        return "^" + Regex.Escape(keyPattern).Replace("<stem>", "[^.]+") + "$";
     }
 
     private static string DiagnosticKindToWire(ControlCommandDiagnosticKind kind) =>

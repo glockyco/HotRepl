@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <AssemblyName>HotRepl.Testing</AssemblyName>
+    <RootNamespace>HotRepl.Testing</RootNamespace>
+    <PackageId>HotRepl.Testing</PackageId>
+    <Version>1.0.0</Version>
+    <Description>Test helpers for HotRepl typed-command authors and SDK consumers.</Description>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../HotRepl.Core/HotRepl.Core.csproj" />
+    <ProjectReference Include="../HotRepl.Sdk/HotRepl.Sdk.csproj" />
+    <PackageReference Include="Newtonsoft.Json" />
+  </ItemGroup>
+</Project>

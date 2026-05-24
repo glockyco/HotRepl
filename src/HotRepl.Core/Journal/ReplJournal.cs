@@ -52,19 +52,22 @@ internal sealed class ReplJournal
         lock (_gate)
         {
             if (string.Equals(kind, EvalKind, StringComparison.Ordinal))
-                return _evalEntries.TakeLast(limit).ToArray();
+                return TakeLast(_evalEntries, limit);
             if (string.Equals(kind, CommandKind, StringComparison.Ordinal))
-                return _commandEntries.TakeLast(limit).ToArray();
+                return TakeLast(_commandEntries, limit);
             if (!string.IsNullOrEmpty(kind))
                 return Array.Empty<ReplJournalEntry>();
 
-            return _evalEntries
+            var combined = _evalEntries
                 .Concat(_commandEntries)
                 .OrderBy(entry => entry.Sequence)
-                .TakeLast(limit)
                 .ToArray();
+            return combined.Skip(Math.Max(0, combined.Length - limit)).ToArray();
         }
     }
+
+    private static ReplJournalEntry[] TakeLast(Queue<ReplJournalEntry> entries, int limit) =>
+        entries.Skip(Math.Max(0, entries.Count - limit)).ToArray();
 
     private void Record(
         string id,

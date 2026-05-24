@@ -47,7 +47,7 @@ public readonly struct SchemaValidationResult : IEquatable<SchemaValidationResul
     public override bool Equals(object? obj) => obj is SchemaValidationResult o && Equals(o);
 
     /// <inheritdoc />
-    public override int GetHashCode() => HashCode.Combine(Ok, Errors);
+    public override int GetHashCode() => (Ok, Errors).GetHashCode();
 
     /// <summary>Equality operator.</summary>
     public static bool operator ==(SchemaValidationResult left, SchemaValidationResult right) =>

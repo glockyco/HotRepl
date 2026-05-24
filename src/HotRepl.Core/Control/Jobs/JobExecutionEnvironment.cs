@@ -36,7 +36,7 @@ internal readonly struct JobExecutionEnvironment : IEquatable<JobExecutionEnviro
     public override bool Equals(object? obj) => obj is JobExecutionEnvironment o && Equals(o);
 
     /// <inheritdoc />
-    public override int GetHashCode() => HashCode.Combine(JobId, ProgressSink, Artifacts);
+    public override int GetHashCode() => (JobId, ProgressSink, Artifacts).GetHashCode();
 
     /// <summary>Equality operator.</summary>
     public static bool operator ==(JobExecutionEnvironment left, JobExecutionEnvironment right) =>
