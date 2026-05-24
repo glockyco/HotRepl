@@ -53,7 +53,7 @@ internal static class RuntimeHandshakeFactory
             {
                 Supported = true,
                 CommandsListChanged = false,
-                SchemaValidation = false,
+                SchemaValidation = true,
             },
             Limits = new RuntimeLimits
             {
