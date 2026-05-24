@@ -86,6 +86,13 @@ for deterministic SDK, CLI, MCP, and consumer-facade coverage.
   `packages/*/test`.
 - Before claiming branch-level completion, run `lefthook run pre-push --force`.
 
+## Authoring Typed Commands
+
+Use [`docs/authoring-commands.md`](docs/authoring-commands.md) when adding or changing typed control
+commands. The canonical sample catalog is `src/HotRepl.UnityCommands/Commands/`, packaged by
+`src/HotRepl.UnityCommands.BepInEx` and `src/HotRepl.UnityCommands.MelonLoader`; update those
+samples when the command-authoring API changes.
+
 ## Architecture Invariants
 
 These are non-discoverable requirements; do not "simplify" them away:
@@ -134,7 +141,8 @@ These are non-discoverable requirements; do not "simplify" them away:
 
 ## Code Conventions
 
-- `netstandard2.1` for both `HotRepl.Core` and `HotRepl.BepInEx`.
+- `HotRepl.Core` targets `netstandard2.0` and `netstandard2.1`; host adapters target their loader
+  runtime. Keep Core free of loader-specific dependencies.
 - Newtonsoft.Json for C# protocol serialization. Do not add a second C# JSON library.
 - Fleck for WebSocket. Do not add a second WebSocket library.
 - Bun workspaces own the SDK, CLI, MCP, testing, and conformance packages.

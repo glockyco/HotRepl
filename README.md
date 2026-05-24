@@ -80,6 +80,13 @@ Set `HOTREPL_URL` (or pass `url:` to `connect`) to point at a non-default host.
 | MCP            | Agent tools with a small stable tool catalog                 | `@hotrepl/mcp` (`hotrepl-mcp` binary)                |
 | Host embedding | New Unity loader adapters or test hosts                      | `IReplHost` + `ReplEngine.Tick()`                    |
 
+## Authoring commands
+
+Use [`docs/authoring-commands.md`](docs/authoring-commands.md) when adding typed commands. The
+canonical sample command catalog lives in `src/HotRepl.UnityCommands/Commands/`; the
+`src/HotRepl.UnityCommands.BepInEx` and `src/HotRepl.UnityCommands.MelonLoader` projects package it
+for the two supported Unity loader paths.
+
 ## Protocol
 
 The server sends a `handshake` frame immediately after the WebSocket connection opens. Every
