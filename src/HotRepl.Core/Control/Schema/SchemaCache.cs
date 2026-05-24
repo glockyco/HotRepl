@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using Newtonsoft.Json.Linq;
+using NJsonSchema;
 
 namespace HotRepl.Control.Schema;
 
@@ -13,6 +14,7 @@ namespace HotRepl.Control.Schema;
 public static class SchemaCache
 {
     private static readonly ConcurrentDictionary<Type, JObject> Cache = new();
+    private static readonly ConcurrentDictionary<Type, JsonSchema> CompiledCache = new();
 
     private static readonly NJsonSchema.Generation.JsonSchemaGeneratorSettings BuilderSettings =
         new()
@@ -44,14 +46,28 @@ public static class SchemaCache
     /// <summary>Schema for the given type, computed on first request and cached.</summary>
     public static JObject For(Type type) => Cache.GetOrAdd(type, BuildSchema);
 
+    /// <summary>Compiled schema for the given type, computed on first request and cached.</summary>
+    public static JsonSchema CompiledFor<T>() => CompiledFor(typeof(T));
+
+    /// <summary>Compiled schema for the given type, computed on first request and cached.</summary>
+    public static JsonSchema CompiledFor(Type type) =>
+        CompiledCache.GetOrAdd(type, BuildCompiledSchema);
+
     private static JObject BuildSchema(Type type)
+    {
+        return JObject.Parse(CompiledFor(type).ToJson());
+    }
+
+    private static JsonSchema BuildCompiledSchema(Type type)
     {
         if (type == typeof(EmptyArgs))
         {
-            return EmptyObject;
+            return JsonSchema
+                .FromJsonAsync(EmptyObject.ToString(Newtonsoft.Json.Formatting.None))
+                .GetAwaiter()
+                .GetResult();
         }
 
-        var schema = NJsonSchema.JsonSchema.FromType(type, BuilderSettings);
-        return JObject.Parse(schema.ToJson());
+        return JsonSchema.FromType(type, BuilderSettings);
     }
 }

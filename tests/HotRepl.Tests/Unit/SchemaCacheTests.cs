@@ -5,6 +5,7 @@ using System.Linq;
 using HotRepl.Control;
 using HotRepl.Control.Schema;
 using Newtonsoft.Json.Linq;
+using NJsonSchema;
 using Xunit;
 
 namespace HotRepl.Tests.Unit;
@@ -54,6 +55,28 @@ public class SchemaCacheTests
         var a = SchemaCache.For<TestArgs>();
         var b = SchemaCache.For<TestArgs>();
         Assert.Same(a, b);
+    }
+
+    [Fact]
+    public void CompiledFor_CachesSchemaPerType()
+    {
+        var a = SchemaCache.CompiledFor<TestArgs>();
+        var b = SchemaCache.CompiledFor<TestArgs>();
+
+        Assert.Same(a, b);
+        Assert.IsType<JsonSchema>(a);
+    }
+
+    [Fact]
+    public void CompiledFor_AndFor_AreSemanticallyEquivalent()
+    {
+        var compiled = SchemaCache.CompiledFor<TestArgs>();
+        var json = SchemaCache.For<TestArgs>();
+
+        Assert.Equal(
+            json.ToString(Newtonsoft.Json.Formatting.None),
+            compiled.ToJson(Newtonsoft.Json.Formatting.None)
+        );
     }
 
     [Fact]
