@@ -28,4 +28,23 @@ describe("Phase 4 site content", () => {
       "Live Unity automation for runtime C# eval, typed commands, artifact references, SDKs, CLI workflows, and MCP-enabled coding agents.",
     );
   });
+
+  test("homepage exposes integration paths and artifact invariant", async () => {
+    const page = await readSiteFile("routes/+page.svelte");
+
+    expect(page).toContain("Choose your path");
+    expect(page).toContain("TypeScript SDK");
+    expect(page).toContain("C# SDK");
+    expect(page).toContain("@hotrepl/cli");
+    expect(page).toContain("@hotrepl/mcp");
+    expect(page).toContain("Author typed commands");
+    expect(page).toContain("Protocol reference");
+    expect(page).toContain("Artifacts are references, not payloads");
+    expect(page).toContain(
+      "BepInEx/Mono path — typed export commands with snapshot artifact references",
+    );
+    expect(page).toContain(
+      "MelonLoader/IL2CPP path — job-style export orchestration and artifact-driven data capture",
+    );
+  });
 });

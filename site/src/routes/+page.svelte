@@ -85,9 +85,9 @@
 <section class="section" id="quickstart">
   <h2 class="section-title">Quickstart</h2>
   <p class="section-lead">
-    With the BepInEx plugin (Mono) or MelonLoader mod (IL2CPP) loaded, your running game exposes
-    <code>ws://127.0.0.1:18590</code>. Talk to it from any process — TypeScript, shell, or an
-    MCP-enabled agent.
+    Prerequisite: the BepInEx plugin (Mono) or MelonLoader mod (IL2CPP) is loaded and listening on
+    <code>ws://127.0.0.1:18590</code>. Outcome: connect once, evaluate a live runtime value, then
+    call stable typed commands through the same session.
   </p>
 
   <div class="example">
@@ -133,55 +133,78 @@
   </div>
 </section>
 
-<!-- ── Integration paths ────────────────────────────────────────────────── -->
-<section class="section">
-  <h2 class="section-title">Integration paths</h2>
-  <div class="table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>Path</th>
-          <th>Use for</th>
-          <th>Entry</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>Raw eval</td>
-          <td>Interactive inspection, one-off repair</td>
-          <td><code>session.eval()</code> / <code>hotrepl eval</code></td>
-        </tr>
-        <tr>
-          <td>Typed commands</td>
-          <td>Automation, exports, repeatable tests</td>
-          <td><code>session.run()</code> / <code>command_call</code></td>
-        </tr>
-        <tr>
-          <td>C# SDK</td>
-          <td>.NET build tools and automation</td>
-          <td><code>HotRepl.Sdk</code></td>
-        </tr>
-        <tr>
-          <td>CLI</td>
-          <td>Shell scripts, local workflows</td>
-          <td><code>@hotrepl/cli</code></td>
-        </tr>
-        <tr>
-          <td>MCP</td>
-          <td>AI agent tool catalog</td>
-          <td><code>@hotrepl/mcp</code></td>
-        </tr>
-        <tr>
-          <td>Host embedding</td>
-          <td>New loader adapters, test hosts</td>
-          <td><code>IReplHost</code> + <code>ReplEngine.Tick()</code></td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-  <p class="section-lead" style="margin-top: 1rem;">
-    Authoring typed commands? See <a href="https://github.com/glockyco/HotRepl/blob/main/docs/authoring-commands.md" rel="noopener noreferrer">docs/authoring-commands.md</a> for handler shapes, artifact attachment, and testing with <code>HandlerHarness</code>.
+<!-- ── Choose your path ────────────────────────────────────────────────── -->
+<section class="section" id="paths">
+  <h2 class="section-title">Choose your path</h2>
+  <p class="section-lead">
+    Start from the surface that matches the job. All paths use the same loopback runtime and typed
+    command catalog.
   </p>
+
+  <div class="path-grid">
+    <a
+      class="path-card"
+      href="https://github.com/glockyco/HotRepl/tree/main/packages/sdk"
+      rel="noopener noreferrer"
+    >
+      <span class="path-card__label">TypeScript SDK</span>
+      <strong>App and controller automation</strong>
+      <code>@hotrepl/sdk</code>
+    </a>
+    <a
+      class="path-card"
+      href="https://github.com/glockyco/HotRepl/tree/main/src/HotRepl.Sdk"
+      rel="noopener noreferrer"
+    >
+      <span class="path-card__label">C# SDK</span>
+      <strong>.NET build tools and tests</strong>
+      <code>HotRepl.Sdk</code>
+    </a>
+    <a
+      class="path-card"
+      href="https://github.com/glockyco/HotRepl/tree/main/packages/cli"
+      rel="noopener noreferrer"
+    >
+      <span class="path-card__label">CLI</span>
+      <strong>Shell scripts and local workflows</strong>
+      <code>@hotrepl/cli</code>
+    </a>
+    <a
+      class="path-card"
+      href="https://github.com/glockyco/HotRepl/tree/main/packages/mcp"
+      rel="noopener noreferrer"
+    >
+      <span class="path-card__label">MCP</span>
+      <strong>Coding-agent tool catalog</strong>
+      <code>@hotrepl/mcp</code>
+    </a>
+    <a
+      class="path-card"
+      href="https://github.com/glockyco/HotRepl/blob/main/docs/authoring-commands.md"
+      rel="noopener noreferrer"
+    >
+      <span class="path-card__label">Author typed commands</span>
+      <strong>Host-side typed automation</strong>
+      <code>docs/authoring-commands.md</code>
+    </a>
+    <a class="path-card" href="/protocol/">
+      <span class="path-card__label">Protocol reference</span>
+      <strong>Client implementation and frame debugging</strong>
+      <code>command_call</code>
+    </a>
+  </div>
+</section>
+
+<!-- ── Artifacts ───────────────────────────────────────────────────────── -->
+<section class="section">
+  <div class="callout">
+    <h2>Artifacts are references, not payloads</h2>
+    <p>
+      Typed commands return artifact refs with <code>uri</code>, <code>path</code>,
+      <code>sha256</code>, <code>byteSize</code>, and <code>finalized</code>. Large files stay on
+      disk; clients receive stable metadata they can verify, stream, or hand to build pipelines.
+    </p>
+  </div>
 </section>
 
 <!-- ── Real consumers ─────────────────────────────────────────────────── -->
@@ -194,7 +217,7 @@
       rel="noopener noreferrer"
     >
       <strong>Ardenfall Compendium</strong>
-      <span>BepInEx/Mono path — reference consumer for typed commands and snapshot artifacts</span>
+      <span>BepInEx/Mono path — typed export commands with snapshot artifact references</span>
     </a>
     <a
       class="consumer-card"
@@ -202,7 +225,7 @@
       rel="noopener noreferrer"
     >
       <strong>Ancient Kingdoms Compendium</strong>
-      <span>MelonLoader/IL2CPP path — reference consumer for data export orchestration</span>
+      <span>MelonLoader/IL2CPP path — job-style export orchestration and artifact-driven data capture</span>
     </a>
   </div>
 </section>
@@ -427,37 +450,81 @@
     color: var(--accent);
   }
 
-  /* ── Table ── */
-  .table-wrap {
-    overflow-x: auto;
+  /* ── Path cards ── */
+  .path-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
   }
 
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.875rem;
+  @media (max-width: 900px) {
+    .path-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
   }
 
-  th {
-    text-align: left;
-    padding: 8px 12px;
-    border-bottom: 1px solid var(--border);
-    color: var(--muted);
-    font-weight: 600;
-    font-size: 0.8125rem;
+  @media (max-width: 640px) {
+    .path-grid {
+      grid-template-columns: 1fr;
+    }
   }
 
-  td {
-    padding: 10px 12px;
-    border-bottom: 1px solid var(--border);
-    color: var(--text);
-    vertical-align: top;
+  .path-card {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    text-decoration: none;
+    transition: border-color 0.15s, transform 0.15s;
   }
 
-  td:first-child {
-    font-weight: 600;
+  .path-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-1px);
+  }
+
+  .path-card__label {
+    font-size: 0.6875rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
     color: var(--accent);
-    white-space: nowrap;
+  }
+
+  .path-card strong {
+    color: var(--text);
+    font-size: 0.9375rem;
+    line-height: 1.35;
+  }
+
+  .path-card code {
+    align-self: flex-start;
+  }
+
+  /* ── Callout ── */
+  .callout {
+    background: linear-gradient(135deg, var(--accent-dim), transparent 60%), var(--surface);
+    border: 1px solid var(--accent-dim);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+  }
+
+  .callout h2 {
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+
+  .callout p {
+    color: var(--muted);
+    font-size: 0.9375rem;
+    line-height: 1.7;
+    margin: 0;
   }
 
   code {
