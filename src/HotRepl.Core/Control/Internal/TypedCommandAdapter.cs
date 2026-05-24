@@ -1,0 +1,136 @@
+using System;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using HotRepl.Control.Artifacts;
+using HotRepl.Control.Schema;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+
+namespace HotRepl.Control.Internal;
+
+/// <summary>
+/// Bridges a typed handler into the internal compiled-command shape the
+/// router consumes. Validates args server-side, deserializes typed
+/// args, runs the handler on the captured synchronization context, and
+/// projects the typed result back to the wire shape.
+/// </summary>
+internal sealed class TypedCommandAdapter<TArgs, TOutput> : ICompiledControlCommand
+{
+    private readonly IControlCommandHandler<TArgs, TOutput> _inner;
+    private readonly JsonSerializer _serializer;
+    private readonly IControlCommandValidator _validator;
+
+    public TypedCommandAdapter(
+        IControlCommandHandler<TArgs, TOutput> inner,
+        JsonSerializer serializer,
+        IControlCommandValidator validator
+    )
+    {
+        _inner = inner ?? throw new ArgumentNullException(nameof(inner));
+        _serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
+        _validator = validator ?? throw new ArgumentNullException(nameof(validator));
+        Descriptor = new ControlCommandDescriptor(
+            name: inner.Name,
+            version: inner.Version,
+            kind: inner.Kind,
+            mutatesState: inner.MutatesState,
+            argsSchema: SchemaCache.For<TArgs>(),
+            resultSchema: SchemaCache.For<TOutput>(),
+            artifactsSchema: SchemaCache.AnyObject
+        );
+    }
+
+    /// <inheritdoc />
+    public ControlCommandDescriptor Descriptor { get; }
+
+    /// <inheritdoc />
+    public async ValueTask<CompiledCommandResult> ExecuteAsync(
+        CompiledCommandContext compiledContext,
+        JObject args,
+        CancellationToken cancellationToken
+    )
+    {
+        // 1. Validate against the descriptor's args schema.
+        var validation = _validator.Validate(args, Descriptor.ArgsSchema);
+        if (!validation.Ok)
+        {
+            return new CompiledCommandResult(
+                Succeeded: false,
+                Output: new JObject(),
+                Artifacts: Array.Empty<ArtifactRef>(),
+                Diagnostics: new[] { validation.ToDiagnostic() }
+            );
+        }
+
+        // 2. Deserialize typed args (EmptyArgs is special-cased).
+        TArgs typedArgs;
+        if (typeof(TArgs) == typeof(EmptyArgs))
+        {
+            typedArgs = default!;
+        }
+        else
+        {
+            typedArgs =
+                args.ToObject<TArgs>(_serializer)
+                ?? throw new InvalidOperationException(
+                    $"Newtonsoft deserialized {typeof(TArgs).Name} as null."
+                );
+        }
+
+        // 3. Build the typed context.
+        IProgress<ControlCommandProgress> progress = compiledContext.ProgressSink is null
+            ? SilentProgress.Instance
+            : new ProgressSinkAdapter(compiledContext.ProgressSink);
+
+        var typedContext = new ControlCommandContext(
+            requestId: compiledContext.RequestId,
+            timeout: compiledContext.Timeout,
+            jobId: compiledContext.JobId,
+            progress: progress,
+            artifacts: compiledContext.Artifacts
+        );
+
+        // 4. Run the handler. ConfigureAwait(true) keeps continuations
+        //    on the Unity sync context.
+        var typedResult = await _inner
+            .ExecuteAsync(typedContext, typedArgs, cancellationToken)
+            .ConfigureAwait(true);
+
+        // 5. Project the typed result to the wire shape.
+        var outputJson = typedResult.Output is null
+            ? new JObject()
+            : JObject.FromObject(typedResult.Output, _serializer);
+
+        var artifactList = typedResult.Artifacts.Values.ToArray();
+        var diagnostics = typedResult.Diagnostics.Select(ToError).ToArray();
+
+        return new CompiledCommandResult(
+            Succeeded: typedResult.Succeeded,
+            Output: outputJson,
+            Artifacts: artifactList,
+            Diagnostics: diagnostics
+        );
+    }
+
+    private static ControlCommandError ToError(ControlCommandDiagnostic diagnostic) =>
+        new(
+            Kind: DiagnosticKindToWire(diagnostic.Kind),
+            Code: diagnostic.Code,
+            Message: diagnostic.Message,
+            Retryable: diagnostic.Retryable,
+            Details: diagnostic.Details is null ? null : JObject.FromObject(diagnostic.Details)
+        );
+
+    private static string DiagnosticKindToWire(ControlCommandDiagnosticKind kind) =>
+        kind switch
+        {
+            ControlCommandDiagnosticKind.Info => "info",
+            ControlCommandDiagnosticKind.Warning => "warning",
+            ControlCommandDiagnosticKind.ValidationFailed => "validation_failed",
+            ControlCommandDiagnosticKind.PreconditionFailed => "precondition_failed",
+            ControlCommandDiagnosticKind.Conflict => "conflict",
+            ControlCommandDiagnosticKind.Cancelled => "cancelled",
+            _ => "internal",
+        };
+}
