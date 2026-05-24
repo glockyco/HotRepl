@@ -11,6 +11,7 @@ namespace HotRepl.UnityCommands.Commands;
 
 /// <summary>Captures the current frame as a PNG command artifact.</summary>
 [ControlCommand(UnityCommandCatalogNames.ScreenshotCapture, Kind = ControlCommandKind.Job)]
+[ControlCommandArtifact("screenshot", ContentType = "image/png", Required = true)]
 public sealed class UnityScreenshotCommand
     : IControlCommandHandler<UnityScreenshotArgs, UnityScreenshotResult>
 {

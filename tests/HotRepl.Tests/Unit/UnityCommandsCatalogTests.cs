@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Linq;
 using HotRepl.Control;
 using HotRepl.UnityCommands;
@@ -38,5 +39,38 @@ public sealed class UnityCommandsCatalogTests
         );
         Assert.False(descriptors[UnityCommandCatalogNames.ScreenshotCapture].MutatesState);
         Assert.True(descriptors[UnityCommandCatalogNames.TimeSetScale].MutatesState);
+    }
+
+    [Fact]
+    public void ScreenshotCommand_SourceDeclaresScreenshotArtifact()
+    {
+        var source = File.ReadAllText(
+            FindRepoFile("src/HotRepl.UnityCommands/Commands/UnityScreenshotCommand.cs")
+        );
+
+        Assert.Contains(
+            "[ControlCommandArtifact(\"screenshot\", ContentType = \"image/png\", Required = true)]",
+            source,
+            StringComparison.Ordinal
+        );
+    }
+
+    private static string FindRepoFile(string relativePath)
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory != null)
+        {
+            var candidate = Path.Combine(directory.FullName, relativePath);
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new FileNotFoundException(
+            $"Could not find repository file '{relativePath}' from '{AppContext.BaseDirectory}'."
+        );
     }
 }
