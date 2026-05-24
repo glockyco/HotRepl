@@ -17,5 +17,6 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="HotRepl.Sdk.Tests" />
+    <InternalsVisibleTo Include="HotRepl.Testing.Tests" />
   </ItemGroup>
 </Project>
