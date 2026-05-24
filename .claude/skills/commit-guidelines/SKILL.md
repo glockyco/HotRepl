@@ -36,8 +36,14 @@ fix(core): remove off-by-one in subscription frame counter
 
 - `core` — `HotRepl.Core` (engine, evaluator, protocol, server, subscriptions)
 - `bepinex` — `HotRepl.BepInEx` adapter
-- `protocol` — wire types and serialisation specifically
-- `client` — Python reference client and `hotrepl` CLI
+- `melonloader` — `HotRepl.Host.MelonLoader` adapter
+- `protocol` — wire types and serialization (C# `HotRepl.Protocol` and TS `@hotrepl/protocol`)
+- `sdk` — TS `@hotrepl/sdk` or C# `HotRepl.Sdk`
+- `cli` — `@hotrepl/cli`
+- `mcp` — `@hotrepl/mcp`
+- `testing` — `@hotrepl/testing` or `HotRepl.Testing`
+- `unity-commands` — shared `HotRepl.UnityCommands` catalog and its loader-specific sample projects
+- `site` — HotRepl marketing/docs site under `site/`
 - `tests` — xUnit test suite
 - `skill` — `.claude/skills/`
 

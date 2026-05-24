@@ -1,6 +1,6 @@
 ---
 name: bootstrap-worktree
-description: Use when starting work in a fresh git worktree, or when build/test failures point at missing Unity DLLs, missing dotnet tools, or a missing Python venv in this checkout.
+description: Use when starting work in a fresh git worktree, or when build/test failures point at missing Unity DLLs, missing dotnet tools, or an unpopulated `node_modules/` in this checkout.
 ---
 
 # Bootstrap Worktree
@@ -10,7 +10,7 @@ Fresh git worktrees contain tracked files only. HotRepl also needs:
 - gitignored Unity DLLs in `lib/` and `src/HotRepl.BepInEx/lib/` (for the BepInEx host build)
 - optional `Local.props`
 - restored `.dotnet/tools/` (csharpier)
-- `client/.venv/` from `uv sync` (until the Python client is removed)
+- `node_modules/` from `bun install --frozen-lockfile` (for TypeScript packages)
 
 before builds and tests are meaningful.
 
@@ -19,7 +19,7 @@ before builds and tests are meaningful.
 Run from the worktree root:
 
 ```bash
-scripts/bootstrap-worktree.sh [--source <trusted-checkout>] [--no-python]
+scripts/bootstrap-worktree.sh [--source <trusted-checkout>]
 ```
 
 `--source` is required only if you intend to build the BepInEx host in this worktree. For Core-only
@@ -29,7 +29,7 @@ The script:
 
 - never overwrites tracked files
 - only links missing gitignored inputs from `<trusted-checkout>`
-- always runs `dotnet tool restore` and (unless `--no-python`) `uv sync` inside `client/`
+- always runs `dotnet tool restore` and `bun install --frozen-lockfile`
 - prints a final verification report listing what is present and what is still missing
 
 ## Failure classification
@@ -38,8 +38,8 @@ Before bootstrap succeeds, these are setup failures, not code failures:
 
 - `csharpier: command not found`
 - `dotnet build src/HotRepl.BepInEx/` fails with missing `UnityEngine.*` references
-- `uv: command not found` (install `uv` first)
-- `pytest`/`uv run` errors caused by an absent `client/.venv/`
+- `bun: command not found` (install Bun first)
+- `bun test packages/*/test` errors caused by an absent `node_modules/`
 
 After bootstrap succeeds, remaining failures are code or data issues and should be debugged
 normally.
@@ -48,7 +48,7 @@ normally.
 
 - Project-local worktrees live under `.worktrees/<branch-name>` (gitignored).
 - One branch per worktree; do not check out the same branch in two worktrees.
-- Each worktree maintains its own `bin/`, `obj/`, `.dotnet/tools/`, `client/.venv/`.
+- Each worktree maintains its own `bin/`, `obj/`, `.dotnet/tools/`, `node_modules/`.
 
 If you have a "primary" checkout that already contains Unity DLLs, point `--source` at it to share
 those large binaries via symlinks rather than copying.
