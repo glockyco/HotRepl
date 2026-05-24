@@ -6,32 +6,36 @@ using System.Threading.Tasks;
 namespace HotRepl.Control.Artifacts;
 
 /// <summary>
-/// Writes binary artifacts produced by a control-command handler.
-/// Implementations live in <c>HotRepl.Core</c> and route to the host's
-/// configured artifact store (typically a temp directory under the
-/// game's plugin folder). Handlers retrieve the writer via
-/// <c>ControlCommandContext.Artifacts</c>; the returned
-/// <see cref="ArtifactRef"/> goes into
-/// <c>ControlCommandResult&lt;TOutput&gt;.Artifacts</c>.
+/// Authoring-time surface for attaching artifacts to a command result.
+/// Handlers receive this writer via the command context and attach
+/// top-level artifact references by logical name.
 /// </summary>
 /// <remarks>
-/// Two writes with the same <c>logicalName</c> within one handler
+/// Two attachments with the same <c>logicalName</c> within one handler
 /// invocation: the second replaces the first.
 /// </remarks>
 public interface IArtifactWriter
 {
-    /// <summary>Persist the given byte buffer under <paramref name="logicalName"/>.</summary>
-    ValueTask<ArtifactRef> WriteAsync(
+    /// <summary>Attach an in-memory byte buffer under <paramref name="logicalName"/>.</summary>
+    ValueTask<ArtifactRef> AttachBytesAsync(
         string logicalName,
-        ReadOnlyMemory<byte> bytes,
+        ReadOnlyMemory<byte> data,
         string contentType = "application/octet-stream",
         CancellationToken cancellationToken = default
     );
 
-    /// <summary>Persist the stream contents under <paramref name="logicalName"/>.</summary>
-    ValueTask<ArtifactRef> WriteStreamAsync(
+    /// <summary>Attach the contents of <paramref name="stream"/> under <paramref name="logicalName"/>.</summary>
+    ValueTask<ArtifactRef> AttachStreamAsync(
         string logicalName,
         Stream stream,
+        string contentType = "application/octet-stream",
+        CancellationToken cancellationToken = default
+    );
+
+    /// <summary>Attach an existing file under <paramref name="logicalName"/>.</summary>
+    ValueTask<ArtifactRef> AttachFileAsync(
+        string logicalName,
+        string path,
         string contentType = "application/octet-stream",
         CancellationToken cancellationToken = default
     );

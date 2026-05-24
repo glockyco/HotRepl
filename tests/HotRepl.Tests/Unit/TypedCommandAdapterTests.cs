@@ -172,7 +172,7 @@ public class TypedCommandAdapterTests
         )
         {
             var bytes = Encoding.UTF8.GetBytes("manifest content");
-            var artifact = await context.Artifacts.WriteAsync(
+            var artifact = await context.Artifacts.AttachBytesAsync(
                 "manifest",
                 bytes,
                 "text/plain",

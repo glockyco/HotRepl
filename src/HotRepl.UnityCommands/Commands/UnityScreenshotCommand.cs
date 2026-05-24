@@ -54,7 +54,12 @@ public sealed class UnityScreenshotCommand
 
         var screenshot = capture.Screenshot;
         var artifact = await context
-            .Artifacts.WriteAsync("screenshot", screenshot.Png, "image/png", cancellationToken)
+            .Artifacts.AttachBytesAsync(
+                "screenshot",
+                screenshot.Png,
+                "image/png",
+                cancellationToken
+            )
             .ConfigureAwait(true);
 
         return context.Ok(
