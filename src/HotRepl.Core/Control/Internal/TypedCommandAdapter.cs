@@ -104,12 +104,14 @@ internal sealed class TypedCommandAdapter<TArgs, TOutput> : ICompiledControlComm
             );
     }
 
-    private static ControlCommandContext BuildHandlerContext(CompiledCommandContext compiled)
+    private static ControlCommandContext<TOutput> BuildHandlerContext(
+        CompiledCommandContext compiled
+    )
     {
         IProgress<ControlCommandProgress> progress = compiled.ProgressSink is null
             ? SilentProgress.Instance
             : new ProgressSinkAdapter(compiled.ProgressSink);
-        return new ControlCommandContext(
+        return new ControlCommandContext<TOutput>(
             requestId: compiled.RequestId,
             timeout: compiled.Timeout,
             jobId: compiled.JobId,

@@ -44,7 +44,7 @@ public interface IControlCommandHandler<TArgs, TOutput>
     /// <see cref="System.Threading.SynchronizationContext"/>.
     /// </summary>
     ValueTask<ControlCommandResult<TOutput>> ExecuteAsync(
-        ControlCommandContext context,
+        ControlCommandContext<TOutput> context,
         TArgs args,
         CancellationToken cancellationToken
     );
