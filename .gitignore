@@ -8,7 +8,7 @@ obj/
 lib/Mono.CSharp.dll
 src/HotRepl.BepInEx/lib/
 Local.props
-artifacts/
+/artifacts/
 
 # JavaScript / TypeScript
 node_modules/
