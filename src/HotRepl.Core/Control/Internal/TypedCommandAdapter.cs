@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using HotRepl.Control.Artifacts;
@@ -43,7 +44,7 @@ internal sealed class TypedCommandAdapter<TArgs, TOutput> : ICompiledControlComm
             mutatesState: attribute?.MutatesState ?? inner.MutatesState,
             argsSchema: SchemaCache.For<TArgs>(),
             resultSchema: SchemaCache.For<TOutput>(),
-            artifactsSchema: SchemaCache.AnyObject
+            artifactsSchema: BuildArtifactsSchema(inner.GetType())
         );
     }
 
@@ -134,6 +135,67 @@ internal sealed class TypedCommandAdapter<TArgs, TOutput> : ICompiledControlComm
             Retryable: diagnostic.Retryable,
             Details: diagnostic.Details is null ? null : JObject.FromObject(diagnostic.Details)
         );
+
+    private static JObject BuildArtifactsSchema(Type handlerType)
+    {
+        var attributes = handlerType
+            .GetCustomAttributes(typeof(ControlCommandArtifactAttribute), inherit: false)
+            .Cast<ControlCommandArtifactAttribute>()
+            .ToArray();
+
+        if (attributes.Length == 0)
+        {
+            return SchemaCache.AnyObject;
+        }
+
+        var schema = new JObject
+        {
+            ["type"] = "object",
+            ["patternProperties"] = new JObject(),
+            ["required"] = new JArray(),
+            ["additionalProperties"] = false,
+        };
+
+        var patternProperties = (JObject)schema["patternProperties"]!;
+        var required = (JArray)schema["required"]!;
+
+        foreach (var attribute in attributes)
+        {
+            patternProperties[ConvertKeyPatternToRegex(attribute.KeyPattern)] = new JObject
+            {
+                ["type"] = "object",
+                ["properties"] = new JObject
+                {
+                    ["uri"] = new JObject { ["type"] = "string" },
+                    ["path"] = new JObject { ["type"] = new JArray("string", "null") },
+                    ["sha256"] = new JObject { ["type"] = "string" },
+                    ["byteSize"] = new JObject { ["type"] = "integer" },
+                    ["contentType"] = new JObject
+                    {
+                        ["type"] = "string",
+                        ["const"] = attribute.ContentType,
+                    },
+                    ["finalized"] = new JObject { ["type"] = "boolean" },
+                },
+                ["required"] = new JArray("uri", "sha256", "byteSize", "contentType", "finalized"),
+                ["additionalProperties"] = true,
+            };
+
+            if (attribute.Required && !attribute.KeyPattern.Contains('<'))
+            {
+                required.Add(attribute.KeyPattern);
+            }
+        }
+
+        return schema;
+    }
+
+    private static string ConvertKeyPatternToRegex(string keyPattern)
+    {
+        return "^"
+            + Regex.Escape(keyPattern).Replace("<stem>", "[^.]+", StringComparison.Ordinal)
+            + "$";
+    }
 
     private static string DiagnosticKindToWire(ControlCommandDiagnosticKind kind) =>
         kind switch
