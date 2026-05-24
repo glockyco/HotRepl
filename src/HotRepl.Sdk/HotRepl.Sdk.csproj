@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <AssemblyName>HotRepl.Sdk</AssemblyName>
+    <RootNamespace>HotRepl.Sdk</RootNamespace>
+    <PackageId>HotRepl.Sdk</PackageId>
+    <Version>1.0.0</Version>
+    <Description>First-party C# SDK for the HotRepl typed-command protocol.</Description>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../HotRepl.Protocol/HotRepl.Protocol.csproj" />
+    <PackageReference Include="Newtonsoft.Json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="HotRepl.Sdk.Tests" />
+  </ItemGroup>
+</Project>
