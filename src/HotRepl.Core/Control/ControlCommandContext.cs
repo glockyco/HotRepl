@@ -4,7 +4,7 @@ using HotRepl.Control.Artifacts;
 namespace HotRepl.Control;
 
 /// <summary>Per-invocation context handed to a typed command handler.</summary>
-public sealed class ControlCommandContext
+public class ControlCommandContext
 {
     /// <summary>Construct a context. Hosts and the adapter populate this; handlers receive it.</summary>
     public ControlCommandContext(
