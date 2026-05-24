@@ -13,6 +13,7 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryType>git</RepositoryType>
     <IsPackable>true</IsPackable>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
   <ItemGroup>
@@ -24,7 +25,7 @@
 
     <!-- JSON schema generation (ILRepack-internalized) -->
     <PackageReference Include="NJsonSchema" PrivateAssets="all" />
-    <PackageReference Include="Namotion.Reflection" PrivateAssets="all" />
+    <PackageReference Include="Namotion.Reflection" />
 
     <!-- ILRepack for internalizing NJsonSchema + Namotion.Reflection -->
     <PackageReference Include="ILRepack.Lib.MSBuild.Task" PrivateAssets="all" />

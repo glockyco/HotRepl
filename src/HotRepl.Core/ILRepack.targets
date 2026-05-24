@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <!--
+    Merge NJsonSchema into HotRepl.Core.dll so consumers see one Core DLL
+    plus its small consumer-facing dependency set:
+      Newtonsoft.Json (consumer-facing serializer)
+      Fleck (WebSocket server)
+      Namotion.Reflection (NJsonSchema's reflection helper; carries its
+        own IsExternalInit polyfill — internalizing it collides with
+        Core's polyfill, so it stays as a normal transitive dependency).
+  -->
+  <Target Name="ILRepackCore" AfterTargets="Build">
+    <PropertyGroup>
+      <CoreOutput>$(OutputPath)HotRepl.Core.dll</CoreOutput>
+    </PropertyGroup>
+    <ItemGroup>
+      <ILRepackInput Include="$(CoreOutput)" />
+      <ILRepackInput Include="$(OutputPath)NJsonSchema.dll" />
+    </ItemGroup>
+    <ItemGroup>
+      <ILRepackDoNotInternalize Include="HotRepl.Protocol" />
+      <ILRepackDoNotInternalize Include="Newtonsoft.Json" />
+      <ILRepackDoNotInternalize Include="Microsoft.CSharp" />
+      <ILRepackDoNotInternalize Include="UnityEngine" />
+      <ILRepackDoNotInternalize Include="UnityEngine.CoreModule" />
+      <ILRepackDoNotInternalize Include="BepInEx" />
+      <ILRepackDoNotInternalize Include="MelonLoader" />
+      <ILRepackDoNotInternalize Include="Fleck" />
+      <ILRepackDoNotInternalize Include="netstandard" />
+      <ILRepackDoNotInternalize Include="mscorlib" />
+      <ILRepackDoNotInternalize Include="System" />
+      <ILRepackDoNotInternalize Include="System.Core" />
+      <ILRepackDoNotInternalize Include="System.Runtime" />
+    </ItemGroup>
+    <ItemGroup>
+      <ILRepackLibPath Include="$(OutputPath)" />
+    </ItemGroup>
+    <ILRepack
+      Parallel="true"
+      Internalize="true"
+      InternalizeExclude="@(ILRepackDoNotInternalize)"
+      LibraryPath="@(ILRepackLibPath)"
+      InputAssemblies="@(ILRepackInput)"
+      TargetKind="Dll"
+      OutputFile="$(CoreOutput)"
+    />
+    <!-- Clean up side-by-side DLLs so consumer deploy scripts that copy
+         "everything in bin" only see the merged Core + consumer-facing deps.
+         Namotion.Reflection's transitive package (System.*, Microsoft.CSharp)
+         brings BCL facades that Unity/Mono already provides. -->
+    <ItemGroup>
+      <_HotReplCoreKeep Include="HotRepl.Core.dll" />
+      <_HotReplCoreKeep Include="HotRepl.Core.pdb" />
+      <_HotReplCoreKeep Include="HotRepl.Core.xml" />
+      <_HotReplCoreKeep Include="HotRepl.Core.deps.json" />
+      <_HotReplCoreKeep Include="HotRepl.Protocol.dll" />
+      <_HotReplCoreKeep Include="HotRepl.Protocol.pdb" />
+      <_HotReplCoreKeep Include="HotRepl.Protocol.xml" />
+      <_HotReplCoreKeep Include="Newtonsoft.Json.dll" />
+      <_HotReplCoreKeep Include="Fleck.dll" />
+      <_HotReplCoreKeep Include="Namotion.Reflection.dll" />
+      <_HotReplCoreOutputs Include="$(OutputPath)*.dll" />
+      <_HotReplCoreOutputs Include="$(OutputPath)*.pdb" />
+      <_HotReplCoreOutputs Include="$(OutputPath)*.xml" />
+      <_HotReplCoreDelete
+        Include="@(_HotReplCoreOutputs)"
+        Exclude="@(_HotReplCoreKeep -> '$(OutputPath)%(Identity)')"
+      />
+    </ItemGroup>
+    <Delete Files="@(_HotReplCoreDelete)" />
+  </Target>
+</Project>
