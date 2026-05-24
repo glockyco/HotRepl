@@ -916,7 +916,8 @@ and avoids the genuine difficulty of safely tearing down handlers mid-flight whi
 
 A separate GitHub repo (must be separate — `Use this template` is a whole-repo GitHub feature). It
 demonstrates the canonical authoring pattern using shared-source compilation, the same way
-UnityCommands does. No `MyMod.Core` csproj with a Unity dependency.
+UnityCommands does. No `MyMod.Core` csproj with a Unity dependency; the loader projects reference
+vendored HotRepl 3.0 assemblies with `Private=false`.
 
 ### 8.1 Layout
 
@@ -944,9 +945,11 @@ hotrepl-mod-template/
 │   ├── deploy-bepinex.sh
 │   └── deploy-melonloader.sh
 ├── .editorconfig
+├── .gitattributes                         ← LF normalization + binary DLL attributes
 ├── .gitignore
 ├── Directory.Build.props                   ← shared TFM, treat warnings as errors
 ├── Local.props.example                     ← game-path config (gitignored real file)
+├── vendor/hotrepl/                          ← HotRepl 3.0 reference assemblies until NuGet publishing exists
 ├── LICENSE
 ├── MyMod.sln
 └── README.md
@@ -1069,11 +1072,11 @@ The Phase 1 work is done when:
   `HotRepl.Protocol.dll`, `Newtonsoft.Json.dll`, `Fleck.dll`, and `Namotion.Reflection.dll` are
   present.
 - A fresh BepInEx install with `HotRepl.BepInEx.dll` and `HotRepl.UnityCommands.BepInEx.dll`
-  deployed: starting a game with the plugin loaded shows the 4 unity.* commands in
-  `bunx @hotrepl/cli list-commands` output.
+  deployed: `bunx @hotrepl/cli describe ...` succeeds for all 4 `unity.*` commands, and
+  `bunx @hotrepl/cli run unity.app.info '{}'` returns app metadata.
 - Same on the MelonLoader side with `HotRepl.UnityCommands.MelonLoader.dll`.
-- `dotnet new install` + `dotnet new hotrepl-mod -n SmokeTest` produces a project that
-  `dotnet build`s clean.
+- `dotnet new install` + `dotnet new hotrepl-mod -n SmokeTest` produces a project whose shared
+  source and both loader projects build cleanly when local Unity/Melon paths are supplied.
 - Server-side validation: piping
   `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"unity.time.set_scale","arguments":{"timeScale":-1}}}`
   through the MCP bin returns a `validation_failed` diagnostic, NOT a handler exception, and

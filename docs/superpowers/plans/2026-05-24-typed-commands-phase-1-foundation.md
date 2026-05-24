@@ -3480,7 +3480,7 @@ This validates the bundled deployment end-to-end against a real game. The MelonL
 the same pattern but is exercised in Phase 3 (AK migration) since AK is HotRepl's primary IL2CPP
 consumer.
 
-- [ ] **Step 1: Deploy to a BepInEx-instrumented game** (e.g., Ardenfall Demo via the existing
+- [x] **Step 1: Deploy to a BepInEx-instrumented game** (e.g., Ardenfall Demo via the existing
       `ardenfall-compendium` setup)
 
 ```bash
@@ -3488,15 +3488,18 @@ cd ~/Projects/ardenfall-compendium
 bun run hotrepl:setup
 ```
 
-- [ ] **Step 2: Launch the game** (via `bun run hotrepl:launch` or manual Steam launch)
+- [x] **Step 2: Launch the game** (via `bun run hotrepl:launch` or manual Steam launch)
 
-- [ ] **Step 3: Verify the 4 commands show up**
+- [x] **Step 3: Verify the 4 commands show up**
 
 From the HotRepl repo root with `/tmp/hotrepl-smoke` set up (per `scripts/verify-live-ardenfall.ts`
 instructions), or directly:
 
 ```bash
-bunx @hotrepl/cli list-commands
+bunx @hotrepl/cli describe unity.app.info
+bunx @hotrepl/cli describe unity.gameobject.find
+bunx @hotrepl/cli describe unity.time.set_scale
+bunx @hotrepl/cli describe unity.screenshot.capture
 ```
 
 Expected output:
@@ -3508,7 +3511,7 @@ unity.screenshot.capture
 unity.time.set_scale
 ```
 
-- [ ] **Step 4: Exercise each command**
+- [x] **Step 4: Exercise each command**
 
 ```bash
 bunx @hotrepl/cli run unity.app.info '{}'
@@ -3526,7 +3529,7 @@ bunx @hotrepl/cli run unity.screenshot.capture '{}'
 # → { "width": ..., "height": ..., "artifacts": { "screenshot": { ... } } }
 ```
 
-- [ ] **Step 5: Negative test — validation**
+- [x] **Step 5: Negative test — validation**
 
 ```bash
 bunx @hotrepl/cli run unity.time.set_scale '{"timeScale": -1}'
@@ -3535,7 +3538,7 @@ bunx @hotrepl/cli run unity.time.set_scale '{"timeScale": -1}'
 Expected: `status: "failed"`, diagnostic with kind `validation_failed`. Game's `Time.timeScale` is
 NOT changed.
 
-- [ ] **Step 6: Document results** in a one-paragraph note for the eventual verification spec, OR
+- [x] **Step 6: Document results** in a one-paragraph note for the eventual verification spec, OR
       commit a small snapshot of the working output to the spec doc.
 
 (No code commit at this step; manual verification only.)
@@ -3549,25 +3552,31 @@ directory is the new template repo unless stated otherwise.
 
 ### C1: Create the GitHub repository
 
-- [ ] **Step 1: Create the empty repo on GitHub**
+- [x] **Step 1: Create the empty repo on GitHub**
 
-Via the GitHub web UI: create `glockyco/hotrepl-mod-template`. Mark it as a "template repository" so
-the "Use this template" button is exposed. License: MIT. Description: "Scaffold for a HotRepl mod
-(BepInEx + MelonLoader)."
-
-- [ ] **Step 2: Clone locally**
+Created with GitHub CLI, marked as a template repo, public, MIT license, description "Scaffold for a
+HotRepl mod (BepInEx + MelonLoader)."
 
 ```bash
-cd ~/Projects
-git clone git@github.com:glockyco/hotrepl-mod-template.git
-cd hotrepl-mod-template
+gh repo create glockyco/hotrepl-mod-template --public \
+  --description "Scaffold for a HotRepl mod (BepInEx + MelonLoader)." \
+  --license MIT --clone
+gh repo edit glockyco/hotrepl-mod-template --template \
+  --add-topic hotrepl --add-topic bepinex --add-topic melonloader --add-topic unity
+```
+
+- [x] **Step 2: Clone locally**
+
+```bash
+cd ~/Projects/hotrepl-mod-template
+gh repo view glockyco/hotrepl-mod-template --json isTemplate,nameWithOwner,url,description
 ```
 
 ---
 
 ### C2: Repo skeleton (root files)
 
-- [ ] **Step 1: `.gitignore`**
+- [x] **Step 1: `.gitignore`**
 
 ```
 bin/
@@ -3579,7 +3588,14 @@ Local.props
 .DS_Store
 ```
 
-- [ ] **Step 2: `.editorconfig`**
+- [x] **Step 1a: `.gitattributes`**
+
+```gitattributes
+* text=auto eol=lf
+*.dll binary
+```
+
+- [x] **Step 2: `.editorconfig`**
 
 ```ini
 root = true
@@ -3596,7 +3612,7 @@ trim_trailing_whitespace = true
 indent_size = 2
 ```
 
-- [ ] **Step 3: `Directory.Build.props`**
+- [x] **Step 3: `Directory.Build.props`**
 
 ```xml
 <Project>
@@ -3605,6 +3621,7 @@ indent_size = 2
     <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <AnalysisMode>Recommended</AnalysisMode>
+    <HotReplVendorDir>$(MSBuildThisFileDirectory)vendor/hotrepl/</HotReplVendorDir>
   </PropertyGroup>
 
   <!-- Import Local.props if present for game-path overrides. -->
@@ -3613,7 +3630,7 @@ indent_size = 2
 </Project>
 ```
 
-- [ ] **Step 4: `Local.props.example`**
+- [x] **Step 4: `Local.props.example`**
 
 ```xml
 <!--
@@ -3623,19 +3640,20 @@ indent_size = 2
 <Project>
   <PropertyGroup>
     <!-- BepInEx game install (used by scripts/deploy-bepinex.sh) -->
-    <BepInExGamePath>/path/to/Game/with/BepInEx/plugins</BepInExGamePath>
+    <BepInExPluginPath>/path/to/Game/BepInEx/plugins</BepInExPluginPath>
+    <UnityManagedPath>/path/to/Game/Game_Data/Managed</UnityManagedPath>
 
     <!-- MelonLoader game install (used by scripts/deploy-melonloader.sh) -->
     <MelonLoaderPath>/path/to/Game/MelonLoader</MelonLoaderPath>
     <Il2CppAssembliesPath>/path/to/Game/MelonLoader/Il2CppAssemblies</Il2CppAssembliesPath>
-    <MelonLoaderGamePath>/path/to/Game/with/MelonLoader/Mods</MelonLoaderGamePath>
+    <MelonLoaderModsPath>/path/to/Game/Mods</MelonLoaderModsPath>
   </PropertyGroup>
 </Project>
 ```
 
-- [ ] **Step 5: `LICENSE`** — copy MIT text, year 2026, holder "glockyco"
+- [x] **Step 5: `LICENSE`** — copy MIT text, year 2026, holder "glockyco"
 
-- [ ] **Step 6: Initial commit**
+- [x] **Step 6: Initial commit**
 
 ```bash
 git add .gitignore .editorconfig Directory.Build.props Local.props.example LICENSE
@@ -3653,7 +3671,7 @@ git commit -m "chore: repo skeleton (gitignore, editorconfig, build props, licen
 - Create: `src/MyMod/Commands/HelloWorldCommand.cs`
 - Create: `src/MyMod/MyModCatalog.cs`
 
-- [ ] **Step 1: POCOs**
+- [x] **Step 1: POCOs**
 
 ```csharp
 // src/MyMod/Models/HelloWorldArgs.cs
@@ -3685,7 +3703,7 @@ public sealed class HelloWorldResult
 }
 ```
 
-- [ ] **Step 2: Handler**
+- [x] **Step 2: Handler**
 
 ```csharp
 // src/MyMod/Commands/HelloWorldCommand.cs
@@ -3730,7 +3748,7 @@ public sealed class HelloWorldCommand
 }
 ```
 
-- [ ] **Step 3: Catalog**
+- [x] **Step 3: Catalog**
 
 ```csharp
 // src/MyMod/MyModCatalog.cs
@@ -3752,7 +3770,7 @@ public static class MyModCatalog
 }
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/MyMod/
@@ -3769,7 +3787,7 @@ git commit -m "feat: demo HelloWorldCommand using IControlCommandHandler<TArgs, 
 - Create: `src/MyMod.BepInEx/Plugin.cs`
 - Create: `src/MyMod.BepInEx/PluginInfo.cs`
 
-- [ ] **Step 1: csproj**
+- [x] **Step 1: csproj**
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -3783,17 +3801,17 @@ git commit -m "feat: demo HelloWorldCommand using IControlCommandHandler<TArgs, 
 
   <ItemGroup>
     <PackageReference Include="BepInEx.Core" Version="5.4.21" PrivateAssets="all" />
-    <PackageReference Include="HotRepl.Core" Version="3.0.0" />
+    <!-- HotRepl 3.0 refs are vendored in vendor/hotrepl until public NuGet publishing exists. -->
   </ItemGroup>
 
-  <!-- Game's UnityEngine.dll. Set BepInExGamePath in Local.props. -->
+  <!-- Game's UnityEngine.dll. Set BepInExPluginPath in Local.props. -->
   <ItemGroup>
     <Reference Include="UnityEngine">
-      <HintPath>$(BepInExGamePath)/../../$(GameDataDir)/Managed/UnityEngine.dll</HintPath>
+      <HintPath>$(UnityManagedPath)/UnityEngine.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="UnityEngine.CoreModule">
-      <HintPath>$(BepInExGamePath)/../../$(GameDataDir)/Managed/UnityEngine.CoreModule.dll</HintPath>
+      <HintPath>$(UnityManagedPath)/UnityEngine.CoreModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
   </ItemGroup>
@@ -3805,9 +3823,9 @@ git commit -m "feat: demo HelloWorldCommand using IControlCommandHandler<TArgs, 
 </Project>
 ```
 
-(The `GameDataDir` token is game-specific; the README explains.)
+(The `UnityManagedPath` token is game-specific; the README explains.)
 
-- [ ] **Step 2: PluginInfo.cs**
+- [x] **Step 2: PluginInfo.cs**
 
 ```csharp
 // src/MyMod.BepInEx/PluginInfo.cs
@@ -3821,7 +3839,7 @@ internal static class PluginInfo
 }
 ```
 
-- [ ] **Step 3: Plugin.cs**
+- [x] **Step 3: Plugin.cs**
 
 ```csharp
 // src/MyMod.BepInEx/Plugin.cs
@@ -3867,7 +3885,7 @@ public sealed class Plugin : BaseUnityPlugin
 }
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/MyMod.BepInEx/
@@ -3883,7 +3901,7 @@ git commit -m "feat: BepInEx loader plugin scaffold"
 - Create: `src/MyMod.MelonLoader/MyMod.MelonLoader.csproj`
 - Create: `src/MyMod.MelonLoader/MyModMelonMod.cs`
 
-- [ ] **Step 1: csproj**
+- [x] **Step 1: csproj**
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -3896,7 +3914,7 @@ git commit -m "feat: BepInEx loader plugin scaffold"
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="HotRepl.Core" Version="3.0.0" />
+    <!-- HotRepl 3.0 refs are vendored in vendor/hotrepl until public NuGet publishing exists. -->
   </ItemGroup>
 
   <ItemGroup>
@@ -3921,7 +3939,7 @@ git commit -m "feat: BepInEx loader plugin scaffold"
 </Project>
 ```
 
-- [ ] **Step 2: MyModMelonMod.cs**
+- [x] **Step 2: MyModMelonMod.cs**
 
 ```csharp
 // src/MyMod.MelonLoader/MyModMelonMod.cs
@@ -3977,7 +3995,7 @@ public sealed class MyModMelonMod : MelonMod
 }
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/MyMod.MelonLoader/
@@ -3993,48 +4011,49 @@ git commit -m "feat: MelonLoader loader mod scaffold"
 - Create: `scripts/deploy-bepinex.sh`
 - Create: `scripts/deploy-melonloader.sh`
 
-- [ ] **Step 1: `scripts/deploy-bepinex.sh`**
+- [x] **Step 1: `scripts/deploy-bepinex.sh`**
 
 ```bash
 #!/usr/bin/env bash
 # Builds the BepInEx loader and copies the DLL into the game's plugin folder.
-# Reads BepInExGamePath from Local.props.
+# Reads BepInExPluginPath from Local.props.
 set -euo pipefail
 
-GAME_PATH=$(grep -oE 'BepInExGamePath>[^<]+' Local.props | cut -d'>' -f2)
-if [[ -z "$GAME_PATH" ]]; then
-  echo "Set BepInExGamePath in Local.props (copy from Local.props.example)." >&2
+PLUGIN_PATH=$(dotnet msbuild src/MyMod.BepInEx/MyMod.BepInEx.csproj -nologo -getProperty:BepInExPluginPath)
+if [[ -z "$PLUGIN_PATH" ]]; then
+  echo "Set BepInExPluginPath in Local.props (copy from Local.props.example)." >&2
   exit 1
 fi
 
 dotnet build src/MyMod.BepInEx -c Debug --nologo -v q
 
-DEST="$GAME_PATH/MyMod"
+DEST="$PLUGIN_PATH/MyMod"
 mkdir -p "$DEST"
 cp -f src/MyMod.BepInEx/bin/Debug/netstandard2.1/MyMod.BepInEx.dll "$DEST/"
 echo "Deployed MyMod.BepInEx.dll to $DEST"
 ```
 
-- [ ] **Step 2: `scripts/deploy-melonloader.sh`**
+- [x] **Step 2: `scripts/deploy-melonloader.sh`**
 
 ```bash
 #!/usr/bin/env bash
 # Builds the MelonLoader loader and copies the DLL into the game's Mods folder.
 set -euo pipefail
 
-GAME_PATH=$(grep -oE 'MelonLoaderGamePath>[^<]+' Local.props | cut -d'>' -f2)
-if [[ -z "$GAME_PATH" ]]; then
-  echo "Set MelonLoaderGamePath in Local.props (copy from Local.props.example)." >&2
+MODS_PATH=$(dotnet msbuild src/MyMod.MelonLoader/MyMod.MelonLoader.csproj -nologo -getProperty:MelonLoaderModsPath)
+if [[ -z "$MODS_PATH" ]]; then
+  echo "Set MelonLoaderModsPath in Local.props (copy from Local.props.example)." >&2
   exit 1
 fi
 
 dotnet build src/MyMod.MelonLoader -c Debug --nologo -v q
 
-cp -f src/MyMod.MelonLoader/bin/Debug/net6.0/MyMod.MelonLoader.dll "$GAME_PATH/"
-echo "Deployed MyMod.MelonLoader.dll to $GAME_PATH"
+mkdir -p "$MODS_PATH"
+cp -f src/MyMod.MelonLoader/bin/Debug/net6.0/MyMod.MelonLoader.dll "$MODS_PATH/"
+echo "Deployed MyMod.MelonLoader.dll to $MODS_PATH"
 ```
 
-- [ ] **Step 3: Make executable + commit**
+- [x] **Step 3: Make executable + commit**
 
 ```bash
 chmod +x scripts/deploy-bepinex.sh scripts/deploy-melonloader.sh
@@ -4048,7 +4067,7 @@ git commit -m "feat: deploy scripts for BepInEx and MelonLoader"
 
 **Files:** Create `.template.config/template.json`
 
-- [ ] **Step 1: Write the manifest**
+- [x] **Step 1: Write the manifest**
 
 ```json
 {
@@ -4082,19 +4101,21 @@ git commit -m "feat: deploy scripts for BepInEx and MelonLoader"
 }
 ```
 
-- [ ] **Step 2: Verify install + instantiate**
+- [x] **Step 2: Verify install + instantiate**
 
 ```bash
 dotnet new install ~/Projects/hotrepl-mod-template
 dotnet new hotrepl-mod -n SmokeTest -o /tmp/SmokeTest \
   --PluginGuid smoke.test --Author "Smoke Test"
-cd /tmp/SmokeTest && dotnet build src/SmokeTest.BepInEx --nologo -v q
+cd /tmp/SmokeTest && dotnet build /tmp/SmokeTest/SmokeTest.SharedSource.csproj --nologo -v q
 ```
 
-Expected: clean build. (Will fail on the UnityEngine reference if `Local.props` isn't set; that's
-expected — the test verifies the template parameters substituted correctly.)
+Expected: template installation succeeds, source-name and parameter substitution replace `MyMod`,
+`mymod`, `PLUGIN_GUID_PLACEHOLDER`, and `AUTHOR_PLACEHOLDER`, and the generated shared source builds
+against vendored HotRepl references. Loader builds were also smoke-tested locally with `Local.props`
+pointing at this machine's Unity/BepInEx and MelonLoader/IL2CPP reference assemblies.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 cd ~/Projects/hotrepl-mod-template
@@ -4108,7 +4129,7 @@ git commit -m "feat: dotnet new template manifest"
 
 **Files:** Create `.github/workflows/ci.yml`
 
-- [ ] **Step 1: Write the workflow**
+- [x] **Step 1: Write the workflow**
 
 ```yaml
 name: CI
@@ -4120,7 +4141,7 @@ on:
     branches: [main]
 
 jobs:
-  build:
+  template-smoke:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -4128,33 +4149,52 @@ jobs:
         with:
           dotnet-version: "10.x"
 
-      # The BepInEx project depends on UnityEngine.dll — provide a stub via
-      # the BepInEx.Unity.IL2CPP package or skip BepInEx-side build on CI.
-      # For now, build only the shared source folder via a fake csproj.
+      - name: Instantiate template
+        run: |
+          dotnet new install .
+          dotnet new hotrepl-mod -n SmokeTest -o /tmp/SmokeTest \
+            --PluginGuid smoke.test --Author "Smoke Test"
+
       - name: Verify shared source compiles
         run: |
-          # Create a minimal csproj that compiles only src/MyMod/
-          cat > /tmp/SourceOnly.csproj <<'XML'
+          cat > /tmp/SmokeTest/SmokeTest.SharedSource.csproj <<'XML'
           <Project Sdk="Microsoft.NET.Sdk">
             <PropertyGroup>
               <TargetFramework>netstandard2.1</TargetFramework>
               <LangVersion>latest</LangVersion>
               <Nullable>enable</Nullable>
+              <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+              <AnalysisMode>Recommended</AnalysisMode>
+              <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
             </PropertyGroup>
             <ItemGroup>
-              <PackageReference Include="HotRepl.Core" Version="3.0.0" />
-              <Compile Include="src/MyMod/**/*.cs" />
+              <Reference Include="HotRepl.Core">
+                <HintPath>vendor/hotrepl/HotRepl.Core.dll</HintPath>
+              </Reference>
+              <Reference Include="HotRepl.Protocol">
+                <HintPath>vendor/hotrepl/HotRepl.Protocol.dll</HintPath>
+              </Reference>
+              <Reference Include="Fleck">
+                <HintPath>vendor/hotrepl/Fleck.dll</HintPath>
+              </Reference>
+              <Reference Include="Newtonsoft.Json">
+                <HintPath>vendor/hotrepl/Newtonsoft.Json.dll</HintPath>
+              </Reference>
+              <Reference Include="Namotion.Reflection">
+                <HintPath>vendor/hotrepl/Namotion.Reflection.dll</HintPath>
+              </Reference>
+              <Compile Include="src/SmokeTest/**/*.cs" />
             </ItemGroup>
           </Project>
           XML
-          dotnet build /tmp/SourceOnly.csproj --nologo -v q
+          dotnet build /tmp/SmokeTest/SmokeTest.SharedSource.csproj --nologo -v q
 ```
 
 The CI verifies the shared source compiles against `HotRepl.Core`. The loader csprojs need
 game-specific UnityEngine.dll references that aren't reproducible in CI without per-game licensed
 binaries — they're verified manually during template instantiation by maintainers.
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add .github/workflows/ci.yml
@@ -4167,7 +4207,7 @@ git commit -m "ci: verify shared source compiles against HotRepl.Core"
 
 **Files:** Create `README.md`
 
-- [ ] **Step 1: Write the README**
+- [x] **Step 1: Write the README**
 
 ````markdown
 # hotrepl-mod-template
@@ -4209,14 +4249,15 @@ dotnet new hotrepl-mod -n AwesomeMod -o ~/Projects/AwesomeMod \
 
 ```bash
 cp Local.props.example Local.props
-# Edit Local.props and set BepInExGamePath or MelonLoaderPath etc.
-./scripts/deploy-bepinex.sh    # or scripts/deploy-melonloader.sh
+# Edit Local.props and set BepInExPluginPath + UnityManagedPath,
+# or MelonLoaderPath + Il2CppAssembliesPath + MelonLoaderModsPath.
+bash scripts/deploy-bepinex.sh    # or bash scripts/deploy-melonloader.sh
 ```
 
 Launch your game. From any HotRepl client:
 
 ```bash
-bunx @hotrepl/cli list-commands   # mymod.hello shows up
+bunx @hotrepl/cli describe mymod.hello
 bunx @hotrepl/cli run mymod.hello '{"name":"World"}'
 # → { "greeting": "Hello, World!", "generatedAt": "..." }
 ```
@@ -4228,14 +4269,15 @@ bunx @hotrepl/cli run mymod.hello '{"name":"World"}'
 | `src/MyMod/`             | Shared source folder — command handlers and POCO arg/result types. Compiled into both loader DLLs against their respective UnityEngine references. |
 | `src/MyMod.BepInEx/`     | BepInEx loader plugin. References Mono-flavored UnityEngine.                                                                                       |
 | `src/MyMod.MelonLoader/` | MelonLoader loader mod. References IL2CPP-unhollowed UnityEngine.                                                                                  |
+| `vendor/hotrepl/`        | HotRepl 3.0 reference assemblies used at compile time; host plugin owns runtime deployment.                                                        |
 | `scripts/`               | Build + deploy helpers.                                                                                                                            |
 | `Local.props.example`    | Template for game-path configuration. Copy to `Local.props` (gitignored).                                                                          |
 
 ## Adding a new command
 
 Copy `src/MyMod/Commands/HelloWorldCommand.cs` and the two POCO files under `src/MyMod/Models/`.
-Change the names. Register the new command in `src/MyMod/MyModCatalog.cs`. Build and deploy — agents
-and CLIs see your new command in `list-commands`.
+Change the names. Register the new command in `src/MyMod/MyModCatalog.cs`. Build and deploy —
+`bunx @hotrepl/cli describe <command>` shows your new descriptor and schema.
 
 ## Schema authoring
 
@@ -4263,7 +4305,7 @@ compiles. The catalog adapts via `#if BEPINEX` / `#if MELONLOADER`.
 MIT.
 
 ````
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add README.md
@@ -4274,16 +4316,16 @@ git commit -m "docs: README"
 
 ### C10: Initial push
 
-- [ ] **Step 1: Push to GitHub**
+- [x] **Step 1: Push to GitHub**
 
 ```bash
 git push origin main
 ```
 
-- [ ] **Step 2: Verify "Use this template" works**
+- [x] **Step 2: Verify template publication**
 
-Browse to `https://github.com/glockyco/hotrepl-mod-template`. Confirm the green "Use this template"
-button is visible. Click it, create a test repo, clone it, confirm files are intact.
+Verified `gh repo view glockyco/hotrepl-mod-template --json isTemplate,defaultBranchRef,url` reports
+`isTemplate: true`, default branch `main`, and `dotnet new install` + smoke instantiation works.
 
 ---
 
