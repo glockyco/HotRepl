@@ -78,10 +78,15 @@
       <KeepFiles Include="$(OutputPath)$(TargetName).dll" />
       <KeepFiles Include="$(OutputPath)$(TargetName).pdb" />
       <KeepFiles Include="$(OutputPath)$(TargetName).deps.json" />
+      <KeepFiles Include="$(OutputPath)HotRepl.UnityCommands.BepInEx.dll" />
+      <KeepFiles Include="$(OutputPath)HotRepl.UnityCommands.BepInEx.pdb" />
+      <KeepFiles Include="$(OutputPath)HotRepl.UnityCommands.BepInEx.xml" />
+      <KeepFiles Include="$(OutputPath)HotRepl.UnityCommands.BepInEx.deps.json" />
       <KeepFiles Include="$(OutputPath)HotRepl.Core.dll" />
       <KeepFiles Include="$(OutputPath)HotRepl.Protocol.dll" />
       <KeepFiles Include="$(OutputPath)Fleck.dll" />
       <KeepFiles Include="$(OutputPath)Newtonsoft.Json.dll" />
+      <KeepFiles Include="$(OutputPath)Namotion.Reflection.dll" />
       <!-- mcs.dll must survive for runtime use -->
       <KeepFiles Include="$(OutputPath)mcs.dll" />
       <!-- Roslyn remains side-by-side; merging/internalizing it breaks scripting dependencies. -->

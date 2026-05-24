@@ -26,6 +26,7 @@
     <ProjectReference Include="../HotRepl.Evaluator.MonoCSharp/HotRepl.Evaluator.MonoCSharp.csproj" />
     <ProjectReference Include="../HotRepl.Evaluator.Roslyn/HotRepl.Evaluator.Roslyn.csproj" />
     <ProjectReference Include="../HotRepl.Helpers.Unity/HotRepl.Helpers.Unity.csproj" />
+    <ProjectReference Include="../HotRepl.UnityCommands.BepInEx/HotRepl.UnityCommands.BepInEx.csproj" />
   </ItemGroup>
 
   <!-- Unity assembly references (not committed, copied from game) -->
@@ -81,10 +82,23 @@
     </ItemGroup>
   </Target>
 
-  <!-- Copy mcs.dll to output (not merged by ILRepack, shipped alongside) -->
-  <Target Name="CopyMcs" AfterTargets="Build">
+  <!-- Copy sidecar DLLs that are shipped alongside the host plugin. -->
+  <Target Name="CopySidecars" AfterTargets="Build">
+    <MSBuild
+      Projects="../HotRepl.UnityCommands.BepInEx/HotRepl.UnityCommands.BepInEx.csproj"
+      Targets="Build"
+      Properties="Configuration=$(Configuration)"
+    />
+    <ItemGroup>
+      <_UnityCommandsBepInExOutput Include="$(MSBuildProjectDirectory)/../HotRepl.UnityCommands.BepInEx/bin/$(Configuration)/netstandard2.1/HotRepl.UnityCommands.BepInEx.*" />
+    </ItemGroup>
     <Copy
       SourceFiles="../../lib/mcs.dll"
+      DestinationFolder="$(OutputPath)"
+      SkipUnchangedFiles="true"
+    />
+    <Copy
+      SourceFiles="@(_UnityCommandsBepInExOutput)"
       DestinationFolder="$(OutputPath)"
       SkipUnchangedFiles="true"
     />

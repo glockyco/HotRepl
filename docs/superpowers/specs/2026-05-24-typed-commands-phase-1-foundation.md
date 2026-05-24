@@ -35,17 +35,17 @@ without changing the consumer deploy-script contract.
 These are the patterns Phases 2–4 will exercise. Each is locked as a hard requirement on the Phase 1
 API design.
 
-| Pattern                                | Example                                               | What it requires                                                                                                                                                                                                              |
-| -------------------------------------- | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **No-args sync read**                  | `unity.app.info`                                      | `TArgs == EmptyArgs`; sync return of `TOutput`; no artifacts; no diagnostics.                                                                                                                                                 |
-| **Typed-args sync read**               | `unity.gameobject.find`                               | `TArgs` with `[Required]`/`[Range]`/`[Description]` annotations; nullable `TOutput`.                                                                                                                                          |
-| **Mutating sync**                      | `unity.time.set_scale`                                | `MutatesState = true` (flows into MCP `destructiveHint` annotation); `[Range]` on arg validated server-side.                                                                                                                  |
-| **Artifact-producing sync**            | `unity.screenshot.capture`                            | Result wrapper carries top-level `Artifacts` dict; handler writes a PNG and gets back an `ArtifactRef`.                                                                                                                       |
-| **Job with progress**                  | (Phase 3) `ak.export.run`                             | `ControlCommandKind.Job`; handler uses `context.Progress.Report(...)` during execution; `CancellationToken` honored.                                                                                                          |
-| **Job producing many named artifacts** | (Phase 3) `ak.export.run`                             | Result wrapper's `Artifacts` dict carries multiple named refs (manifest, items, asset-manifest, etc.).                                                                                                                        |
-| **Multi-frame Unity workflow**         | (Phase 3) `ak.world.enter`                            | Plain `async/await` works because `UnitySynchronizationContext` posts continuations to the next frame on the main thread. No coroutine bridge required.                                                                       |
-| **Structured failure**                 | (Phase 2) Ardenfall's `RunBeginCommand` with bad slug | Handler returns `ControlCommandResult.Failed(...)` with a `ControlCommandDiagnostic` of `Kind = validation_failed` or `precondition_failed`; wire `status = "failed"`; client receives diagnostic without an exception trace. |
-| **Long-running streaming progress**    | (Phase 4) `erenshor.map.capture_chunks`               | Same job-with-progress pattern; each `Progress.Report(...)` becomes a `subscribe_result`-style event the client can consume.                                                                                                  |
+| Pattern                                | Example                                                | What it requires                                                                                                                                                                                                              |
+| -------------------------------------- | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **No-args sync read**                  | `unity.app.info`                                       | `TArgs == EmptyArgs`; sync return of `TOutput`; no artifacts; no diagnostics.                                                                                                                                                 |
+| **Typed-args sync read**               | `unity.gameobject.find`                                | `TArgs` with `[Required]`/`[Range]`/`[Description]` annotations; nullable `TOutput`.                                                                                                                                          |
+| **Mutating sync**                      | `unity.time.set_scale`                                 | `MutatesState = true` (flows into MCP `destructiveHint` annotation); `[Range]` on arg validated server-side.                                                                                                                  |
+| **Artifact-producing job**             | `unity.screenshot.capture`                             | Result wrapper carries top-level `Artifacts` dict; handler writes a PNG and gets back an `ArtifactRef`; command is a job because Unity frame capture must wait for `WaitForEndOfFrame` without blocking `Tick()`.             |
+| **Job with progress**                  | (Phase 3) `ak.export.run`                              | `ControlCommandKind.Job`; handler uses `context.Progress.Report(...)` during execution; `CancellationToken` honored.                                                                                                          |
+| **Job producing many named artifacts** | (Phase 3) `ak.export.run`                              | Result wrapper's `Artifacts` dict carries multiple named refs (manifest, items, asset-manifest, etc.).                                                                                                                        |
+| **Multi-frame Unity workflow**         | `unity.screenshot.capture`; (Phase 3) `ak.world.enter` | Screenshot uses a loader-provided coroutine bridge; plain `async/await` still works for non-coroutine workflows because `UnitySynchronizationContext` posts continuations to the next frame on the main thread.               |
+| **Structured failure**                 | (Phase 2) Ardenfall's `RunBeginCommand` with bad slug  | Handler returns `ControlCommandResult.Failed(...)` with a `ControlCommandDiagnostic` of `Kind = validation_failed` or `precondition_failed`; wire `status = "failed"`; client receives diagnostic without an exception trace. |
+| **Long-running streaming progress**    | (Phase 4) `erenshor.map.capture_chunks`                | Same job-with-progress pattern; each `Progress.Report(...)` becomes a `subscribe_result`-style event the client can consume.                                                                                                  |
 
 The interface designed below covers each row without requiring per-pattern extensions.
 
@@ -579,6 +579,14 @@ src/HotRepl.UnityCommands/                 ← shared source folder, no csproj
     UnityGameObjectFindCommand.cs
     UnityTimeSetScaleCommand.cs
     UnityScreenshotCommand.cs
+  Screenshots/
+    CapturedScreenshot.cs
+    EndOfFrameUnityScreenshotCapturer.cs
+    IUnityScreenshotCapturer.cs
+    UnityPngEncoder.cs
+    UnityScreenshotCaptureResult.cs
+    UnityScreenshotFailureKind.cs
+    UnsupportedUnityScreenshotCapturer.cs
   Models/
     UnityAppInfo.cs
     UnityGameObjectFindArgs.cs
@@ -590,30 +598,33 @@ src/HotRepl.UnityCommands/                 ← shared source folder, no csproj
     UnityScreenshotResult.cs
   Vec3.cs                                  ← shared POCO replacing UnityEngine.Vector3 in schemas
   UnityCommandCatalog.cs                   ← static catalog used by both loader plugins
+  UnityCommandCatalogNames.cs              ← command-name constants testable without UnityEngine refs
 
 src/HotRepl.UnityCommands.BepInEx/         ← loader-specific csproj, Mono UnityEngine ref
   Plugin.cs                                ← BaseUnityPlugin with [BepInPlugin] + [BepInDependency("hotrepl.bepinex", HardDependency)]
   HotRepl.UnityCommands.BepInEx.csproj     ← <Compile Include="..\HotRepl.UnityCommands\**\*.cs" Exclude="**\bin\**;**\obj\**" />
 
 src/HotRepl.UnityCommands.MelonLoader/     ← loader-specific csproj, IL2CPP-unhollowed UnityEngine ref
-  Mod.cs                                   ← MelonMod with [MelonInfo], registers in OnLateInitializeMelon()
+  UnityCommandsMod.cs                      ← MelonMod with [MelonInfo], registers in OnLateInitializeMelon()
   HotRepl.UnityCommands.MelonLoader.csproj ← same <Compile Include> pattern as BepInEx
 ```
 
 The shared source folder has no .csproj. Both loader csprojs compile the same source against their
 respective `UnityEngine.dll`. Standard dual-runtime mod pattern (UnityExplorer, RuntimeUnityEditor).
+Both loader csprojs reference `System.ComponentModel.Annotations` so `[Required]` and `[Range]`
+attributes compile and are present for schema reflection at runtime.
 
 ### 5.2 The four demo commands
 
 Each maps to one architectural pattern. The `Mutates`/`Kind` columns show what's exercised; the
 "Pattern shown" column tells a copying contributor what to use this command as a starting point for.
 
-| Command                    | Mutates | Kind | Pattern shown                                                                                                                                                                    |
-| -------------------------- | ------- | ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `unity.app.info`           | no      | Sync | Simplest case: `EmptyArgs`, structured `TOutput`, read-only. Copy when adding a no-arg read.                                                                                     |
-| `unity.gameobject.find`    | no      | Sync | Typed args with `[Required]`/`[Description]`, nullable `TOutput`. Copy when adding a read with arguments.                                                                        |
-| `unity.time.set_scale`     | yes     | Sync | `MutatesState = true` propagates to MCP `destructiveHint`. `[Range(0, 100)]` is validated server-side before the handler runs. Copy when adding a mutating sync command.         |
-| `unity.screenshot.capture` | no      | Sync | `context.Artifacts.WriteAsync` writes a PNG; the returned `ArtifactRef` goes into the result wrapper's `Artifacts` dict. Copy when adding a command that produces binary output. |
+| Command                    | Mutates | Kind | Pattern shown                                                                                                                                                                                                                                                                |
+| -------------------------- | ------- | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `unity.app.info`           | no      | Sync | Simplest case: `EmptyArgs`, structured `TOutput`, read-only. Copy when adding a no-arg read.                                                                                                                                                                                 |
+| `unity.gameobject.find`    | no      | Sync | Typed args with `[Required]`/`[Description]`, nullable `TOutput`. Copy when adding a read with arguments.                                                                                                                                                                    |
+| `unity.time.set_scale`     | yes     | Sync | `MutatesState = true` propagates to MCP `destructiveHint`. `[Range(0, 100)]` is validated server-side before the handler runs. Copy when adding a mutating sync command.                                                                                                     |
+| `unity.screenshot.capture` | no      | Job  | Waits for end-of-frame through a loader-provided coroutine bridge, writes the PNG via `context.Artifacts.WriteAsync`, and returns the `ArtifactRef` in the result wrapper's `Artifacts` dict. Copy when adding a Unity workflow that spans frames or produces binary output. |
 
 Concrete shapes (illustrative — final shape on review):
 
@@ -679,9 +690,11 @@ public sealed class UnitySetTimeScaleArgs
 public sealed class UnityScreenshotCommand
     : IControlCommandHandler<UnityScreenshotArgs, UnityScreenshotResult>
 {
+    private readonly IUnityScreenshotCapturer _capturer;
+
     public string             Name         => "unity.screenshot.capture";
     public int                Version      => 1;
-    public ControlCommandKind Kind         => ControlCommandKind.Synchronous;
+    public ControlCommandKind Kind         => ControlCommandKind.Job;
     public bool               MutatesState => false;
 
     public async ValueTask<ControlCommandResult<UnityScreenshotResult>> ExecuteAsync(
@@ -689,36 +702,41 @@ public sealed class UnityScreenshotCommand
         UnityScreenshotArgs args,
         CancellationToken ct)
     {
-        var superSize = Math.Max(1, args.SuperSize);
-        var tex = UnityEngine.ScreenCapture.CaptureScreenshotAsTexture(superSize);
-        try
-        {
-            byte[] png = UnityEngine.ImageConversion.EncodeToPNG(tex);
-            int width = tex.width, height = tex.height;
+        var capture = await _capturer
+            .CaptureAsync(Math.Max(1, args.SuperSize), ct)
+            .ConfigureAwait(true);
 
-            var artifact = await context.Artifacts.WriteAsync(
-                logicalName: "screenshot",
-                bytes: png,
-                contentType: "image/png",
-                cancellationToken: ct
-            ).ConfigureAwait(true);
-
-            return ControlCommandResult.Ok(
-                new UnityScreenshotResult { Width = width, Height = height },
-                "screenshot",
-                artifact
-            );
-        }
-        finally
+        if (!capture.Succeeded)
         {
-            UnityEngine.Object.Destroy(tex);
+            return Failure(capture.FailureKind);
         }
+
+        var screenshot = capture.Screenshot;
+        var artifact = await context.Artifacts.WriteAsync(
+            "screenshot",
+            screenshot.Png,
+            "image/png",
+            ct).ConfigureAwait(true);
+
+        return ControlCommandResult.Ok(
+            new UnityScreenshotResult { Width = screenshot.Width, Height = screenshot.Height },
+            "screenshot",
+            artifact);
     }
 }
 ```
 
 Note the result wrapper's `Ok(output, artifactName, artifact)` overload — keeps the screenshot path
 concise without sacrificing explicitness.
+
+The loader plugins pass an `EndOfFrameUnityScreenshotCapturer` into the catalog. That capturer
+starts a coroutine, waits for `WaitForEndOfFrame`, then either calls
+`ScreenCapture.CaptureScreenshotAsTexture` via reflection or falls back to `ReadPixels` for
+`superSize = 1`. If only the fallback is available and the request asks for supersampling, the
+handler returns `precondition_failed` with code `screenshotSuperSizeUnsupported` instead of silently
+returning an unscaled image. The command is intentionally `ControlCommandKind.Job`; making it
+synchronous would block `ReplEngine.Tick()` and prevent the coroutine from ever reaching
+end-of-frame.
 
 ### 5.3 Loader plugins
 
@@ -750,10 +768,16 @@ public sealed class Plugin : BaseUnityPlugin
         }
 
         var skip = ParseCsv(disabled.Value);
-        foreach (var handler in UnityCommandCatalog.Build())
+        var factories = UnityCommandCatalog.Build(
+            new EndOfFrameUnityScreenshotCapturer(routine =>
+            {
+                StartCoroutine(routine);
+            }));
+        var names = UnityCommandCatalog.Names;
+        for (var i = 0; i < factories.Count; i++)
         {
-            if (skip.Contains(handler.Name)) continue;
-            _registrations.Add(GlobalControlCommandRegistry.Instance.Register(handler));
+            if (skip.Contains(names[i])) continue;
+            _registrations.Add(factories[i](GlobalControlCommandRegistry.Instance));
         }
     }
 
@@ -770,8 +794,9 @@ The MelonLoader variant is structurally identical: `MelonPreferences` instead of
 
 ### 5.4 Distribution
 
-The `HotRepl.UnityCommands.BepInEx.csproj` is referenced from `HotRepl.BepInEx.csproj`. MSBuild
-copies its DLL into the host's `bin/Debug/netstandard2.1/` directory alongside
+The `HotRepl.UnityCommands.BepInEx.csproj` is referenced from `HotRepl.BepInEx.csproj`. The host
+build runs a sidecar-copy target for `HotRepl.UnityCommands.BepInEx.*` and the BepInEx ILRepack
+cleanup allowlist preserves those files in `bin/Debug/netstandard2.1/` alongside
 `HotRepl.BepInEx.dll`. Existing consumer deploy scripts that copy "everything from the build output"
 pick it up automatically with no changes.
 
@@ -779,8 +804,8 @@ BepInEx scans `BepInEx/plugins/` for assemblies with `[BepInPlugin]` attributes,
 UnityCommands DLL is loaded as a peer plugin (not merged into HotRepl.BepInEx). The
 `[BepInDependency]` enforces load order.
 
-The MelonLoader variant uses the same pattern with the `HotRepl.UnityCommands.MelonLoader.csproj`
-referenced from `HotRepl.Host.MelonLoader.csproj`.
+The MelonLoader variant uses the same pattern with `HotRepl.UnityCommands.MelonLoader.csproj`
+referenced and copied from `HotRepl.Host.MelonLoader.csproj`.
 
 ## 6. Build pipeline — ILRepack details
 
@@ -913,7 +938,7 @@ hotrepl-mod-template/
 │   │   ├── PluginInfo.cs
 │   │   └── MyMod.BepInEx.csproj
 │   └── MyMod.MelonLoader/                  ← loader-specific csproj
-│       ├── Mod.cs
+│       ├── MyModMelonMod.cs
 │       └── MyMod.MelonLoader.csproj
 ├── scripts/
 │   ├── deploy-bepinex.sh
@@ -1029,8 +1054,9 @@ README structure:
 4. Project layout (table).
 5. Adding a new command (link to `HelloWorldCommand.cs`, say "copy this file, change the names").
 6. Schema authoring (what the standard `[Description]`/`[Required]`/ `[Range]` attributes do).
-7. Mono vs IL2CPP (when shared source isn't enough — link to `UnityCommands.MelonLoader/Mod.cs` as
-   the reference for "what diverges").
+7. Mono vs IL2CPP (when shared source isn't enough — link to
+   `src/HotRepl.UnityCommands.MelonLoader/UnityCommandsMod.cs` as the reference for "what
+   diverges").
 
 ## 9. Verification
 

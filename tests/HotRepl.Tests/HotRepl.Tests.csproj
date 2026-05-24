@@ -10,6 +10,7 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="System.ComponentModel.Annotations" />
     <PackageReference Include="xunit.analyzers">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>analyzers</IncludeAssets>
@@ -22,9 +23,26 @@
     <ProjectReference Include="../../src/HotRepl.Evaluator.Roslyn/HotRepl.Evaluator.Roslyn.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <Compile
+      Include="../../src/HotRepl.UnityCommands/**/*.cs"
+      Exclude="../../src/HotRepl.UnityCommands/bin/**;../../src/HotRepl.UnityCommands/obj/**"
+      LinkBase="ImportedCatalog"
+    />
+  </ItemGroup>
+  <ItemGroup>
     <Reference Include="mcs">
       <HintPath>../../lib/mcs.dll</HintPath>
     </Reference>
     <None Include="../../lib/mcs.dll" CopyToOutputDirectory="PreserveNewest" Link="mcs.dll" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="UnityEngine">
+      <HintPath>../../src/HotRepl.BepInEx/lib/UnityEngine.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>../../src/HotRepl.BepInEx/lib/UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
   </ItemGroup>
 </Project>

@@ -65,29 +65,38 @@ A; B and C are independent of each other.
 
 ### Workstream B — `HotRepl.UnityCommands` plugin
 
-| File                                                                             | Action                                                |
-| -------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| `src/HotRepl.UnityCommands/Vec3.cs`                                              | Create: POCO `{ float X, Y, Z }`                      |
-| `src/HotRepl.UnityCommands/Models/UnityAppInfo.cs`                               | Create                                                |
-| `src/HotRepl.UnityCommands/Models/UnityGameObjectFindArgs.cs`                    | Create                                                |
-| `src/HotRepl.UnityCommands/Models/UnityGameObjectFindResult.cs`                  | Create                                                |
-| `src/HotRepl.UnityCommands/Models/UnityGameObject.cs`                            | Create                                                |
-| `src/HotRepl.UnityCommands/Models/UnitySetTimeScaleArgs.cs`                      | Create                                                |
-| `src/HotRepl.UnityCommands/Models/UnitySetTimeScaleResult.cs`                    | Create                                                |
-| `src/HotRepl.UnityCommands/Models/UnityScreenshotArgs.cs`                        | Create                                                |
-| `src/HotRepl.UnityCommands/Models/UnityScreenshotResult.cs`                      | Create                                                |
-| `src/HotRepl.UnityCommands/Commands/UnityAppInfoCommand.cs`                      | Create                                                |
-| `src/HotRepl.UnityCommands/Commands/UnityGameObjectFindCommand.cs`               | Create                                                |
-| `src/HotRepl.UnityCommands/Commands/UnityTimeSetScaleCommand.cs`                 | Create                                                |
-| `src/HotRepl.UnityCommands/Commands/UnityScreenshotCommand.cs`                   | Create                                                |
-| `src/HotRepl.UnityCommands/UnityCommandCatalog.cs`                               | Create: static enumeration used by both loaders       |
-| `src/HotRepl.UnityCommands.BepInEx/HotRepl.UnityCommands.BepInEx.csproj`         | Create                                                |
-| `src/HotRepl.UnityCommands.BepInEx/Plugin.cs`                                    | Create                                                |
-| `src/HotRepl.UnityCommands.MelonLoader/HotRepl.UnityCommands.MelonLoader.csproj` | Create                                                |
-| `src/HotRepl.UnityCommands.MelonLoader/Mod.cs`                                   | Create                                                |
-| `src/HotRepl.BepInEx/HotRepl.BepInEx.csproj`                                     | Modify: reference `HotRepl.UnityCommands.BepInEx`     |
-| `src/HotRepl.Host.MelonLoader/HotRepl.Host.MelonLoader.csproj`                   | Modify: reference `HotRepl.UnityCommands.MelonLoader` |
-| `tests/HotRepl.Tests/Unit/UnityCommandsCatalogTests.cs`                          | Create: catalog exposes exactly 4 named commands      |
+| File                                                                             | Action                                                                               |
+| -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `src/HotRepl.UnityCommands/Vec3.cs`                                              | Create: POCO `{ float X, Y, Z }`                                                     |
+| `src/HotRepl.UnityCommands/Models/UnityAppInfo.cs`                               | Create                                                                               |
+| `src/HotRepl.UnityCommands/Models/UnityGameObjectFindArgs.cs`                    | Create                                                                               |
+| `src/HotRepl.UnityCommands/Models/UnityGameObjectFindResult.cs`                  | Create                                                                               |
+| `src/HotRepl.UnityCommands/Models/UnityGameObject.cs`                            | Create                                                                               |
+| `src/HotRepl.UnityCommands/Models/UnitySetTimeScaleArgs.cs`                      | Create                                                                               |
+| `src/HotRepl.UnityCommands/Models/UnitySetTimeScaleResult.cs`                    | Create                                                                               |
+| `src/HotRepl.UnityCommands/Models/UnityScreenshotArgs.cs`                        | Create                                                                               |
+| `src/HotRepl.UnityCommands/Models/UnityScreenshotResult.cs`                      | Create                                                                               |
+| `src/HotRepl.UnityCommands/Commands/UnityAppInfoCommand.cs`                      | Create                                                                               |
+| `src/HotRepl.UnityCommands/Commands/UnityGameObjectFindCommand.cs`               | Create                                                                               |
+| `src/HotRepl.UnityCommands/Commands/UnityTimeSetScaleCommand.cs`                 | Create                                                                               |
+| `src/HotRepl.UnityCommands/Commands/UnityScreenshotCommand.cs`                   | Create                                                                               |
+| `src/HotRepl.UnityCommands/Screenshots/CapturedScreenshot.cs`                    | Create: captured PNG bytes + dimensions for artifact write                           |
+| `src/HotRepl.UnityCommands/Screenshots/EndOfFrameUnityScreenshotCapturer.cs`     | Create: coroutine-backed WaitForEndOfFrame capture                                   |
+| `src/HotRepl.UnityCommands/Screenshots/IUnityScreenshotCapturer.cs`              | Create: command/capturer seam                                                        |
+| `src/HotRepl.UnityCommands/Screenshots/UnityPngEncoder.cs`                       | Create: cached reflection resolver for PNG encoding                                  |
+| `src/HotRepl.UnityCommands/Screenshots/UnityScreenshotCaptureResult.cs`          | Create: capture success/failure wrapper                                              |
+| `src/HotRepl.UnityCommands/Screenshots/UnityScreenshotFailureKind.cs`            | Create: capture failure reasons                                                      |
+| `src/HotRepl.UnityCommands/Screenshots/UnsupportedUnityScreenshotCapturer.cs`    | Create: safe default when no loader host is supplied                                 |
+| `src/HotRepl.UnityCommands/UnityCommandCatalog.cs`                               | Create: static enumeration used by both loaders                                      |
+| `src/HotRepl.UnityCommands/UnityCommandCatalogNames.cs`                          | Create: command-name constants testable without UnityEngine refs                     |
+| `src/HotRepl.UnityCommands.BepInEx/HotRepl.UnityCommands.BepInEx.csproj`         | Create                                                                               |
+| `src/HotRepl.UnityCommands.BepInEx/Plugin.cs`                                    | Create                                                                               |
+| `src/HotRepl.UnityCommands.MelonLoader/HotRepl.UnityCommands.MelonLoader.csproj` | Create                                                                               |
+| `src/HotRepl.UnityCommands.MelonLoader/UnityCommandsMod.cs`                      | Create                                                                               |
+| `src/HotRepl.BepInEx/HotRepl.BepInEx.csproj`                                     | Modify: reference/copy `HotRepl.UnityCommands.BepInEx`                               |
+| `src/HotRepl.Host.MelonLoader/HotRepl.Host.MelonLoader.csproj`                   | Modify: reference/copy `HotRepl.UnityCommands.MelonLoader`                           |
+| `tests/HotRepl.Tests/Unit/UnityCommandsCatalogTests.cs`                          | Create: catalog exposes exactly 4 named commands                                     |
+| `Directory.Packages.props`                                                       | Modify: add System.ComponentModel.Annotations for DataAnnotations in loader projects |
 
 ### Workstream C — `hotrepl-mod-template` repo (new, separate)
 
@@ -107,7 +116,7 @@ A; B and C are independent of each other.
 | `src/MyMod.BepInEx/Plugin.cs`                    | Create                                                |
 | `src/MyMod.BepInEx/PluginInfo.cs`                | Create                                                |
 | `src/MyMod.MelonLoader/MyMod.MelonLoader.csproj` | Create                                                |
-| `src/MyMod.MelonLoader/Mod.cs`                   | Create                                                |
+| `src/MyMod.MelonLoader/MyModMelonMod.cs`         | Create                                                |
 | `scripts/deploy-bepinex.sh`                      | Create                                                |
 | `scripts/deploy-melonloader.sh`                  | Create                                                |
 | `.template.config/template.json`                 | Create                                                |
@@ -298,7 +307,7 @@ target.
 
 ```bash
 dotnet build src/HotRepl.Core/ --nologo -v q -c Release
-ls src/HotRepl.Core/bin/Release/netstandard2.1/
+read src/HotRepl.Core/bin/Release/netstandard2.1
 ```
 
 Expected: directory contains `HotRepl.Core.dll`, `HotRepl.Protocol.dll`, `Newtonsoft.Json.dll`,
@@ -307,10 +316,7 @@ Expected: directory contains `HotRepl.Core.dll`, `HotRepl.Protocol.dll`, `Newton
 - [x] **Step 4: Confirm merged Core contains internalized NJsonSchema types**
 
 ```bash
-# dotnet ildasm is available on macOS via dotnet tool; if not installed:
-#   dotnet tool install -g dotnet-ildasm
-dotnet-ildasm src/HotRepl.Core/bin/Release/netstandard2.1/HotRepl.Core.dll \
-  | grep -iE "njsonschema|namotion" | head -5
+dotnet-ildasm src/HotRepl.Core/bin/Release/netstandard2.1/HotRepl.Core.dll
 ```
 
 Expected: matches for internalized types (they'll have `private` or `assembly` access). If
@@ -2437,7 +2443,7 @@ references to old shapes that A15-Step 6 missed). Re-run until clean.
 
 ```bash
 dotnet build src/HotRepl.Core/ -c Release --nologo -v q
-ls src/HotRepl.Core/bin/Release/netstandard2.1/
+read src/HotRepl.Core/bin/Release/netstandard2.1
 ```
 
 Expected output directory contains:
@@ -2489,7 +2495,7 @@ in any order; B6-B7 (loader plugins) depend on B1-B5; B8 (host wiring) depends o
 - Create: `src/HotRepl.UnityCommands/` (folder)
 - Create: `src/HotRepl.UnityCommands/Vec3.cs`
 
-- [ ] **Step 1: Create the folder + Vec3**
+- [x] **Step 1: Create the folder + Vec3**
 
 `src/HotRepl.UnityCommands/Vec3.cs`:
 
@@ -2518,7 +2524,7 @@ public sealed class Vec3
 }
 ```
 
-- [ ] **Step 2: Commit (folder + Vec3)**
+- [x] **Step 2: Commit (folder + Vec3)**
 
 ```bash
 git add src/HotRepl.UnityCommands/
@@ -2534,7 +2540,7 @@ git commit -m "feat(unity-commands): shared source folder with Vec3 POCO"
 - Create: `src/HotRepl.UnityCommands/Models/UnityAppInfo.cs`
 - Create: `src/HotRepl.UnityCommands/Commands/UnityAppInfoCommand.cs`
 
-- [ ] **Step 1: POCO**
+- [x] **Step 1: POCO**
 
 ```csharp
 // src/HotRepl.UnityCommands/Models/UnityAppInfo.cs
@@ -2558,7 +2564,7 @@ public sealed class UnityAppInfo
 }
 ```
 
-- [ ] **Step 2: Handler**
+- [x] **Step 2: Handler**
 
 ```csharp
 // src/HotRepl.UnityCommands/Commands/UnityAppInfoCommand.cs
@@ -2589,7 +2595,7 @@ public sealed class UnityAppInfoCommand
 }
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/HotRepl.UnityCommands/Models/UnityAppInfo.cs src/HotRepl.UnityCommands/Commands/UnityAppInfoCommand.cs
@@ -2607,7 +2613,7 @@ git commit -m "feat(unity-commands): unity.app.info command"
 - Create: `src/HotRepl.UnityCommands/Models/UnityGameObject.cs`
 - Create: `src/HotRepl.UnityCommands/Commands/UnityGameObjectFindCommand.cs`
 
-- [ ] **Step 1: Args + Result POCOs**
+- [x] **Step 1: Args + Result POCOs**
 
 ```csharp
 // src/HotRepl.UnityCommands/Models/UnityGameObjectFindArgs.cs
@@ -2671,7 +2677,7 @@ public sealed class UnityGameObject
 }
 ```
 
-- [ ] **Step 2: Handler**
+- [x] **Step 2: Handler**
 
 ```csharp
 // src/HotRepl.UnityCommands/Commands/UnityGameObjectFindCommand.cs
@@ -2723,7 +2729,7 @@ public sealed class UnityGameObjectFindCommand
 }
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/HotRepl.UnityCommands/Models/UnityGameObjectFindArgs.cs src/HotRepl.UnityCommands/Models/UnityGameObjectFindResult.cs src/HotRepl.UnityCommands/Models/UnityGameObject.cs src/HotRepl.UnityCommands/Commands/UnityGameObjectFindCommand.cs
@@ -2740,7 +2746,7 @@ git commit -m "feat(unity-commands): unity.gameobject.find command"
 - Create: `src/HotRepl.UnityCommands/Models/UnitySetTimeScaleResult.cs`
 - Create: `src/HotRepl.UnityCommands/Commands/UnityTimeSetScaleCommand.cs`
 
-- [ ] **Step 1: POCOs**
+- [x] **Step 1: POCOs**
 
 ```csharp
 // src/HotRepl.UnityCommands/Models/UnitySetTimeScaleArgs.cs
@@ -2776,7 +2782,7 @@ public sealed class UnitySetTimeScaleResult
 }
 ```
 
-- [ ] **Step 2: Handler**
+- [x] **Step 2: Handler**
 
 ```csharp
 // src/HotRepl.UnityCommands/Commands/UnityTimeSetScaleCommand.cs
@@ -2810,7 +2816,7 @@ public sealed class UnityTimeSetScaleCommand
 }
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/HotRepl.UnityCommands/Models/UnitySetTimeScaleArgs.cs src/HotRepl.UnityCommands/Models/UnitySetTimeScaleResult.cs src/HotRepl.UnityCommands/Commands/UnityTimeSetScaleCommand.cs
@@ -2826,8 +2832,15 @@ git commit -m "feat(unity-commands): unity.time.set_scale command"
 - Create: `src/HotRepl.UnityCommands/Models/UnityScreenshotArgs.cs`
 - Create: `src/HotRepl.UnityCommands/Models/UnityScreenshotResult.cs`
 - Create: `src/HotRepl.UnityCommands/Commands/UnityScreenshotCommand.cs`
+- Create: `src/HotRepl.UnityCommands/Screenshots/CapturedScreenshot.cs`
+- Create: `src/HotRepl.UnityCommands/Screenshots/EndOfFrameUnityScreenshotCapturer.cs`
+- Create: `src/HotRepl.UnityCommands/Screenshots/IUnityScreenshotCapturer.cs`
+- Create: `src/HotRepl.UnityCommands/Screenshots/UnityPngEncoder.cs`
+- Create: `src/HotRepl.UnityCommands/Screenshots/UnityScreenshotCaptureResult.cs`
+- Create: `src/HotRepl.UnityCommands/Screenshots/UnityScreenshotFailureKind.cs`
+- Create: `src/HotRepl.UnityCommands/Screenshots/UnsupportedUnityScreenshotCapturer.cs`
 
-- [ ] **Step 1: POCOs**
+- [x] **Step 1: POCOs**
 
 ```csharp
 // src/HotRepl.UnityCommands/Models/UnityScreenshotArgs.cs
@@ -2861,7 +2874,7 @@ public sealed class UnityScreenshotResult
 (The `ArtifactRef` for the captured PNG goes in the top-level `Artifacts` map of the wire result,
 NOT in this POCO.)
 
-- [ ] **Step 2: Handler**
+- [x] **Step 2: Job handler + end-of-frame capture helpers**
 
 ```csharp
 // src/HotRepl.UnityCommands/Commands/UnityScreenshotCommand.cs
@@ -2870,15 +2883,18 @@ using System.Threading;
 using System.Threading.Tasks;
 using HotRepl.Control;
 using HotRepl.UnityCommands.Models;
+using HotRepl.UnityCommands.Screenshots;
 
 namespace HotRepl.UnityCommands.Commands;
 
 public sealed class UnityScreenshotCommand
     : IControlCommandHandler<UnityScreenshotArgs, UnityScreenshotResult>
 {
+    private readonly IUnityScreenshotCapturer _capturer;
+
     public string Name => "unity.screenshot.capture";
     public int Version => 1;
-    public ControlCommandKind Kind => ControlCommandKind.Synchronous;
+    public ControlCommandKind Kind => ControlCommandKind.Job;
     public bool MutatesState => false;
 
     public async ValueTask<ControlCommandResult<UnityScreenshotResult>> ExecuteAsync(
@@ -2886,38 +2902,36 @@ public sealed class UnityScreenshotCommand
         UnityScreenshotArgs args,
         CancellationToken ct)
     {
-        var superSize = Math.Max(1, args.SuperSize);
-        var tex = UnityEngine.ScreenCapture.CaptureScreenshotAsTexture(superSize);
-        try
-        {
-            byte[] png = UnityEngine.ImageConversion.EncodeToPNG(tex);
-            int width = tex.width, height = tex.height;
+        var capture = await _capturer.CaptureAsync(Math.Max(1, args.SuperSize), ct)
+            .ConfigureAwait(true);
+        if (!capture.Succeeded) return Failure(capture.FailureKind);
 
-            var artifact = await context.Artifacts.WriteAsync(
-                logicalName: "screenshot",
-                bytes: png,
-                contentType: "image/png",
-                cancellationToken: ct
-            ).ConfigureAwait(true);
+        var screenshot = capture.Screenshot;
+        var artifact = await context.Artifacts.WriteAsync(
+            "screenshot",
+            screenshot.Png,
+            "image/png",
+            ct).ConfigureAwait(true);
 
-            return ControlCommandResult.Ok(
-                new UnityScreenshotResult { Width = width, Height = height },
-                "screenshot",
-                artifact
-            );
-        }
-        finally
-        {
-            UnityEngine.Object.Destroy(tex);
-        }
+        return ControlCommandResult.Ok(
+            new UnityScreenshotResult { Width = screenshot.Width, Height = screenshot.Height },
+            "screenshot",
+            artifact);
     }
 }
 ```
 
-- [ ] **Step 3: Commit**
+`EndOfFrameUnityScreenshotCapturer` is loader-supplied. It starts a coroutine, waits for
+`WaitForEndOfFrame`, captures via reflected `ScreenCapture.CaptureScreenshotAsTexture` or a
+`ReadPixels` fallback for `superSize = 1`, then uses `UnityPngEncoder` to resolve `EncodeToPNG` from
+either `UnityEngine.ImageConversionModule` or old monolithic `UnityEngine`. If only the fallback is
+available and the request asks for supersampling, the handler returns
+`screenshotSuperSizeUnsupported` instead of silently returning an unscaled image.
+
+- [x] **Step 3: Commit**
 
 ```bash
-git add src/HotRepl.UnityCommands/Models/UnityScreenshotArgs.cs src/HotRepl.UnityCommands/Models/UnityScreenshotResult.cs src/HotRepl.UnityCommands/Commands/UnityScreenshotCommand.cs
+git add src/HotRepl.UnityCommands/Models/UnityScreenshotArgs.cs src/HotRepl.UnityCommands/Models/UnityScreenshotResult.cs src/HotRepl.UnityCommands/Commands/UnityScreenshotCommand.cs src/HotRepl.UnityCommands/Screenshots/
 git commit -m "feat(unity-commands): unity.screenshot.capture command"
 ```
 
@@ -2927,7 +2941,7 @@ git commit -m "feat(unity-commands): unity.screenshot.capture command"
 
 **Files:** Create `src/HotRepl.UnityCommands/UnityCommandCatalog.cs`
 
-- [ ] **Step 1: Write the catalog**
+- [x] **Step 1: Write the catalog**
 
 ```csharp
 // src/HotRepl.UnityCommands/UnityCommandCatalog.cs
@@ -2936,6 +2950,7 @@ using System.Collections.Generic;
 using HotRepl.Control;
 using HotRepl.UnityCommands.Commands;
 using HotRepl.UnityCommands.Models;
+using HotRepl.UnityCommands.Screenshots;
 
 namespace HotRepl.UnityCommands;
 
@@ -2951,144 +2966,117 @@ public static class UnityCommandCatalog
     /// registry, registers the command and returns the disposable
     /// registration.
     /// </summary>
-    public static IReadOnlyList<RegistrationFactory> Build() => new RegistrationFactory[]
+    public static IReadOnlyList<RegistrationFactory> Build() =>
+        Build(UnsupportedUnityScreenshotCapturer.Instance);
+
+    internal static IReadOnlyList<RegistrationFactory> Build(
+        IUnityScreenshotCapturer screenshotCapturer
+    ) => new RegistrationFactory[]
     {
         registry => registry.Register<EmptyArgs, UnityAppInfo>(new UnityAppInfoCommand()),
         registry => registry.Register<UnityGameObjectFindArgs, UnityGameObjectFindResult>(new UnityGameObjectFindCommand()),
         registry => registry.Register<UnitySetTimeScaleArgs, UnitySetTimeScaleResult>(new UnityTimeSetScaleCommand()),
-        registry => registry.Register<UnityScreenshotArgs, UnityScreenshotResult>(new UnityScreenshotCommand()),
+        registry => registry.Register<UnityScreenshotArgs, UnityScreenshotResult>(new UnityScreenshotCommand(screenshotCapturer)),
     };
 
-    /// <summary>Names of every command in the catalog, in registration order.</summary>
-    public static IReadOnlyList<string> Names { get; } = new[]
-    {
-        "unity.app.info",
-        "unity.gameobject.find",
-        "unity.time.set_scale",
-        "unity.screenshot.capture",
-    };
+    /// <summary>Command names in registration order.</summary>
+    public static IReadOnlyList<string> Names => UnityCommandCatalogNames.Names;
 
     public delegate IDisposable RegistrationFactory(IControlCommandRegistry registry);
 }
 ```
 
-- [ ] **Step 2: Catalog test**
+- [x] **Step 2: Catalog test**
 
 `tests/HotRepl.Tests/Unit/UnityCommandsCatalogTests.cs`:
 
 ```csharp
+using System;
+using System.Linq;
 using HotRepl.Control;
 using HotRepl.UnityCommands;
 using Xunit;
 
 namespace HotRepl.Tests.Unit;
 
-public class UnityCommandsCatalogTests
+public sealed class UnityCommandsCatalogTests
 {
     [Fact]
-    public void Build_ProducesExactlyFourRegistrations()
+    public void Names_AreTheExpectedFourUnityCommands()
     {
-        var registry = new GlobalControlCommandRegistry();
-        var factories = UnityCommandCatalog.Build();
-        Assert.Equal(4, factories.Count);
-        foreach (var f in factories) f(registry);
-
-        var descriptors = registry.Describe();
-        Assert.Equal(4, descriptors.Count);
-        Assert.Contains(descriptors, d => d.Name == "unity.app.info");
-        Assert.Contains(descriptors, d => d.Name == "unity.gameobject.find");
-        Assert.Contains(descriptors, d => d.Name == "unity.time.set_scale");
-        Assert.Contains(descriptors, d => d.Name == "unity.screenshot.capture");
+        Assert.Equal(
+            new[]
+            {
+                "unity.app.info",
+                "unity.gameobject.find",
+                "unity.time.set_scale",
+                "unity.screenshot.capture",
+            },
+            UnityCommandCatalogNames.Names
+        );
     }
 
     [Fact]
-    public void TimeSetScale_AdvertisesMutatesState()
+    public void Build_AdvertisesRuntimeSafetyMetadata()
     {
         var registry = new GlobalControlCommandRegistry();
-        foreach (var f in UnityCommandCatalog.Build()) f(registry);
-
-        var time = System.Linq.Enumerable.First(
-            registry.Describe(),
-            d => d.Name == "unity.time.set_scale");
-        Assert.True(time.MutatesState);
-    }
-}
-```
-
-The test project can reference `HotRepl.UnityCommands` only if it compiles standalone — but the
-source folder has UnityEngine dependencies. The catalog test can't actually link against UnityEngine
-in the test project. So either:
-
-(a) Move the catalog test into one of the loader-csproj test projects (which DO reference
-UnityEngine via their parent csproj), or
-
-(b) Constrain the catalog test to only check `UnityCommandCatalog.Names` (a static string list).
-
-**Pick (b)** for v1 — it tests the contract without forcing the test project to grow a UnityEngine
-reference. The behavior of each command is tested by live verification (Workstream B step B9).
-
-Revised test:
-
-```csharp
-using HotRepl.UnityCommands;
-using Xunit;
-
-namespace HotRepl.Tests.Unit;
-
-public class UnityCommandsCatalogTests
-{
-    [Fact]
-    public void Names_AreTheExpectedFour()
-    {
-        Assert.Equal(new[]
+        var registrations = UnityCommandCatalog
+            .Build()
+            .Select(factory => factory(registry))
+            .ToArray();
+        try
         {
-            "unity.app.info",
-            "unity.gameobject.find",
-            "unity.time.set_scale",
-            "unity.screenshot.capture",
-        }, UnityCommandCatalog.Names);
+            var descriptors = registry
+                .Describe()
+                .ToDictionary(descriptor => descriptor.Name, StringComparer.Ordinal);
+
+            Assert.Equal(
+                ControlCommandKind.Job,
+                descriptors[UnityCommandCatalogNames.ScreenshotCapture].Kind
+            );
+            Assert.False(descriptors[UnityCommandCatalogNames.ScreenshotCapture].MutatesState);
+            Assert.True(descriptors[UnityCommandCatalogNames.TimeSetScale].MutatesState);
+        }
+        finally
+        {
+            foreach (var registration in registrations)
+            {
+                registration.Dispose();
+            }
+        }
     }
 }
 ```
 
-But this requires `HotRepl.Tests` to reference the shared source. The simplest setup: have
-`HotRepl.Tests.csproj` `<Compile Include>` **only** `UnityCommandCatalog.cs` (not the Commands/
-folder which needs UnityEngine). The `Names` array doesn't depend on the command types.
+The first catalog test keeps the Unity-free contract (`UnityCommandCatalogNames.Names`) small and
+stable. The second test compiles the full shared source into `HotRepl.Tests` with the same
+`UnityEngine.dll` references used by the BepInEx loader, registers the catalog against a real
+`GlobalControlCommandRegistry`, and asserts the runtime safety metadata that matters for clients:
+`screenshot.capture` is a job and `time.set_scale` is mutating.
 
-Add to `tests/HotRepl.Tests/HotRepl.Tests.csproj`:
+`tests/HotRepl.Tests.csproj` links the shared source and Unity stubs:
 
 ```xml
 <ItemGroup>
-  <!-- Test only the names array, which doesn't require UnityEngine. -->
-  <Compile Include="../../src/HotRepl.UnityCommands/UnityCommandCatalog.cs"
-           Link="ImportedCatalog/UnityCommandCatalog.cs" />
+  <Compile
+    Include="../../src/HotRepl.UnityCommands/**/*.cs"
+    Exclude="../../src/HotRepl.UnityCommands/bin/**;../../src/HotRepl.UnityCommands/obj/**"
+    LinkBase="ImportedCatalog"
+  />
+</ItemGroup>
+<ItemGroup>
+  <Reference Include="UnityEngine">
+    <HintPath>../../src/HotRepl.BepInEx/lib/UnityEngine.dll</HintPath>
+    <Private>false</Private>
+  </Reference>
+  <Reference Include="UnityEngine.CoreModule">
+    <HintPath>../../src/HotRepl.BepInEx/lib/UnityEngine.CoreModule.dll</HintPath>
+    <Private>false</Private>
+  </Reference>
 </ItemGroup>
 ```
 
-But this link breaks because the source file references the command types. **Simplest workable
-fix**: extract `UnityCommandCatalog.Names` into its own file:
-
-```csharp
-// src/HotRepl.UnityCommands/UnityCommandCatalogNames.cs
-namespace HotRepl.UnityCommands;
-
-public static class UnityCommandCatalogNames
-{
-    public static IReadOnlyList<string> Names { get; } = new[]
-    {
-        "unity.app.info",
-        "unity.gameobject.find",
-        "unity.time.set_scale",
-        "unity.screenshot.capture",
-    };
-}
-```
-
-The test references `UnityCommandCatalogNames.Names`. The full catalog
-(`UnityCommandCatalog.Build()`) still lives in the main file with the actual handler types and is
-exercised by the live verification.
-
-- [ ] **Step 3: Run the test**
+- [x] **Step 3: Run the test**
 
 ```bash
 dotnet test tests/HotRepl.Tests/ --nologo -v q --filter FullyQualifiedName~UnityCommandsCatalogTests
@@ -3096,7 +3084,7 @@ dotnet test tests/HotRepl.Tests/ --nologo -v q --filter FullyQualifiedName~Unity
 
 Expected: PASS.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/HotRepl.UnityCommands/UnityCommandCatalog.cs src/HotRepl.UnityCommands/UnityCommandCatalogNames.cs tests/HotRepl.Tests/Unit/UnityCommandsCatalogTests.cs tests/HotRepl.Tests/HotRepl.Tests.csproj
@@ -3112,20 +3100,19 @@ git commit -m "feat(unity-commands): catalog + names test"
 - Create: `src/HotRepl.UnityCommands.BepInEx/HotRepl.UnityCommands.BepInEx.csproj`
 - Create: `src/HotRepl.UnityCommands.BepInEx/Plugin.cs`
 
-- [ ] **Step 1: csproj**
+- [x] **Step 1: csproj**
 
 Look at the existing `src/HotRepl.BepInEx/HotRepl.BepInEx.csproj` for the Unity reference +
 ProjectReference patterns. Copy and adapt:
 
 ```xml
-<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <AnalysisMode>Recommended</AnalysisMode>
-    <RootNamespace>HotRepl.UnityCommands</RootNamespace>
+    <RootNamespace>HotRepl.UnityCommands.BepInEx</RootNamespace>
     <AssemblyName>HotRepl.UnityCommands.BepInEx</AssemblyName>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
@@ -3133,6 +3120,7 @@ ProjectReference patterns. Copy and adapt:
 
   <ItemGroup>
     <PackageReference Include="BepInEx.Core" PrivateAssets="all" />
+    <PackageReference Include="System.ComponentModel.Annotations" />
   </ItemGroup>
 
   <ItemGroup>
@@ -3149,21 +3137,19 @@ ProjectReference patterns. Copy and adapt:
       <HintPath>../HotRepl.BepInEx/lib/UnityEngine.CoreModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
-    <Reference Include="UnityEngine.IMGUIModule">
-      <HintPath>../HotRepl.BepInEx/lib/UnityEngine.IMGUIModule.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
   </ItemGroup>
 
   <!-- Shared source folder compiled against this csproj's Unity references. -->
   <ItemGroup>
-    <Compile Include="..\HotRepl.UnityCommands\**\*.cs"
-             Exclude="..\HotRepl.UnityCommands\bin\**;..\HotRepl.UnityCommands\obj\**" />
+    <Compile
+      Include="..\HotRepl.UnityCommands\**\*.cs"
+      Exclude="..\HotRepl.UnityCommands\bin\**;..\HotRepl.UnityCommands\obj\**"
+    />
   </ItemGroup>
 </Project>
 ```
 
-- [ ] **Step 2: Plugin.cs**
+- [x] **Step 2: Plugin.cs**
 
 ```csharp
 // src/HotRepl.UnityCommands.BepInEx/Plugin.cs
@@ -3173,6 +3159,7 @@ using BepInEx;
 using BepInEx.Configuration;
 using HotRepl.Control;
 using HotRepl.UnityCommands;
+using HotRepl.UnityCommands.Screenshots;
 
 namespace HotRepl.UnityCommands.BepInEx;
 
@@ -3206,7 +3193,12 @@ public sealed class Plugin : BaseUnityPlugin
 
         var skip = ParseCsv(disabled.Value);
         var registry = GlobalControlCommandRegistry.Instance;
-        var factories = UnityCommandCatalog.Build();
+        var factories = UnityCommandCatalog.Build(
+            new EndOfFrameUnityScreenshotCapturer(routine =>
+            {
+                StartCoroutine(routine);
+            })
+        );
         var names = UnityCommandCatalogNames.Names;
 
         for (int i = 0; i < factories.Count; i++)
@@ -3241,7 +3233,7 @@ public sealed class Plugin : BaseUnityPlugin
 }
 ```
 
-- [ ] **Step 3: Build the BepInEx loader csproj**
+- [x] **Step 3: Build the BepInEx loader csproj**
 
 ```bash
 dotnet build src/HotRepl.UnityCommands.BepInEx/ --nologo -v q
@@ -3251,7 +3243,7 @@ Expected: clean build. Failure usually means `lib/UnityEngine.dll` etc. aren't w
 expects — adjust the `<HintPath>` to wherever the existing `HotRepl.BepInEx` host stores them in
 this checkout.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/HotRepl.UnityCommands.BepInEx/
@@ -3265,58 +3257,57 @@ git commit -m "feat(unity-commands): BepInEx loader plugin"
 **Files:**
 
 - Create: `src/HotRepl.UnityCommands.MelonLoader/HotRepl.UnityCommands.MelonLoader.csproj`
-- Create: `src/HotRepl.UnityCommands.MelonLoader/Mod.cs`
+- Create: `src/HotRepl.UnityCommands.MelonLoader/UnityCommandsMod.cs`
 
-- [ ] **Step 1: csproj**
+- [x] **Step 1: csproj**
 
 Look at `src/HotRepl.Host.MelonLoader/HotRepl.Host.MelonLoader.csproj` for the IL2CPP-unhollowed
 UnityEngine reference shape. Copy + adapt:
 
 ```xml
-<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
     <LangVersion>latest</LangVersion>
-    <Nullable>enable</Nullable>
+    <Nullable>disable</Nullable>
+    <AnalysisMode>Recommended</AnalysisMode>
     <RootNamespace>HotRepl.UnityCommands.MelonLoader</RootNamespace>
     <AssemblyName>HotRepl.UnityCommands.MelonLoader</AssemblyName>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
-  <PropertyGroup>
-    <MelonLoaderPath Condition="'$(MelonLoaderPath)' == ''">$(MelonLoaderPath_FromExistingHost)</MelonLoaderPath>
-    <Il2CppAssembliesPath Condition="'$(Il2CppAssembliesPath)' == ''">$(Il2CppAssembliesPath_FromExistingHost)</Il2CppAssembliesPath>
-  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="System.ComponentModel.Annotations" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../HotRepl.Core/HotRepl.Core.csproj" />
+  </ItemGroup>
 
   <ItemGroup>
     <Reference Include="MelonLoader">
-      <HintPath>$(MelonLoaderPath)/MelonLoader.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
-    <Reference Include="UnityEngine">
-      <HintPath>$(Il2CppAssembliesPath)/UnityEngine.dll</HintPath>
+      <HintPath>$(MelonLoaderPath)/net6/MelonLoader.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="UnityEngine.CoreModule">
       <HintPath>$(Il2CppAssembliesPath)/UnityEngine.CoreModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
-    <Reference Include="UnityEngine.IMGUIModule">
-      <HintPath>$(Il2CppAssembliesPath)/UnityEngine.IMGUIModule.dll</HintPath>
+    <Reference Include="Il2Cppmscorlib">
+      <HintPath>$(Il2CppAssembliesPath)/Il2Cppmscorlib.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Il2CppInterop.Runtime">
+      <HintPath>$(MelonLoaderPath)/net6/Il2CppInterop.Runtime.dll</HintPath>
       <Private>false</Private>
     </Reference>
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../HotRepl.Core/HotRepl.Core.csproj" />
-    <ProjectReference Include="../HotRepl.Host.MelonLoader/HotRepl.Host.MelonLoader.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Compile Include="..\HotRepl.UnityCommands\**\*.cs"
-             Exclude="..\HotRepl.UnityCommands\bin\**;..\HotRepl.UnityCommands\obj\**" />
+    <Compile
+      Include="..\HotRepl.UnityCommands\**\*.cs"
+      Exclude="..\HotRepl.UnityCommands\bin\**;..\HotRepl.UnityCommands\obj\**"
+    />
   </ItemGroup>
 </Project>
 ```
@@ -3324,22 +3315,23 @@ UnityEngine reference shape. Copy + adapt:
 Mirror whatever the existing `HotRepl.Host.MelonLoader` csproj does for the `MelonLoaderPath` /
 `Il2CppAssembliesPath` resolution (commonly passed via `dotnet build -p:MelonLoaderPath=...`).
 
-- [ ] **Step 2: Mod.cs**
+- [x] **Step 2: UnityCommandsMod.cs**
 
 ```csharp
-// src/HotRepl.UnityCommands.MelonLoader/Mod.cs
+// src/HotRepl.UnityCommands.MelonLoader/UnityCommandsMod.cs
 using System;
 using System.Collections.Generic;
 using HotRepl.Control;
 using HotRepl.UnityCommands;
+using HotRepl.UnityCommands.Screenshots;
 using MelonLoader;
 
-[assembly: MelonInfo(typeof(HotRepl.UnityCommands.MelonLoader.Mod),
+[assembly: MelonInfo(typeof(HotRepl.UnityCommands.MelonLoader.UnityCommandsMod),
     "HotRepl Unity Commands", "3.0.0", "glockyco")]
 
 namespace HotRepl.UnityCommands.MelonLoader;
 
-public sealed class Mod : MelonMod
+public sealed class UnityCommandsMod : MelonMod
 {
     private readonly List<IDisposable> _registrations = new();
     private MelonPreferences_Entry<bool> _enabled = null!;
@@ -3376,7 +3368,12 @@ public sealed class Mod : MelonMod
             return;
         }
 
-        var factories = UnityCommandCatalog.Build();
+        var factories = UnityCommandCatalog.Build(
+            new EndOfFrameUnityScreenshotCapturer(routine =>
+            {
+                MelonCoroutines.Start(routine);
+            })
+        );
         var names = UnityCommandCatalogNames.Names;
         for (int i = 0; i < factories.Count; i++)
         {
@@ -3410,7 +3407,7 @@ public sealed class Mod : MelonMod
 }
 ```
 
-- [ ] **Step 3: Build (requires MelonLoader paths)**
+- [x] **Step 3: Build (requires MelonLoader paths)**
 
 ```bash
 dotnet build src/HotRepl.UnityCommands.MelonLoader/HotRepl.UnityCommands.MelonLoader.csproj \
@@ -3422,7 +3419,7 @@ dotnet build src/HotRepl.UnityCommands.MelonLoader/HotRepl.UnityCommands.MelonLo
 If paths aren't available on this machine, this build can be skipped here — it'll be exercised when
 a consumer (Ancient Kingdoms) tries the deployment in Phase 3. Document that and move on.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/HotRepl.UnityCommands.MelonLoader/
@@ -3431,42 +3428,47 @@ git commit -m "feat(unity-commands): MelonLoader loader mod"
 
 ---
 
-### B9: Wire UnityCommands into host csprojs (project reference for bundled distribution)
+### B9: Wire UnityCommands into host csprojs (project reference + sidecar copy for bundled distribution)
 
 **Files:**
 
 - Modify: `src/HotRepl.BepInEx/HotRepl.BepInEx.csproj`
 - Modify: `src/HotRepl.Host.MelonLoader/HotRepl.Host.MelonLoader.csproj`
+- Modify: `src/HotRepl.BepInEx/ILRepack.targets`
 
-- [ ] **Step 1: Add project reference in the BepInEx host**
+- [x] **Step 1: Add project reference in the BepInEx host**
 
-Add inside the `<ItemGroup>` that already contains project references:
+Add the project reference, add a `CopySidecars` step that builds/copies
+`HotRepl.UnityCommands.BepInEx.*`, and keep those files plus Core's side-by-side
+`Namotion.Reflection.dll` dependency in `ILRepack.targets` cleanup.
 
 ```xml
 <ProjectReference Include="../HotRepl.UnityCommands.BepInEx/HotRepl.UnityCommands.BepInEx.csproj" />
 ```
 
-- [ ] **Step 2: Add project reference in the MelonLoader host**
+- [x] **Step 2: Add project reference in the MelonLoader host**
 
-Same pattern:
+Add the project reference and a `CopyUnityCommandsMelonLoader` target that builds/copies
+`HotRepl.UnityCommands.MelonLoader.*` with the same MelonLoader path properties.
 
 ```xml
 <ProjectReference Include="../HotRepl.UnityCommands.MelonLoader/HotRepl.UnityCommands.MelonLoader.csproj" />
 ```
 
-- [ ] **Step 3: Build BepInEx host and inspect output**
+- [x] **Step 3: Build BepInEx host and inspect output**
 
 ```bash
 dotnet build src/HotRepl.BepInEx/ --nologo -v q
-ls src/HotRepl.BepInEx/bin/Debug/netstandard2.1/ | grep -i "hotrepl\|unitycommands"
+read src/HotRepl.BepInEx/bin/Debug/netstandard2.1
 ```
 
-Expected: `HotRepl.BepInEx.dll`, `HotRepl.Core.dll`, `HotRepl.UnityCommands.BepInEx.dll`, etc.
+Expected: `HotRepl.BepInEx.dll`, `HotRepl.Core.dll`, `Namotion.Reflection.dll`,
+`HotRepl.UnityCommands.BepInEx.dll`, etc.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
-git add src/HotRepl.BepInEx/HotRepl.BepInEx.csproj src/HotRepl.Host.MelonLoader/HotRepl.Host.MelonLoader.csproj
+git add src/HotRepl.BepInEx/HotRepl.BepInEx.csproj src/HotRepl.BepInEx/ILRepack.targets src/HotRepl.Host.MelonLoader/HotRepl.Host.MelonLoader.csproj
 git commit -m "feat(hosts): bundle HotRepl.UnityCommands with both host plugins"
 ```
 
@@ -3494,7 +3496,7 @@ From the HotRepl repo root with `/tmp/hotrepl-smoke` set up (per `scripts/verify
 instructions), or directly:
 
 ```bash
-bunx @hotrepl/cli list-commands | grep '^unity\.'
+bunx @hotrepl/cli list-commands
 ```
 
 Expected output:
@@ -3879,7 +3881,7 @@ git commit -m "feat: BepInEx loader plugin scaffold"
 **Files:**
 
 - Create: `src/MyMod.MelonLoader/MyMod.MelonLoader.csproj`
-- Create: `src/MyMod.MelonLoader/Mod.cs`
+- Create: `src/MyMod.MelonLoader/MyModMelonMod.cs`
 
 - [ ] **Step 1: csproj**
 
@@ -3919,21 +3921,21 @@ git commit -m "feat: BepInEx loader plugin scaffold"
 </Project>
 ```
 
-- [ ] **Step 2: Mod.cs**
+- [ ] **Step 2: MyModMelonMod.cs**
 
 ```csharp
-// src/MyMod.MelonLoader/Mod.cs
+// src/MyMod.MelonLoader/MyModMelonMod.cs
 using System;
 using System.Collections.Generic;
 using HotRepl.Control;
 using MelonLoader;
 using MyMod;
 
-[assembly: MelonInfo(typeof(MyMod.MelonLoader.Mod), "MyMod", "0.1.0", "AUTHOR_PLACEHOLDER")]
+[assembly: MelonInfo(typeof(MyMod.MelonLoader.MyModMelonMod), "MyMod", "0.1.0", "AUTHOR_PLACEHOLDER")]
 
 namespace MyMod.MelonLoader;
 
-public sealed class Mod : MelonMod
+public sealed class MyModMelonMod : MelonMod
 {
     private readonly List<IDisposable> _registrations = new();
     private MelonPreferences_Entry<bool> _enabled = null!;

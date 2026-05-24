@@ -16,6 +16,7 @@
     <ProjectReference Include="../HotRepl.Evaluator.Roslyn/HotRepl.Evaluator.Roslyn.csproj" />
     <ProjectReference Include="../HotRepl.Helpers.Unity/HotRepl.Helpers.Unity.csproj" />
     <ProjectReference Include="../HotRepl.Helpers.Il2Cpp/HotRepl.Helpers.Il2Cpp.csproj" />
+    <ProjectReference Include="../HotRepl.UnityCommands.MelonLoader/HotRepl.UnityCommands.MelonLoader.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -36,4 +37,19 @@
       <Private>false</Private>
     </Reference>
   </ItemGroup>
+  <Target Name="CopyUnityCommandsMelonLoader" AfterTargets="Build">
+    <MSBuild
+      Projects="../HotRepl.UnityCommands.MelonLoader/HotRepl.UnityCommands.MelonLoader.csproj"
+      Targets="Build"
+      Properties="Configuration=$(Configuration);MelonLoaderPath=$(MelonLoaderPath);Il2CppAssembliesPath=$(Il2CppAssembliesPath)"
+    />
+    <ItemGroup>
+      <_UnityCommandsMelonLoaderOutput Include="$(MSBuildProjectDirectory)/../HotRepl.UnityCommands.MelonLoader/bin/$(Configuration)/net6.0/HotRepl.UnityCommands.MelonLoader.*" />
+    </ItemGroup>
+    <Copy
+      SourceFiles="@(_UnityCommandsMelonLoaderOutput)"
+      DestinationFolder="$(OutputPath)"
+      SkipUnchangedFiles="true"
+    />
+  </Target>
 </Project>

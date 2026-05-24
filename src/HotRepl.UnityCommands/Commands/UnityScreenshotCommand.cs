@@ -1,0 +1,86 @@
+#nullable disable
+
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using HotRepl.Control;
+using HotRepl.UnityCommands.Models;
+using HotRepl.UnityCommands.Screenshots;
+
+namespace HotRepl.UnityCommands.Commands;
+
+/// <summary>Captures the current frame as a PNG command artifact.</summary>
+public sealed class UnityScreenshotCommand
+    : IControlCommandHandler<UnityScreenshotArgs, UnityScreenshotResult>
+{
+    private readonly IUnityScreenshotCapturer _capturer;
+
+    /// <summary>Creates a screenshot command without a loader coroutine host.</summary>
+    public UnityScreenshotCommand()
+        : this(UnsupportedUnityScreenshotCapturer.Instance) { }
+
+    internal UnityScreenshotCommand(IUnityScreenshotCapturer capturer)
+    {
+        _capturer = capturer ?? throw new ArgumentNullException(nameof(capturer));
+    }
+
+    /// <inheritdoc />
+    public string Name => UnityCommandCatalogNames.ScreenshotCapture;
+
+    /// <inheritdoc />
+    public int Version => 1;
+
+    /// <inheritdoc />
+    public ControlCommandKind Kind => ControlCommandKind.Job;
+
+    /// <inheritdoc />
+    public bool MutatesState => false;
+
+    /// <inheritdoc />
+    public async ValueTask<ControlCommandResult<UnityScreenshotResult>> ExecuteAsync(
+        ControlCommandContext context,
+        UnityScreenshotArgs args,
+        CancellationToken cancellationToken
+    )
+    {
+        var capture = await _capturer
+            .CaptureAsync(Math.Max(1, args.SuperSize), cancellationToken)
+            .ConfigureAwait(true);
+        if (!capture.Succeeded)
+        {
+            return Failure(capture.FailureKind);
+        }
+
+        var screenshot = capture.Screenshot;
+        var artifact = await context
+            .Artifacts.WriteAsync("screenshot", screenshot.Png, "image/png", cancellationToken)
+            .ConfigureAwait(true);
+
+        return ControlCommandResult.Ok(
+            new UnityScreenshotResult { Width = screenshot.Width, Height = screenshot.Height },
+            "screenshot",
+            artifact
+        );
+    }
+
+    private static ControlCommandResult<UnityScreenshotResult> Failure(
+        UnityScreenshotFailureKind failureKind
+    ) =>
+        failureKind switch
+        {
+            UnityScreenshotFailureKind.PngEncodingUnsupported =>
+                ControlCommandResult.PreconditionFailed<UnityScreenshotResult>(
+                    "pngEncodingUnsupported",
+                    "Unity PNG encoding is not available in this runtime."
+                ),
+            UnityScreenshotFailureKind.SuperSizeUnsupported =>
+                ControlCommandResult.PreconditionFailed<UnityScreenshotResult>(
+                    "screenshotSuperSizeUnsupported",
+                    "This Unity runtime does not expose supersampled screenshot capture; retry with superSize = 1."
+                ),
+            _ => ControlCommandResult.PreconditionFailed<UnityScreenshotResult>(
+                "screenshotUnsupported",
+                "A loader coroutine host is required for end-of-frame screenshot capture."
+            ),
+        };
+}
