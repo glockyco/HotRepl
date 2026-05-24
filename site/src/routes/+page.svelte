@@ -201,7 +201,7 @@
     <p>
       Typed commands return artifact refs with <code>uri</code>, <code>path</code>,
       <code>sha256</code>, <code>byteSize</code>, and <code>finalized</code>. Large files stay on
-      disk; clients receive stable metadata they can verify, stream, or hand to build pipelines.
+      disk. Clients receive stable metadata they can verify, stream, or hand to build pipelines.
     </p>
   </div>
 </section>

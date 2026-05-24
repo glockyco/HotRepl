@@ -85,11 +85,11 @@
         HotRepl is a JSON-over-WebSocket protocol: one loopback connection, JSON frames, and shared
         message shapes for eval, typed commands, jobs, artifacts, and journal queries.
       </p>
-      <ul class="orientation-list">
-        <li>Most consumers should start with SDKs, CLI, MCP, or typed command authoring.</li>
-        <li>Use this page when implementing a client, debugging frames, or verifying exact schema shapes.</li>
-        <li>Artifact refs keep large outputs out of JSON frames.</li>
-      </ul>
+      <p class="content-desc content-desc--secondary">
+        Most consumers should start with SDKs, CLI, MCP, or typed command authoring. Use this page
+        when implementing a client, debugging frames, or verifying exact schema shapes. Artifact refs
+        keep large outputs out of JSON frames.
+      </p>
     </div>
 
     {#each data.families as family (family.id)}
@@ -343,16 +343,8 @@
     color: var(--muted);
   }
 
-  .orientation-list {
-    margin: 16px 0 0;
-    padding-left: 1.1rem;
-    color: var(--muted);
-    font-size: 0.875rem;
-    line-height: 1.6;
-  }
-
-  .orientation-list li + li {
-    margin-top: 4px;
+  .content-desc--secondary {
+    margin-top: 14px;
   }
   .family-section {
     padding: 32px 0;
