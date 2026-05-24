@@ -57,6 +57,10 @@ dotnet build src/HotRepl.Host.MelonLoader/HotRepl.Host.MelonLoader.csproj \
   -p:MelonLoaderPath="/path/to/Game/MelonLoader" \
   -p:Il2CppAssembliesPath="/path/to/Game/MelonLoader/Il2CppAssemblies"
 dotnet test tests/HotRepl.Tests/ --nologo -v q
+dotnet test tests/HotRepl.Sdk.Tests/ --nologo -v q
+dotnet test tests/HotRepl.Testing.Tests/ --nologo -v q
+dotnet pack src/HotRepl.Sdk/ --nologo -v q -o /tmp/hotrepl-sdk-pack
+dotnet pack src/HotRepl.Testing/ --nologo -v q -o /tmp/hotrepl-testing-pack
 ```
 
 `TreatWarningsAsErrors=true` is unconditional. CSharpier.MsBuild runs during every build, so
@@ -145,7 +149,9 @@ These are non-discoverable requirements; do not "simplify" them away:
   runtime. Keep Core free of loader-specific dependencies.
 - Newtonsoft.Json for C# protocol serialization. Do not add a second C# JSON library.
 - Fleck for WebSocket. Do not add a second WebSocket library.
-- Bun workspaces own the SDK, CLI, MCP, testing, and conformance packages.
+- Bun workspaces own the TypeScript SDK, CLI, MCP, testing, and conformance packages. `HotRepl.Sdk`
+  and `HotRepl.Testing` under `src/` are the first-party C# SDK and test harness; they pack to NuGet
+  (`<IsPackable>true</IsPackable>`) but are not yet published.
 - XML doc comments on all public symbols in `IReplHost.cs`, `ReplEngine.cs`, `ReplConfig.cs`.
 - CSharpier formats every `.cs` file. CSharpier.MsBuild fails the build on unformatted code; the
   `pre-commit` hook auto-fixes staged C# before each commit.

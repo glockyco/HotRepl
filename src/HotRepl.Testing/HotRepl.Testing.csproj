@@ -6,6 +6,7 @@
     <PackageId>HotRepl.Testing</PackageId>
     <Version>1.0.0</Version>
     <Description>Test helpers for HotRepl typed-command authors and SDK consumers.</Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <IsPackable>true</IsPackable>
   </PropertyGroup>
 
@@ -13,5 +14,9 @@
     <ProjectReference Include="../HotRepl.Core/HotRepl.Core.csproj" />
     <ProjectReference Include="../HotRepl.Sdk/HotRepl.Sdk.csproj" />
     <PackageReference Include="Newtonsoft.Json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 </Project>

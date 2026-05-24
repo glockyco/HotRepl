@@ -78,6 +78,7 @@ Set `HOTREPL_URL` (or pass `url:` to `connect`) to point at a non-default host.
 | Typed commands | Repeatable game automation, exports, and artifact collection | `Session.run()`, `commands_list`, `command_describe` |
 | CLI            | Scripts and shell-driven local workflows                     | `@hotrepl/cli` (`hotrepl` binary)                    |
 | MCP            | Agent tools with a small stable tool catalog                 | `@hotrepl/mcp` (`hotrepl-mcp` binary)                |
+| C# SDK         | .NET build tools, automation, and tests driving a live game  | `HotRepl.Sdk` and `HotRepl.Testing` (NuGet sources)  |
 | Host embedding | New Unity loader adapters or test hosts                      | `IReplHost` + `ReplEngine.Tick()`                    |
 
 ## Authoring commands
@@ -85,7 +86,8 @@ Set `HOTREPL_URL` (or pass `url:` to `connect`) to point at a non-default host.
 Use [`docs/authoring-commands.md`](docs/authoring-commands.md) when adding typed commands. The
 canonical sample command catalog lives in `src/HotRepl.UnityCommands/Commands/`; the
 `src/HotRepl.UnityCommands.BepInEx` and `src/HotRepl.UnityCommands.MelonLoader` projects package it
-for the two supported Unity loader paths.
+for the two supported Unity loader paths. `src/HotRepl.Sdk` and `src/HotRepl.Testing` are the
+first-party C# client and test harness for driving and exercising typed commands from .NET.
 
 ## Protocol
 
@@ -254,6 +256,11 @@ On every push to `main`, the workflow:
 publish. Publishing uses
 [npm trusted publishing via OIDC](https://docs.npmjs.com/trusted-publishers/) — no long-lived
 `NPM_TOKEN`. Provenance is generated automatically.
+
+`HotRepl.Sdk` and `HotRepl.Testing` are the first-party C# packages (`netstandard2.0`,
+`<IsPackable>true</IsPackable>`). They are not yet published to NuGet; produce a local nupkg with
+`dotnet pack src/HotRepl.Sdk/` or `dotnet pack src/HotRepl.Testing/`. The npm release workflow does
+not touch them.
 
 ## License
 
