@@ -87,7 +87,7 @@ internal sealed class ControlCommandRouter
         return handler.Descriptor.Kind switch
         {
             ControlCommandKind.Job => StartJob(message, handler, connectionId),
-            ControlCommandKind.Synchronous => ExecuteSynchronous(message, handler),
+            ControlCommandKind.Sync => ExecuteSynchronous(message, handler),
             _ => CommandError(
                 message.Id,
                 ErrorKind.UnsupportedOperation,
@@ -305,7 +305,7 @@ internal sealed class ControlCommandRouter
         {
             Name = descriptor.Name,
             MajorVersion = descriptor.Version,
-            Kind = descriptor.Kind == ControlCommandKind.Synchronous ? "sync" : "job",
+            Kind = descriptor.Kind == ControlCommandKind.Sync ? "sync" : "job",
             MutatesState = descriptor.MutatesState,
         };
 
@@ -314,7 +314,7 @@ internal sealed class ControlCommandRouter
         {
             Name = descriptor.Name,
             MajorVersion = descriptor.Version,
-            Kind = descriptor.Kind == ControlCommandKind.Synchronous ? "sync" : "job",
+            Kind = descriptor.Kind == ControlCommandKind.Sync ? "sync" : "job",
             MutatesState = descriptor.MutatesState,
             InputSchema = descriptor.ArgsSchema,
             OutputSchema = descriptor.ResultSchema,

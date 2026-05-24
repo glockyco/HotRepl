@@ -85,7 +85,7 @@ public sealed class TypedCommandRoundTripTests
 
         public int Version => 1;
 
-        public ControlCommandKind Kind => ControlCommandKind.Synchronous;
+        public ControlCommandKind Kind => ControlCommandKind.Sync;
 
         public bool MutatesState => false;
 

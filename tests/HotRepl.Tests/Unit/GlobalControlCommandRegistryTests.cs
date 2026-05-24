@@ -55,7 +55,7 @@ public class GlobalControlCommandRegistryTests
 
         public string Name { get; }
         public int Version => 1;
-        public ControlCommandKind Kind => ControlCommandKind.Synchronous;
+        public ControlCommandKind Kind => ControlCommandKind.Sync;
         public bool MutatesState => false;
 
         public ValueTask<ControlCommandResult<EmptyArgs>> ExecuteAsync(

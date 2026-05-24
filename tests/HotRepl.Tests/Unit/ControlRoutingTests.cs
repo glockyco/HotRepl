@@ -294,7 +294,7 @@ public class ControlRoutingTests
     {
         public string Name => "archive.echo";
         public int Version => 1;
-        public ControlCommandKind Kind => ControlCommandKind.Synchronous;
+        public ControlCommandKind Kind => ControlCommandKind.Sync;
         public bool MutatesState => false;
 
         public ValueTask<ControlCommandResult<EchoResult>> ExecuteAsync(
@@ -308,7 +308,7 @@ public class ControlRoutingTests
     {
         public string Name => "archive.mutate";
         public int Version => 1;
-        public ControlCommandKind Kind => ControlCommandKind.Synchronous;
+        public ControlCommandKind Kind => ControlCommandKind.Sync;
         public bool MutatesState => true;
 
         public ValueTask<ControlCommandResult<EchoResult>> ExecuteAsync(
@@ -322,7 +322,7 @@ public class ControlRoutingTests
     {
         public string Name => "archive.throw";
         public int Version => 1;
-        public ControlCommandKind Kind => ControlCommandKind.Synchronous;
+        public ControlCommandKind Kind => ControlCommandKind.Sync;
         public bool MutatesState => false;
 
         public ValueTask<ControlCommandResult<EchoResult>> ExecuteAsync(
@@ -336,7 +336,7 @@ public class ControlRoutingTests
     {
         public string Name => "archive.largeOutput";
         public int Version => 1;
-        public ControlCommandKind Kind => ControlCommandKind.Synchronous;
+        public ControlCommandKind Kind => ControlCommandKind.Sync;
         public bool MutatesState => false;
 
         public ValueTask<ControlCommandResult<EchoResult>> ExecuteAsync(

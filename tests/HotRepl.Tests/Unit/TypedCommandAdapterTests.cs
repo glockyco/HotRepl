@@ -30,7 +30,7 @@ public class TypedCommandAdapterTests
     {
         public string Name => "test.greet";
         public int Version => 1;
-        public ControlCommandKind Kind => ControlCommandKind.Synchronous;
+        public ControlCommandKind Kind => ControlCommandKind.Sync;
         public bool MutatesState => false;
 
         public ValueTask<ControlCommandResult<GreetResult>> ExecuteAsync(
@@ -144,7 +144,7 @@ public class TypedCommandAdapterTests
 
         public string Name => "test.tracking";
         public int Version => 1;
-        public ControlCommandKind Kind => ControlCommandKind.Synchronous;
+        public ControlCommandKind Kind => ControlCommandKind.Sync;
         public bool MutatesState => false;
 
         public ValueTask<ControlCommandResult<GreetResult>> ExecuteAsync(
@@ -162,7 +162,7 @@ public class TypedCommandAdapterTests
     {
         public string Name => "test.artifact";
         public int Version => 1;
-        public ControlCommandKind Kind => ControlCommandKind.Synchronous;
+        public ControlCommandKind Kind => ControlCommandKind.Sync;
         public bool MutatesState => false;
 
         public async ValueTask<ControlCommandResult<GreetResult>> ExecuteAsync(
@@ -186,7 +186,7 @@ public class TypedCommandAdapterTests
     {
         public string Name => "test.failing";
         public int Version => 1;
-        public ControlCommandKind Kind => ControlCommandKind.Synchronous;
+        public ControlCommandKind Kind => ControlCommandKind.Sync;
         public bool MutatesState => false;
 
         public ValueTask<ControlCommandResult<GreetResult>> ExecuteAsync(

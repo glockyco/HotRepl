@@ -32,7 +32,7 @@ public class ControlCommandRegistryTests
             new ControlCommandDescriptor(
                 name,
                 version: 1,
-                kind: ControlCommandKind.Synchronous,
+                kind: ControlCommandKind.Sync,
                 mutatesState: false,
                 argsSchema: JObject.Parse("{\"type\":\"object\"}"),
                 resultSchema: JObject.Parse("{\"type\":\"object\"}")
@@ -49,7 +49,7 @@ public class ControlCommandRegistryTests
             new ControlCommandDescriptor(
                 "archive.preflight",
                 version: 0,
-                kind: ControlCommandKind.Synchronous,
+                kind: ControlCommandKind.Sync,
                 mutatesState: false,
                 argsSchema: JObject.Parse("{\"type\":\"object\"}"),
                 resultSchema: JObject.Parse("{\"type\":\"object\"}")
