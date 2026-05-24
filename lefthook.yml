@@ -33,7 +33,7 @@ pre-commit:
       stage_fixed: true
     dprint:
       glob: "*.{md,json,jsonc,json5,yml,yaml,toml,ts}"
-      run: dprint fmt {staged_files}
+      run: dprint fmt --allow-no-files {staged_files}
       stage_fixed: true
     typos:
       run: typos
