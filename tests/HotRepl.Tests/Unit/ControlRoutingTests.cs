@@ -32,6 +32,25 @@ public class ControlRoutingTests
     }
 
     [Fact]
+    public void List_EmitsLowercaseKindStrings()
+    {
+        var registry = NewRegistry(r =>
+        {
+            r.Register(new EchoCommand());
+            r.Register(new JobCommand());
+        });
+        var router = new ControlCommandRouter(registry);
+
+        var result = router.List("list-1");
+
+        Assert.Collection(
+            result.Commands,
+            sync => Assert.Equal("sync", sync.Kind),
+            job => Assert.Equal("job", job.Kind)
+        );
+    }
+
+    [Fact]
     public void Describe_ReturnsOneDescriptorByName()
     {
         var registry = NewRegistry(r => r.Register(new EchoCommand()));
