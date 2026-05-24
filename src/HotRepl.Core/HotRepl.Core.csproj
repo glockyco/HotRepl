@@ -23,11 +23,10 @@
     <!-- JSON serialization -->
     <PackageReference Include="Newtonsoft.Json" />
 
-    <!-- JSON schema generation (ILRepack-internalized) -->
+    <!-- JSON schema generation (ILRepack-internalized with its Namotion.Reflection dependency) -->
     <PackageReference Include="NJsonSchema" PrivateAssets="all" />
-    <PackageReference Include="Namotion.Reflection" />
 
-    <!-- ILRepack for internalizing NJsonSchema; Namotion.Reflection stays side-by-side -->
+    <!-- ILRepack for internalizing NJsonSchema + Namotion.Reflection -->
     <PackageReference Include="ILRepack.Lib.MSBuild.Task" PrivateAssets="all" />
   </ItemGroup>
 

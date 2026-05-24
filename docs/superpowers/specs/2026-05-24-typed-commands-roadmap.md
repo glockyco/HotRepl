@@ -97,11 +97,14 @@ questions re-surfacing in each phase spec.
    `validation_failed` diagnostic in the result wrapper, NOT an exception. This protects handlers
    from having to redo argument validation in prose, and gives MCP clients a stable error shape.
 
-6. **Schema generation via NJsonSchema 10.9.0, with `NJsonSchema.dll` internalized into
-   `HotRepl.Core.dll`.** Pinning to 10.9.0 (the last release before the `System.Text.Json`
-   transitive dependency) keeps the runtime surface Newtonsoft-only — known-good on Mono Unity.
-   `Namotion.Reflection.dll` stays side-by-side because its `IsExternalInit` polyfill collides with
-   Core's polyfill when internalized by the pinned ILRepack task.
+6. **Schema generation via NJsonSchema 10.9.0, with `NJsonSchema.dll` and its `Namotion.Reflection`
+   dependency internalized into `HotRepl.Core.dll`.** Pinning to 10.9.0 (the last release before the
+   `System.Text.Json` transitive dependency) keeps the runtime surface Newtonsoft-only — known-good
+   on Mono Unity. ILRepack merges both with
+   `AllowedDuplicateNamespaces="System.Runtime.CompilerServices"` so `Namotion.Reflection`'s
+   `IsExternalInit` polyfill folds into Core without renaming Core's canonical `IsExternalInit`
+   metadata. Downstream consumers ship `HotRepl.Core.dll` with `Newtonsoft.Json.dll` and `Fleck.dll`
+   only — no Namotion sidecar.
 
 7. **Plugin layout: shared-source compilation, no `Core` csproj with Unity dependency.**
    UnityCommands' command bodies live in a source folder that two loader-specific csprojs each
@@ -158,8 +161,9 @@ These can't be decided abstractly — they need the context of the specific phas
 
 - Every published HotRepl package (`@hotrepl/protocol`, `@hotrepl/sdk`, `@hotrepl/cli`,
   `@hotrepl/mcp`) is on v3 of the protocol with the new command shape.
-- `HotRepl.Core` ships at 3.0.0 with NJsonSchema ILRepack-internalized and Namotion.Reflection
-  side-by-side.
+- `HotRepl.Core` ships at 3.0.0 with NJsonSchema and Namotion.Reflection ILRepack-internalized.
+  Downstream consumers deploy `HotRepl.Core.dll`, `HotRepl.Protocol.dll`, `Newtonsoft.Json.dll`, and
+  `Fleck.dll`; no Namotion sidecar.
 - `HotRepl.UnityCommands` ships 4 demo commands (BepInEx + MelonLoader variants) and shows up in
   `commands_list` on every HotRepl install using bundled deployment.
 - `glockyco/hotrepl-mod-template` exists, builds, deploys, and a fresh fork produces a working

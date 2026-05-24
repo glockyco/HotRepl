@@ -517,9 +517,12 @@ The schema engine is **NJsonSchema 10.9.0**, pinned. The 10.x line uses only `Ne
 transitive `System.Text.Json` dependency which doesn't work cleanly on Unity Mono, so we
 deliberately don't upgrade.
 
-NJsonSchema is **ILRepack-internalized** into `HotRepl.Core.dll` (see §6). `Namotion.Reflection.dll`
-stays side-by-side because internalizing its `IsExternalInit` polyfill collides with Core's own
-polyfill under the pinned ILRepack task.
+NJsonSchema is **ILRepack-internalized** into `HotRepl.Core.dll` (see §6) together with its
+`Namotion.Reflection` dependency. The merge uses
+`AllowedDuplicateNamespaces="System.Runtime.CompilerServices"` so `Namotion.Reflection`'s
+`IsExternalInit` polyfill folds into Core without renaming Core's canonical `IsExternalInit` type;
+downstream consumers ship `HotRepl.Core.dll`, `HotRepl.Protocol.dll`, `Newtonsoft.Json.dll`, and
+`Fleck.dll` only.
 
 NJsonSchema honors these attributes out of the box; we don't add any custom attribute
 interpretation:
@@ -817,21 +820,26 @@ referenced and copied from `HotRepl.Host.MelonLoader.csproj`.
 ## 6. Build pipeline — ILRepack details
 
 `HotRepl.Core.csproj` declares the NJsonSchema package reference as private, with ILRepack running
-post-build to internalize it.
+post-build to internalize it together with its `Namotion.Reflection` dependency.
 
 ```xml
 <!-- HotRepl.Core.csproj -->
 <ItemGroup>
   <PackageReference Include="NJsonSchema"                 Version="10.9.0" PrivateAssets="all" />
-  <PackageReference Include="Namotion.Reflection"         Version="2.1.2" />
   <PackageReference Include="ILRepack.Lib.MSBuild.Task"   Version="2.0.34.2" PrivateAssets="all" />
 </ItemGroup>
 ```
 
-`Namotion.Reflection 2.1.2` is NJsonSchema 10.9.0's only non-Newtonsoft dependency. It stays as a
-normal consumer-facing dependency because its own `IsExternalInit` polyfill collides with Core's
-polyfill when internalized. The output cleanup keeps `Namotion.Reflection.dll` and removes only
-NJsonSchema plus Unity/Mono-incompatible transitive facades.
+`Namotion.Reflection 2.1.2` is NJsonSchema 10.9.0's only non-Newtonsoft dependency. Core does not
+take a direct package reference on it; ILRepack pulls Namotion's restore output into the merge
+alongside NJsonSchema. Both Namotion and HotRepl.Core ship their own internal
+`System.Runtime.CompilerServices.IsExternalInit` polyfill, so the merge uses
+`AllowedDuplicateNamespaces="System.Runtime.CompilerServices"`. That tells ILRepack to merge the
+duplicate marker type instead of taking its default path of renaming Core's polyfill to a
+GUID-suffixed name (which would silently corrupt the modreq metadata on every public init-only
+setter in Core's API). The output cleanup removes both `NJsonSchema.dll` and
+`Namotion.Reflection.dll` so consumers ship Core plus only `HotRepl.Protocol.dll`,
+`Newtonsoft.Json.dll`, and `Fleck.dll`.
 
 ```xml
 <!-- ILRepack.targets — sibling of HotRepl.Core.csproj -->
@@ -842,6 +850,7 @@ NJsonSchema plus Unity/Mono-incompatible transitive facades.
   <ItemGroup>
     <ILRepackInput Include="$(CoreOutput)" />
     <ILRepackInput Include="$(OutputPath)NJsonSchema.dll" />
+    <ILRepackInput Include="$(OutputPath)Namotion.Reflection.dll" />
   </ItemGroup>
   <ItemGroup>
     <ILRepackDoNotInternalize Include="HotRepl.Protocol" />
@@ -865,6 +874,7 @@ NJsonSchema plus Unity/Mono-incompatible transitive facades.
     Parallel="true"
     Internalize="true"
     InternalizeExclude="@(ILRepackDoNotInternalize)"
+    AllowedDuplicateNamespaces="System.Runtime.CompilerServices"
     LibraryPath="@(ILRepackLibPath)"
     InputAssemblies="@(ILRepackInput)"
     TargetKind="Dll"
@@ -880,7 +890,6 @@ NJsonSchema plus Unity/Mono-incompatible transitive facades.
     <_HotReplCoreKeep Include="HotRepl.Protocol.xml" />
     <_HotReplCoreKeep Include="Newtonsoft.Json.dll" />
     <_HotReplCoreKeep Include="Fleck.dll" />
-    <_HotReplCoreKeep Include="Namotion.Reflection.dll" />
     <_HotReplCoreOutputs Include="$(OutputPath)*.dll" />
     <_HotReplCoreOutputs Include="$(OutputPath)*.pdb" />
     <_HotReplCoreOutputs Include="$(OutputPath)*.xml" />
@@ -895,15 +904,17 @@ NJsonSchema plus Unity/Mono-incompatible transitive facades.
 
 After build:
 
-- `HotRepl.Core.dll` includes internalized NJsonSchema (same name, same public API surface).
-- `NJsonSchema.dll` is **not** in the build output.
-- `Namotion.Reflection.dll`, `Newtonsoft.Json.dll`, and `Fleck.dll` are still in the build output
-  because consumers/runtime code reference them directly.
+- `HotRepl.Core.dll` includes internalized NJsonSchema and Namotion.Reflection (same name, same
+  public API surface; the canonical `IsExternalInit` modreq on every public init-only setter is
+  preserved).
+- `NJsonSchema.dll` and `Namotion.Reflection.dll` are **not** in the build output.
+- `Newtonsoft.Json.dll` and `Fleck.dll` are still in the build output because consumers and runtime
+  code reference them directly.
 - `Microsoft.CSharp.dll` is **not** in the build output (it resolves from the Mono/Unity runtime BCL
   at load time).
 
-Consumer plugin-folder shape gains `Namotion.Reflection.dll` relative to v2; no `System.Text.Json`
-dependency is introduced.
+Consumer plugin-folder shape is unchanged from v2 for these transitives; no new sidecar DLLs are
+introduced, and `System.Text.Json` stays out of the dependency graph.
 
 ## 7. Configuration
 
@@ -1075,9 +1086,11 @@ The Phase 1 work is done when:
 - `bun run --filter './packages/*' test` and `dotnet test
   tests/HotRepl.Tests/` are green.
 - `lefthook run pre-push --force` is green.
-- `HotRepl.Core 3.0.0` ILRepack output: `NJsonSchema.dll` is not in the output; `HotRepl.Core.dll`,
-  `HotRepl.Protocol.dll`, `Newtonsoft.Json.dll`, `Fleck.dll`, and `Namotion.Reflection.dll` are
-  present.
+- `HotRepl.Core 3.0.0` ILRepack output: neither `NJsonSchema.dll` nor `Namotion.Reflection.dll` is
+  in the output; `HotRepl.Core.dll`, `HotRepl.Protocol.dll`, `Newtonsoft.Json.dll`, and `Fleck.dll`
+  are present. The merged `HotRepl.Core.dll` does not declare a reference on `NJsonSchema` or
+  `Namotion.Reflection`, and every public init-only setter's required-modifier still resolves to the
+  canonical `System.Runtime.CompilerServices.IsExternalInit`.
 - A fresh BepInEx install with `HotRepl.BepInEx.dll` and `HotRepl.UnityCommands.BepInEx.dll`
   deployed: `bunx @hotrepl/cli describe ...` succeeds for all 4 `unity.*` commands, and
   `bunx @hotrepl/cli run unity.app.info '{}'` returns app metadata.

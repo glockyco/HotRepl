@@ -128,8 +128,8 @@ narrow: it supports only the messages needed for AK export, not a general HotRep
 
 - `DataExporter` for data export;
 - `MapScreenshotter` for optional screenshot capture;
-- `HotRepl.Core.dll` for typed command APIs;
-- `Namotion.Reflection.dll` as the required sidecar for schema generation metadata.
+- `HotRepl.Core.dll` for typed command APIs and bundled schema generation (NJsonSchema and
+  `Namotion.Reflection` are ILRepack-internalized; no Namotion sidecar deploys).
 
 The command mod registers in `OnLateInitializeMelon` to avoid racing MelonLoader and HotRepl host
 initialization. Registration is idempotent in process lifetime: commands are registered once and are
@@ -318,17 +318,18 @@ Ancient Kingdoms build-tool retains numeric categories but removes obsolete auth
 Protocol error kinds map into these categories. `auth_failed`, `lease_conflict`, and
 `lease_required` are not part of the v3 AK export flow and are not documented as expected outputs.
 
-### 5.9 Deployment and sidecars
+### 5.9 Deployment
 
 `build-tool deploy-host` continues to build HotRepl's MelonLoader host from a configurable HotRepl
-checkout. It must deploy the host, `HotRepl.Core.dll`, Core dependencies, and
-`Namotion.Reflection.dll` side-by-side into the game `Mods/` directory. Tests must assert
-`Namotion.Reflection.dll` is copied when present in the host output.
+checkout. It must deploy the host, `HotRepl.Core.dll`, and Core's consumer-facing dependencies
+(`HotRepl.Protocol.dll`, `Newtonsoft.Json.dll`, `Fleck.dll`) plus the host's evaluator sidecars into
+the game `Mods/` directory. Tests must assert that no `Namotion.Reflection.dll` ever lands in the
+deployed plugin folder: HotRepl Core 3.0.0 internalizes Namotion via ILRepack, so a Namotion sidecar
+in the deploy output is a regression.
 
-`mods/HotReplCommands/HotReplCommands.csproj` references `HotRepl.Core.dll` and
-`Namotion.Reflection.dll` from a configurable HotRepl output path. Defaults may assume the HotRepl
-repo is a sibling checkout, but the path must be overridable from `Local.props` and must not be
-hardcoded to one user's home directory.
+`mods/HotReplCommands/HotReplCommands.csproj` references `HotRepl.Core.dll` from a configurable
+HotRepl output path. Defaults may assume the HotRepl repo is a sibling checkout, but the path must
+be overridable from `Local.props` and must not be hardcoded to one user's home directory.
 
 ### 5.10 Documentation updates
 
@@ -404,7 +405,8 @@ Required build-tool coverage:
   long enough for command-line parser cleanup;
 - exit-code mappings use `ResourceConflict` / `ReadinessFailed` vocabulary rather than lease/auth
   vocabulary;
-- deploy-host copies `Namotion.Reflection.dll` when it exists in the host output.
+- deploy-host does not copy `Namotion.Reflection.dll`; HotRepl Core 3.0.0 internalizes it, so its
+  presence in the host output is a regression.
 
 Fake WebSocket tests should use an in-memory protocol seam or loopback test server. No test starts
 the real game.
@@ -449,7 +451,8 @@ non-live gate that did run.
 - `build-tool` does not send auth, lease, ping, profile, or client `job_result` messages.
 - `game.quit` is invoked after successful export result delivery; process-level cleanup remains a
   build-tool fallback for launch/export failures.
-- HotRepl host deployment copies `Namotion.Reflection.dll` side-by-side.
+- HotRepl host deployment ships no `Namotion.Reflection.dll` sidecar; the merged `HotRepl.Core.dll`
+  carries internalized NJsonSchema and Namotion.
 - Ancient Kingdoms docs and HotRepl roadmap/spec/plan files reflect the new flow.
 - Local unit/build gates pass, and live export evidence is recorded when the local game environment
   is available.
@@ -465,8 +468,8 @@ non-live gate that did run.
 - **Artifact map size:** Exporting visual images and screenshots can produce many artifact refs. The
   refs are metadata only, deterministic, and cheaper than embedding payloads. Build-tool validates
   required refs without re-hashing every file by default.
-- **Sidecar deployment drift:** Tests assert `Namotion.Reflection.dll` copy behavior so downstream
-  schema generation does not fail only at runtime.
+- **Packaging drift:** Tests assert `Namotion.Reflection.dll` stays absent from the deployed plugin
+  folder so a future ILRepack regression cannot silently reintroduce a sidecar dependency.
 - **Wider-than-loopback deployment:** Because HotRepl has no auth/lease protocol, the default stays
   `127.0.0.1`. Documentation warns that broader binding requires a trusted external network
   boundary.
