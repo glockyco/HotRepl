@@ -38,7 +38,7 @@ describe("Phase 4 site content", () => {
     expect(page).toContain("@hotrepl/cli");
     expect(page).toContain("@hotrepl/mcp");
     expect(page).toContain("Author typed commands");
-    expect(page).toContain("Client implementers and frame debugging");
+    expect(page).toContain("Implementers and debugging");
     expect(page).toContain("Artifacts are references, not payloads");
     expect(page).toContain("All paths use the same runtime and command catalog.");
     expect(page).toContain(
