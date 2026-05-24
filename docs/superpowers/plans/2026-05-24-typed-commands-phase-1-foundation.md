@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development
 > (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use
-> checkbox (`- [ ]`) syntax for tracking.
+> checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Ship `HotRepl.Core` 3.0.0 with the new strongly-typed command interface, the first-party
 `HotRepl.UnityCommands` demo plugin (BepInEx + MelonLoader), and the `glockyco/hotrepl-mod-template`
@@ -11,13 +11,14 @@ GitHub scaffolding repo.
 **Architecture:** A new public `IControlCommandHandler<TArgs, TOutput>` interface replaces the v2
 non-generic shape. An internal `TypedCommandAdapter` projects typed handlers onto the existing wire
 dispatch, generating JSON schemas from POCO arg/result types via NJsonSchema 10.9.0
-(ILRepack-internalized into `HotRepl.Core.dll`) and validating inbound args server-side before
-invoking the handler. Three workstreams: A = Core foundation, B = UnityCommands plugin, C = mod
-template repo. B and C depend on A; B and C are independent of each other.
+(`NJsonSchema.dll` ILRepack-internalized into `HotRepl.Core.dll`; `Namotion.Reflection.dll`
+side-by-side) and validating inbound args server-side before invoking the handler. Three
+workstreams: A = Core foundation, B = UnityCommands plugin, C = mod template repo. B and C depend on
+A; B and C are independent of each other.
 
 **Tech Stack:** C# / `netstandard2.1` / `Newtonsoft.Json` 13.x / `NJsonSchema` 10.9.0 /
-`Namotion.Reflection` 2.1.2 (both ILRepack-internalized) / `ILRepack.Lib.MSBuild.Task` 2.0.x / xUnit
-/ BepInEx 5.x / MelonLoader 0.6+ / `dotnet new` template manifest.
+`Namotion.Reflection` 2.1.2 (side-by-side) / `ILRepack.Lib.MSBuild.Task` 2.0.34.2 / xUnit / BepInEx
+5.x / MelonLoader 0.6+ / `dotnet new` template manifest.
 
 **Spec:**
 [`docs/superpowers/specs/2026-05-24-typed-commands-phase-1-foundation.md`](../specs/2026-05-24-typed-commands-phase-1-foundation.md).
@@ -28,38 +29,39 @@ template repo. B and C depend on A; B and C are independent of each other.
 
 ### Workstream A — `HotRepl.Core` foundation
 
-| File                                                            | Action                                                                                                                              |
-| --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `Directory.Packages.props`                                      | Modify: add NJsonSchema + Namotion.Reflection pinned versions                                                                       |
-| `src/HotRepl.Core/HotRepl.Core.csproj`                          | Modify: add NJsonSchema + Namotion.Reflection + ILRepack.Lib.MSBuild.Task package refs; bump Version to 3.0.0                       |
-| `src/HotRepl.Core/ILRepack.targets`                             | Create: post-build merge of NJsonSchema + Namotion.Reflection into HotRepl.Core.dll                                                 |
-| `src/HotRepl.Core/Control/EmptyArgs.cs`                         | Create: marker struct                                                                                                               |
-| `src/HotRepl.Core/Control/ControlCommandDiagnostic.cs`          | Create: typed diagnostic record + enum                                                                                              |
-| `src/HotRepl.Core/Control/ControlCommandResult.cs`              | **Replace**: generic `ControlCommandResult<TOutput>` (the existing non-generic shape becomes `internal CompiledCommandResult`)      |
-| `src/HotRepl.Core/Control/Artifacts/IArtifactWriter.cs`         | Create: artifact-writing interface                                                                                                  |
-| `src/HotRepl.Core/Control/Artifacts/InMemoryArtifactWriter.cs`  | Create: default in-memory implementation; handed to handlers via context                                                            |
-| `src/HotRepl.Core/Control/ControlCommandContext.cs`             | **Replace**: rich context (Progress, Artifacts, JobId in addition to RequestId/Timeout)                                             |
-| `src/HotRepl.Core/Control/IControlCommandHandler.cs`            | **Replace**: delete the non-generic interface; create new generic `IControlCommandHandler<TArgs, TOutput>`                          |
-| `src/HotRepl.Core/Control/Schema/SchemaCache.cs`                | Create: NJsonSchema-backed schema cache                                                                                             |
-| `src/HotRepl.Core/Control/Schema/IControlCommandValidator.cs`   | Create: validation interface                                                                                                        |
-| `src/HotRepl.Core/Control/Schema/NJsonSchemaValidator.cs`       | Create: NJsonSchema-backed validator (internal)                                                                                     |
-| `src/HotRepl.Core/Control/Internal/ICompiledControlCommand.cs`  | Create: internal dispatch shape (replaces what the old `IControlCommandHandler` was)                                                |
-| `src/HotRepl.Core/Control/Internal/CompiledCommandContext.cs`   | Create: internal context handed to ICompiledControlCommand                                                                          |
-| `src/HotRepl.Core/Control/Internal/CompiledCommandResult.cs`    | Create: internal result record consumed by the router                                                                               |
-| `src/HotRepl.Core/Control/Internal/TypedCommandAdapter.cs`      | Create: bridges typed handlers to ICompiledControlCommand                                                                           |
-| `src/HotRepl.Core/Control/Internal/SilentProgress.cs`           | Create: no-op `IProgress<ControlCommandProgress>` for sync commands                                                                 |
-| `src/HotRepl.Core/Control/Internal/ProgressSinkAdapter.cs`      | Create: adapts the job manager's `Action<JObject?, string?>` to `IProgress<ControlCommandProgress>`                                 |
-| `src/HotRepl.Core/Control/IControlCommandRegistry.cs`           | Modify: add `Register<TArgs, TOutput>(IControlCommandHandler<TArgs, TOutput>)`; change `TryGet` to return `ICompiledControlCommand` |
-| `src/HotRepl.Core/Control/GlobalControlCommandRegistry.cs`      | Modify: implement new Register; store `ICompiledControlCommand` internally                                                          |
-| `src/HotRepl.Core/Control/EmptyControlCommandRegistry.cs`       | Modify: trivial update to satisfy new interface                                                                                     |
-| `src/HotRepl.Core/Control/ControlCommandRouter.cs`              | Modify: consume `ICompiledControlCommand`; wire job progress through                                                                |
-| `src/HotRepl.Core/Control/Jobs/ControlJobManager.cs`            | Modify: pass `CompiledCommandContext` (with progress sink) instead of `ControlJobExecutionContext.ToCommandContext()`               |
-| `src/HotRepl.Core/Control/Jobs/ControlJobExecutionContext.cs`   | Delete: superseded by `CompiledCommandContext`                                                                                      |
-| `tests/HotRepl.Tests/Unit/SchemaCacheTests.cs`                  | Create                                                                                                                              |
-| `tests/HotRepl.Tests/Unit/ControlCommandValidatorTests.cs`      | Create                                                                                                                              |
-| `tests/HotRepl.Tests/Unit/TypedCommandAdapterTests.cs`          | Create                                                                                                                              |
-| `tests/HotRepl.Tests/Unit/RegistryTypedRegisterTests.cs`        | Create                                                                                                                              |
-| `tests/HotRepl.Tests/Integration/TypedCommandRoundTripTests.cs` | Create: register typed handler → call via router → assert wire shape                                                                |
+| File                                                            | Action                                                                                                                         |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `Directory.Packages.props`                                      | Modify: add NJsonSchema + Namotion.Reflection pinned versions                                                                  |
+| `src/HotRepl.Core/HotRepl.Core.csproj`                          | Modify: add NJsonSchema + Namotion.Reflection + ILRepack.Lib.MSBuild.Task package refs; bump Version to 3.0.0                  |
+| `src/HotRepl.Core/ILRepack.targets`                             | Create: post-build merge of NJsonSchema into HotRepl.Core.dll; keep Namotion.Reflection side-by-side                           |
+| `src/HotRepl.Core/Control/EmptyArgs.cs`                         | Create: marker struct                                                                                                          |
+| `src/HotRepl.Core/Control/ControlCommandDiagnostic.cs`          | Create: typed diagnostic record + enum                                                                                         |
+| `src/HotRepl.Core/Control/ControlCommandResult.cs`              | **Replace**: generic `ControlCommandResult<TOutput>` (the existing non-generic shape becomes `internal CompiledCommandResult`) |
+| `src/HotRepl.Core/Control/Artifacts/IArtifactWriter.cs`         | Create: artifact-writing interface                                                                                             |
+| `src/HotRepl.Core/Control/Artifacts/InMemoryArtifactWriter.cs`  | Create: default in-memory implementation; handed to handlers via context                                                       |
+| `src/HotRepl.Core/Control/ControlCommandContext.cs`             | **Replace**: rich context (Progress, Artifacts, JobId in addition to RequestId/Timeout)                                        |
+| `src/HotRepl.Core/Control/IControlCommandHandler.cs`            | **Replace**: delete the non-generic interface; create new generic `IControlCommandHandler<TArgs, TOutput>`                     |
+| `src/HotRepl.Core/Control/Schema/SchemaCache.cs`                | Create: NJsonSchema-backed schema cache                                                                                        |
+| `src/HotRepl.Core/Control/Schema/IControlCommandValidator.cs`   | Create: validation interface                                                                                                   |
+| `src/HotRepl.Core/Control/Schema/NJsonSchemaValidator.cs`       | Create: NJsonSchema-backed validator (internal)                                                                                |
+| `src/HotRepl.Core/Control/Internal/ICompiledControlCommand.cs`  | Create: internal dispatch shape (replaces what the old `IControlCommandHandler` was)                                           |
+| `src/HotRepl.Core/Control/Internal/CompiledCommandContext.cs`   | Create: internal context handed to ICompiledControlCommand                                                                     |
+| `src/HotRepl.Core/Control/Internal/CompiledCommandResult.cs`    | Create: internal result record consumed by the router                                                                          |
+| `src/HotRepl.Core/Control/Internal/TypedCommandAdapter.cs`      | Create: bridges typed handlers to ICompiledControlCommand                                                                      |
+| `src/HotRepl.Core/Control/Internal/SilentProgress.cs`           | Create: no-op `IProgress<ControlCommandProgress>` for sync commands                                                            |
+| `src/HotRepl.Core/Control/Internal/ProgressSinkAdapter.cs`      | Create: adapts the job manager's `Action<JObject?, string?>` to `IProgress<ControlCommandProgress>`                            |
+| `src/HotRepl.Core/Control/Internal/ICompiledRegistry.cs`        | Create: internal dispatch lookup implemented explicitly by concrete registries                                                 |
+| `src/HotRepl.Core/Control/IControlCommandRegistry.cs`           | Modify: public `Describe` + `Register<TArgs,TOutput>` only; compiled lookup moved to internal `ICompiledRegistry`              |
+| `src/HotRepl.Core/Control/GlobalControlCommandRegistry.cs`      | Modify: implement new Register; store `ICompiledControlCommand` internally                                                     |
+| `src/HotRepl.Core/Control/EmptyControlCommandRegistry.cs`       | Modify: trivial update to satisfy new interface                                                                                |
+| `src/HotRepl.Core/Control/ControlCommandRouter.cs`              | Modify: consume `ICompiledControlCommand`; wire job progress through                                                           |
+| `src/HotRepl.Core/Control/Jobs/ControlJobManager.cs`            | Modify: pass `CompiledCommandContext` (with progress sink) instead of `ControlJobExecutionContext.ToCommandContext()`          |
+| `src/HotRepl.Core/Control/Jobs/ControlJobExecutionContext.cs`   | Delete: superseded by `CompiledCommandContext`                                                                                 |
+| `tests/HotRepl.Tests/Unit/SchemaCacheTests.cs`                  | Create                                                                                                                         |
+| `tests/HotRepl.Tests/Unit/ControlCommandValidatorTests.cs`      | Create                                                                                                                         |
+| `tests/HotRepl.Tests/Unit/TypedCommandAdapterTests.cs`          | Create                                                                                                                         |
+| `tests/HotRepl.Tests/Unit/RegistryTypedRegisterTests.cs`        | Create                                                                                                                         |
+| `tests/HotRepl.Tests/Integration/TypedCommandRoundTripTests.cs` | Create: register typed handler → call via router → assert wire shape                                                           |
 
 ### Workstream B — `HotRepl.UnityCommands` plugin
 
@@ -126,7 +128,7 @@ A10–A12 update the surface and dispatch path. A13 is the cleanup commit.
 - Create: `Directory.Packages.props` (if not present; otherwise modify)
 - Modify: `src/HotRepl.Core/HotRepl.Core.csproj`
 
-- [ ] **Step 1: Check for `Directory.Packages.props`**
+- [x] **Step 1: Check for `Directory.Packages.props`**
 
 ```bash
 ls Directory.Packages.props 2>/dev/null && cat Directory.Packages.props || echo "ABSENT"
@@ -135,7 +137,7 @@ ls Directory.Packages.props 2>/dev/null && cat Directory.Packages.props || echo 
 If `ABSENT`, create it. If present, just add the new `PackageVersion` entries to the existing
 `<ItemGroup>`.
 
-- [ ] **Step 2: Pin NJsonSchema + Namotion.Reflection + ILRepack versions**
+- [x] **Step 2: Pin NJsonSchema + Namotion.Reflection + ILRepack versions**
 
 If creating `Directory.Packages.props`:
 
@@ -149,7 +151,7 @@ If creating `Directory.Packages.props`:
     <PackageVersion Include="Newtonsoft.Json"                Version="13.0.3" />
     <PackageVersion Include="NJsonSchema"                    Version="10.9.0" />
     <PackageVersion Include="Namotion.Reflection"            Version="2.1.2" />
-    <PackageVersion Include="ILRepack.Lib.MSBuild.Task"      Version="2.0.41" />
+    <PackageVersion Include="ILRepack.Lib.MSBuild.Task"      Version="2.0.34.2" />
     <PackageVersion Include="BepInEx.Core"                   Version="5.4.21" />
     <!-- ...existing test packages... -->
   </ItemGroup>
@@ -159,20 +161,21 @@ If creating `Directory.Packages.props`:
 If `Directory.Packages.props` already exists, just add the four new `PackageVersion` lines
 (NJsonSchema, Namotion.Reflection, ILRepack.Lib.MSBuild.Task) matching the existing style.
 
-- [ ] **Step 3: Add package references to Core**
+- [x] **Step 3: Add package references to Core**
 
 Modify `src/HotRepl.Core/HotRepl.Core.csproj`. In the existing `<ItemGroup>` that holds package
 references, add:
 
 ```xml
 <PackageReference Include="NJsonSchema"                  PrivateAssets="all" />
-<PackageReference Include="Namotion.Reflection"          PrivateAssets="all" />
+<PackageReference Include="Namotion.Reflection" />
 <PackageReference Include="ILRepack.Lib.MSBuild.Task"    PrivateAssets="all" />
 ```
 
-`PrivateAssets="all"` keeps the package from flowing to consumers — they only see HotRepl.Core.
+`PrivateAssets="all"` keeps NJsonSchema and ILRepack from flowing to consumers.
+`Namotion.Reflection` intentionally flows because it stays side-by-side.
 
-- [ ] **Step 4: Bump Core version to 3.0.0**
+- [x] **Step 4: Bump Core version to 3.0.0**
 
 Same csproj, change `<Version>2.0.0</Version>` to `<Version>3.0.0</Version>`. Update `<Description>`
 if it mentions "v2":
@@ -182,7 +185,7 @@ if it mentions "v2":
 <Description>Unity-safe HotRepl v3 runtime core with typed command authoring.</Description>
 ```
 
-- [ ] **Step 5: Verify restore + compile**
+- [x] **Step 5: Verify restore + compile**
 
 ```bash
 dotnet restore src/HotRepl.Core/HotRepl.Core.csproj
@@ -191,7 +194,7 @@ dotnet build src/HotRepl.Core/ --nologo -v q
 
 Expected: clean build. (Nothing in the source yet uses NJsonSchema, so it should compile.)
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add Directory.Packages.props src/HotRepl.Core/HotRepl.Core.csproj
@@ -200,13 +203,13 @@ git commit -m "build(core): add NJsonSchema and ILRepack dependencies; bump to 3
 
 ---
 
-### A2: ILRepack target that internalizes NJsonSchema + Namotion.Reflection
+### A2: ILRepack target that internalizes NJsonSchema
 
 **Files:**
 
 - Create: `src/HotRepl.Core/ILRepack.targets`
 
-- [ ] **Step 1: Write the target**
+- [x] **Step 1: Write the target**
 
 Create `src/HotRepl.Core/ILRepack.targets`:
 
@@ -214,14 +217,13 @@ Create `src/HotRepl.Core/ILRepack.targets`:
 <?xml version="1.0" encoding="utf-8"?>
 <Project>
   <!--
-    Merge NJsonSchema and Namotion.Reflection into HotRepl.Core.dll
-    so consumers see exactly one Core DLL plus Newtonsoft.Json
-    (which is consumer-facing and stays external).
-
-    Microsoft.CSharp is also a Namotion.Reflection transitive dep on
-    netstandard2.x, but it's part of the Mono/Unity BCL so it resolves
-    from the game runtime at load time — we deliberately do NOT
-    internalize it and we DO list it in InternalizeExclude.
+    Merge NJsonSchema into HotRepl.Core.dll so consumers see one Core DLL
+    plus its small consumer-facing dependency set:
+      Newtonsoft.Json (consumer-facing serializer)
+      Fleck (WebSocket server)
+      Namotion.Reflection (NJsonSchema's reflection helper; carries its
+        own IsExternalInit polyfill — internalizing it collides with
+        Core's polyfill, so it stays as a normal transitive dependency).
   -->
   <Target Name="ILRepackCore" AfterTargets="Build">
     <PropertyGroup>
@@ -230,7 +232,6 @@ Create `src/HotRepl.Core/ILRepack.targets`:
     <ItemGroup>
       <ILRepackInput Include="$(CoreOutput)" />
       <ILRepackInput Include="$(OutputPath)NJsonSchema.dll" />
-      <ILRepackInput Include="$(OutputPath)Namotion.Reflection.dll" />
     </ItemGroup>
     <ItemGroup>
       <ILRepackDoNotInternalize Include="HotRepl.Protocol" />
@@ -259,33 +260,51 @@ Create `src/HotRepl.Core/ILRepack.targets`:
       TargetKind="Dll"
       OutputFile="$(CoreOutput)"
     />
-    <!-- Remove side-by-side input DLLs so they don't ship from consumer
-         deploy scripts that copy "everything in bin". -->
-    <Delete Files="$(OutputPath)NJsonSchema.dll;$(OutputPath)Namotion.Reflection.dll" />
+    <!-- Clean up side-by-side DLLs so consumer deploy scripts that copy
+         "everything in bin" only see the merged Core + consumer-facing deps.
+         Namotion.Reflection's transitive package (System.*, Microsoft.CSharp)
+         brings BCL facades that Unity/Mono already provides. -->
+    <ItemGroup>
+      <_HotReplCoreKeep Include="HotRepl.Core.dll" />
+      <_HotReplCoreKeep Include="HotRepl.Core.pdb" />
+      <_HotReplCoreKeep Include="HotRepl.Core.xml" />
+      <_HotReplCoreKeep Include="HotRepl.Core.deps.json" />
+      <_HotReplCoreKeep Include="HotRepl.Protocol.dll" />
+      <_HotReplCoreKeep Include="HotRepl.Protocol.pdb" />
+      <_HotReplCoreKeep Include="HotRepl.Protocol.xml" />
+      <_HotReplCoreKeep Include="Newtonsoft.Json.dll" />
+      <_HotReplCoreKeep Include="Fleck.dll" />
+      <_HotReplCoreKeep Include="Namotion.Reflection.dll" />
+      <_HotReplCoreOutputs Include="$(OutputPath)*.dll" />
+      <_HotReplCoreOutputs Include="$(OutputPath)*.pdb" />
+      <_HotReplCoreOutputs Include="$(OutputPath)*.xml" />
+      <_HotReplCoreDelete
+        Include="@(_HotReplCoreOutputs)"
+        Exclude="@(_HotReplCoreKeep -> '$(OutputPath)%(Identity)')"
+      />
+    </ItemGroup>
+    <Delete Files="@(_HotReplCoreDelete)" />
   </Target>
 </Project>
 ```
 
-- [ ] **Step 2: Import the target from the csproj**
+- [x] **Step 2: Rely on the package auto-import**
 
-Add a one-line `<Import>` to `src/HotRepl.Core/HotRepl.Core.csproj`, anywhere at the top level of
-the `<Project>`:
+Do not add a manual `<Import Project="ILRepack.targets" />`. `ILRepack.Lib.MSBuild.Task`
+auto-imports `$(ProjectDir)ILRepack.targets` when the file exists; a manual import duplicates the
+target.
 
-```xml
-<Import Project="ILRepack.targets" />
-```
-
-- [ ] **Step 3: Build and inspect output**
+- [x] **Step 3: Build and inspect output**
 
 ```bash
 dotnet build src/HotRepl.Core/ --nologo -v q -c Release
 ls src/HotRepl.Core/bin/Release/netstandard2.1/
 ```
 
-Expected: directory contains `HotRepl.Core.dll` and `Newtonsoft.Json.dll` but NOT `NJsonSchema.dll`
-or `Namotion.Reflection.dll`.
+Expected: directory contains `HotRepl.Core.dll`, `HotRepl.Protocol.dll`, `Newtonsoft.Json.dll`,
+`Fleck.dll`, and `Namotion.Reflection.dll`, but NOT `NJsonSchema.dll`.
 
-- [ ] **Step 4: Confirm merged Core contains internalized NJsonSchema types**
+- [x] **Step 4: Confirm merged Core contains internalized NJsonSchema types**
 
 ```bash
 # dotnet ildasm is available on macOS via dotnet tool; if not installed:
@@ -297,11 +316,11 @@ dotnet-ildasm src/HotRepl.Core/bin/Release/netstandard2.1/HotRepl.Core.dll \
 Expected: matches for internalized types (they'll have `private` or `assembly` access). If
 `dotnet-ildasm` isn't available, skip — Step 3's file inventory is sufficient evidence.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/HotRepl.Core/ILRepack.targets src/HotRepl.Core/HotRepl.Core.csproj
-git commit -m "build(core): ILRepack NJsonSchema + Namotion.Reflection into HotRepl.Core.dll"
+git commit -m "build(core): internalize NJsonSchema into HotRepl.Core.dll"
 ```
 
 ---
@@ -310,7 +329,7 @@ git commit -m "build(core): ILRepack NJsonSchema + Namotion.Reflection into HotR
 
 **Files:** Create `src/HotRepl.Core/Control/EmptyArgs.cs`
 
-- [ ] **Step 1: Write the type**
+- [x] **Step 1: Write the type**
 
 ```csharp
 namespace HotRepl.Control;
@@ -324,7 +343,7 @@ public readonly struct EmptyArgs
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add src/HotRepl.Core/Control/EmptyArgs.cs
@@ -337,7 +356,7 @@ git commit -m "feat(core): add EmptyArgs marker struct for no-args typed command
 
 **Files:** Create `src/HotRepl.Core/Control/ControlCommandDiagnostic.cs`
 
-- [ ] **Step 1: Write the types**
+- [x] **Step 1: Write the types**
 
 ```csharp
 namespace HotRepl.Control;
@@ -367,7 +386,7 @@ public enum ControlCommandDiagnosticKind
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add src/HotRepl.Core/Control/ControlCommandDiagnostic.cs
@@ -380,7 +399,7 @@ git commit -m "feat(core): add ControlCommandDiagnostic and diagnostic kinds"
 
 **Files:** Create `src/HotRepl.Core/Control/Artifacts/IArtifactWriter.cs`
 
-- [ ] **Step 1: Write the interface**
+- [x] **Step 1: Write the interface**
 
 ```csharp
 using System;
@@ -421,7 +440,7 @@ public interface IArtifactWriter
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add src/HotRepl.Core/Control/Artifacts/IArtifactWriter.cs
@@ -434,7 +453,7 @@ git commit -m "feat(core): add IArtifactWriter for typed-command artifact produc
 
 **Files:** Create `src/HotRepl.Core/Control/Artifacts/InMemoryArtifactWriter.cs`
 
-- [ ] **Step 1: Write the test**
+- [x] **Step 1: Write the test**
 
 Create `tests/HotRepl.Tests/Unit/InMemoryArtifactWriterTests.cs`:
 
@@ -493,7 +512,7 @@ public class InMemoryArtifactWriterTests
 }
 ```
 
-- [ ] **Step 2: Run failing test**
+- [x] **Step 2: Run failing test**
 
 ```bash
 dotnet test tests/HotRepl.Tests/ --nologo -v q --filter FullyQualifiedName~InMemoryArtifactWriterTests
@@ -501,7 +520,7 @@ dotnet test tests/HotRepl.Tests/ --nologo -v q --filter FullyQualifiedName~InMem
 
 Expected: FAIL (type doesn't exist).
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Create `src/HotRepl.Core/Control/Artifacts/InMemoryArtifactWriter.cs`:
 
@@ -606,7 +625,7 @@ public sealed class InMemoryArtifactWriter : IArtifactWriter
 }
 ```
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 ```bash
 dotnet test tests/HotRepl.Tests/ --nologo -v q --filter FullyQualifiedName~InMemoryArtifactWriterTests
@@ -614,7 +633,7 @@ dotnet test tests/HotRepl.Tests/ --nologo -v q --filter FullyQualifiedName~InMem
 
 Expected: all PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/HotRepl.Core/Control/Artifacts/InMemoryArtifactWriter.cs tests/HotRepl.Tests/Unit/InMemoryArtifactWriterTests.cs
@@ -623,11 +642,11 @@ git commit -m "feat(core): in-memory IArtifactWriter for typed command results"
 
 ---
 
-### A7: New `ControlCommandResult<TOutput>` + ergonomic factories
+### A7: New `ControlCommandResult<TOutput>` + non-generic factories
 
 **Files:** Modify `src/HotRepl.Core/Control/ControlCommandResult.cs`
 
-- [ ] **Step 1: Write the tests**
+- [x] **Step 1: Write the tests**
 
 Create `tests/HotRepl.Tests/Unit/ControlCommandResultTests.cs`:
 
@@ -647,7 +666,7 @@ public class ControlCommandResultTests
     [Fact]
     public void Ok_SetsSucceededAndOutput()
     {
-        var r = ControlCommandResult<Output>.Ok(new Output { Value = 42 });
+        var r = ControlCommandResult.Ok(new Output { Value = 42 });
         Assert.True(r.Succeeded);
         Assert.Equal(42, r.Output!.Value);
         Assert.Empty(r.Artifacts);
@@ -657,7 +676,7 @@ public class ControlCommandResultTests
     [Fact]
     public void ValidationFailed_SetsFailedAndDiagnostic()
     {
-        var r = ControlCommandResult<Output>.ValidationFailed("badField", "Field X is required.");
+        var r = ControlCommandResult.ValidationFailed<Output>("badField", "Field X is required.");
         Assert.False(r.Succeeded);
         Assert.Null(r.Output);
         var d = Assert.Single(r.Diagnostics);
@@ -668,14 +687,14 @@ public class ControlCommandResultTests
     [Fact]
     public void PreconditionFailed_SetsFailedAndDiagnostic()
     {
-        var r = ControlCommandResult<Output>.PreconditionFailed("notReady", "Player not in world.");
+        var r = ControlCommandResult.PreconditionFailed<Output>("notReady", "Player not in world.");
         Assert.False(r.Succeeded);
         Assert.Equal(ControlCommandDiagnosticKind.PreconditionFailed, r.Diagnostics[0].Kind);
     }
 }
 ```
 
-- [ ] **Step 2: Run failing tests**
+- [x] **Step 2: Run failing tests**
 
 ```bash
 dotnet test tests/HotRepl.Tests/ --nologo -v q --filter FullyQualifiedName~ControlCommandResultTests
@@ -683,7 +702,7 @@ dotnet test tests/HotRepl.Tests/ --nologo -v q --filter FullyQualifiedName~Contr
 
 Expected: FAIL (type doesn't exist yet in new shape).
 
-- [ ] **Step 3: Replace the existing non-generic shape**
+- [x] **Step 3: Replace the existing non-generic shape**
 
 The existing `src/HotRepl.Core/Control/ControlCommandResult.cs` defines a non-generic
 `ControlCommandResult` record. **Replace** its contents:
@@ -700,11 +719,11 @@ namespace HotRepl.Control;
 /// </summary>
 public sealed class ControlCommandResult<TOutput>
 {
-    private static readonly IReadOnlyDictionary<string, ArtifactRef> EmptyArtifacts
-        = new Dictionary<string, ArtifactRef>(0, StringComparer.Ordinal);
+    private static readonly IReadOnlyDictionary<string, ArtifactRef> EmptyArtifacts =
+        new Dictionary<string, ArtifactRef>(0, StringComparer.Ordinal);
 
-    private static readonly IReadOnlyList<ControlCommandDiagnostic> EmptyDiagnostics
-        = Array.Empty<ControlCommandDiagnostic>();
+    private static readonly IReadOnlyList<ControlCommandDiagnostic> EmptyDiagnostics =
+        Array.Empty<ControlCommandDiagnostic>();
 
     public TOutput? Output { get; init; }
 
@@ -713,68 +732,72 @@ public sealed class ControlCommandResult<TOutput>
     public IReadOnlyList<ControlCommandDiagnostic> Diagnostics { get; init; } = EmptyDiagnostics;
 
     public bool Succeeded { get; init; } = true;
+}
 
-    // ---- factories ----
+/// <summary>
+/// Non-generic factory helpers for <see cref="ControlCommandResult{TOutput}"/>.
+/// </summary>
+public static class ControlCommandResult
+{
+    public static ControlCommandResult<TOutput> Ok<TOutput>(TOutput output) =>
+        new() { Output = output };
 
-    public static ControlCommandResult<TOutput> Ok(TOutput output)
-        => new() { Output = output };
-
-    public static ControlCommandResult<TOutput> Ok(
+    public static ControlCommandResult<TOutput> Ok<TOutput>(
         TOutput output,
         string artifactName,
         ArtifactRef artifact
-    ) => new()
-    {
-        Output = output,
-        Artifacts = new Dictionary<string, ArtifactRef>(StringComparer.Ordinal)
+    ) =>
+        new()
         {
-            [artifactName] = artifact,
-        },
-    };
+            Output = output,
+            Artifacts = new Dictionary<string, ArtifactRef>(StringComparer.Ordinal)
+            {
+                [artifactName] = artifact,
+            },
+        };
 
-    public static ControlCommandResult<TOutput> Ok(
+    public static ControlCommandResult<TOutput> Ok<TOutput>(
         TOutput output,
         IReadOnlyDictionary<string, ArtifactRef> artifacts
-    ) => new()
-    {
-        Output = output,
-        Artifacts = artifacts,
-    };
+    ) => new() { Output = output, Artifacts = artifacts };
 
-    public static ControlCommandResult<TOutput> ValidationFailed(
+    public static ControlCommandResult<TOutput> ValidationFailed<TOutput>(
         string code,
         string message,
         object? details = null
-    ) => Failed(new ControlCommandDiagnostic(
-        ControlCommandDiagnosticKind.ValidationFailed,
-        code,
-        message,
-        Retryable: false,
-        Details: details
-    ));
+    ) =>
+        Failed<TOutput>(
+            new ControlCommandDiagnostic(
+                ControlCommandDiagnosticKind.ValidationFailed,
+                code,
+                message,
+                Retryable: false,
+                Details: details
+            )
+        );
 
-    public static ControlCommandResult<TOutput> PreconditionFailed(
+    public static ControlCommandResult<TOutput> PreconditionFailed<TOutput>(
         string code,
         string message,
         object? details = null
-    ) => Failed(new ControlCommandDiagnostic(
-        ControlCommandDiagnosticKind.PreconditionFailed,
-        code,
-        message,
-        Retryable: false,
-        Details: details
-    ));
+    ) =>
+        Failed<TOutput>(
+            new ControlCommandDiagnostic(
+                ControlCommandDiagnosticKind.PreconditionFailed,
+                code,
+                message,
+                Retryable: false,
+                Details: details
+            )
+        );
 
-    public static ControlCommandResult<TOutput> Failed(ControlCommandDiagnostic diagnostic)
-        => new()
-        {
-            Succeeded = false,
-            Diagnostics = new[] { diagnostic },
-        };
+    public static ControlCommandResult<TOutput> Failed<TOutput>(
+        ControlCommandDiagnostic diagnostic
+    ) => new() { Succeeded = false, Diagnostics = new[] { diagnostic } };
 }
 ```
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 ```bash
 dotnet test tests/HotRepl.Tests/ --nologo -v q --filter FullyQualifiedName~ControlCommandResultTests
@@ -783,7 +806,7 @@ dotnet test tests/HotRepl.Tests/ --nologo -v q --filter FullyQualifiedName~Contr
 Expected: all PASS. The wider Core build will be broken because the router and other callers still
 expect the old non-generic shape — that's fine, A14 fixes those. Don't run the wider build yet.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/HotRepl.Core/Control/ControlCommandResult.cs tests/HotRepl.Tests/Unit/ControlCommandResultTests.cs
@@ -798,7 +821,7 @@ The wider Core build is intentionally broken at this point. Subsequent tasks rep
 
 **Files:** Replace `src/HotRepl.Core/Control/IControlCommandHandler.cs`
 
-- [ ] **Step 1: Replace the file**
+- [x] **Step 1: Replace the file**
 
 ```csharp
 using System.Threading;
@@ -857,14 +880,15 @@ public interface IControlCommandHandler<TArgs, TOutput>
 The previous non-generic `IControlCommandHandler` interface is gone. Callers that still reference it
 (router, registry) will fail to compile — those are fixed in subsequent tasks.
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add src/HotRepl.Core/Control/IControlCommandHandler.cs
-git commit -m "feat(core)!: replace IControlCommandHandler with typed IControlCommandHandler<TArgs, TOutput>"
+git commit -m "feat(core): replace IControlCommandHandler with typed IControlCommandHandler<TArgs, TOutput>"
 ```
 
-The `!` in the commit type marks a breaking change.
+The v3 surface is breaking, but this repo's vendored commitlint config rejects `!` markers; do not
+use `!` in the subject.
 
 ---
 
@@ -872,7 +896,7 @@ The `!` in the commit type marks a breaking change.
 
 **Files:** Replace `src/HotRepl.Core/Control/ControlCommandContext.cs`
 
-- [ ] **Step 1: Add `ControlCommandProgress` record (same file)**
+- [x] **Step 1: Add `ControlCommandProgress` record (same file)**
 
 ```csharp
 using System;
@@ -888,7 +912,7 @@ public sealed record ControlCommandProgress(
 );
 ```
 
-- [ ] **Step 2: Replace `ControlCommandContext`**
+- [x] **Step 2: Replace `ControlCommandContext`**
 
 In the same file, replace the existing `ControlCommandContext` record:
 
@@ -936,7 +960,7 @@ public sealed class ControlCommandContext
 }
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/HotRepl.Core/Control/ControlCommandContext.cs
@@ -955,7 +979,7 @@ git commit -m "feat(core): expose Progress and Artifacts on ControlCommandContex
 - Create: `src/HotRepl.Core/Control/Internal/SilentProgress.cs`
 - Create: `src/HotRepl.Core/Control/Internal/ProgressSinkAdapter.cs`
 
-- [ ] **Step 1: `ICompiledControlCommand`**
+- [x] **Step 1: `ICompiledControlCommand`**
 
 `src/HotRepl.Core/Control/Internal/ICompiledControlCommand.cs`:
 
@@ -984,7 +1008,7 @@ internal interface ICompiledControlCommand
 }
 ```
 
-- [ ] **Step 2: `CompiledCommandResult`**
+- [x] **Step 2: `CompiledCommandResult`**
 
 `src/HotRepl.Core/Control/Internal/CompiledCommandResult.cs`:
 
@@ -1016,7 +1040,7 @@ internal sealed record CompiledCommandResult(
 }
 ```
 
-- [ ] **Step 3: `CompiledCommandContext`**
+- [x] **Step 3: `CompiledCommandContext`**
 
 `src/HotRepl.Core/Control/Internal/CompiledCommandContext.cs`:
 
@@ -1058,7 +1082,7 @@ internal sealed class CompiledCommandContext
 }
 ```
 
-- [ ] **Step 4: `SilentProgress`**
+- [x] **Step 4: `SilentProgress`**
 
 `src/HotRepl.Core/Control/Internal/SilentProgress.cs`:
 
@@ -1078,7 +1102,7 @@ internal sealed class SilentProgress : IProgress<ControlCommandProgress>
 }
 ```
 
-- [ ] **Step 5: `ProgressSinkAdapter`**
+- [x] **Step 5: `ProgressSinkAdapter`**
 
 `src/HotRepl.Core/Control/Internal/ProgressSinkAdapter.cs`:
 
@@ -1108,7 +1132,7 @@ internal sealed class ProgressSinkAdapter : IProgress<ControlCommandProgress>
 }
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/HotRepl.Core/Control/Internal/
@@ -1121,7 +1145,7 @@ git commit -m "feat(core): add internal compiled-command dispatch types"
 
 **Files:** Create `src/HotRepl.Core/Control/Schema/SchemaCache.cs`
 
-- [ ] **Step 1: Write the tests**
+- [x] **Step 1: Write the tests**
 
 Create `tests/HotRepl.Tests/Unit/SchemaCacheTests.cs`:
 
@@ -1189,7 +1213,7 @@ public class SchemaCacheTests
 }
 ```
 
-- [ ] **Step 2: Run failing tests**
+- [x] **Step 2: Run failing tests**
 
 ```bash
 dotnet test tests/HotRepl.Tests/ --nologo -v q --filter FullyQualifiedName~SchemaCacheTests
@@ -1197,7 +1221,7 @@ dotnet test tests/HotRepl.Tests/ --nologo -v q --filter FullyQualifiedName~Schem
 
 Expected: FAIL (type doesn't exist).
 
-- [ ] **Step 3: Implement `SchemaCache`**
+- [x] **Step 3: Implement `SchemaCache`**
 
 `src/HotRepl.Core/Control/Schema/SchemaCache.cs`:
 
@@ -1255,7 +1279,7 @@ public static class SchemaCache
 }
 ```
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 ```bash
 dotnet test tests/HotRepl.Tests/ --nologo -v q --filter FullyQualifiedName~SchemaCacheTests
@@ -1263,7 +1287,7 @@ dotnet test tests/HotRepl.Tests/ --nologo -v q --filter FullyQualifiedName~Schem
 
 Expected: all PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/HotRepl.Core/Control/Schema/SchemaCache.cs tests/HotRepl.Tests/Unit/SchemaCacheTests.cs
@@ -1279,7 +1303,7 @@ git commit -m "feat(core): NJsonSchema-backed schema cache for typed handlers"
 - Create: `src/HotRepl.Core/Control/Schema/IControlCommandValidator.cs`
 - Create: `src/HotRepl.Core/Control/Schema/NJsonSchemaValidator.cs`
 
-- [ ] **Step 1: Tests**
+- [x] **Step 1: Tests**
 
 `tests/HotRepl.Tests/Unit/ControlCommandValidatorTests.cs`:
 
@@ -1335,7 +1359,7 @@ public class ControlCommandValidatorTests
 }
 ```
 
-- [ ] **Step 2: Run failing tests**
+- [x] **Step 2: Run failing tests**
 
 ```bash
 dotnet test tests/HotRepl.Tests/ --nologo -v q --filter FullyQualifiedName~ControlCommandValidatorTests
@@ -1343,7 +1367,7 @@ dotnet test tests/HotRepl.Tests/ --nologo -v q --filter FullyQualifiedName~Contr
 
 Expected: FAIL.
 
-- [ ] **Step 3: Implement the interface**
+- [x] **Step 3: Implement the interface**
 
 `src/HotRepl.Core/Control/Schema/IControlCommandValidator.cs`:
 
@@ -1389,7 +1413,7 @@ public readonly struct SchemaValidationResult
 }
 ```
 
-- [ ] **Step 4: Implement the NJsonSchema-backed validator**
+- [x] **Step 4: Implement the NJsonSchema-backed validator**
 
 `src/HotRepl.Core/Control/Schema/NJsonSchemaValidator.cs`:
 
@@ -1422,7 +1446,7 @@ internal sealed class NJsonSchemaValidator : IControlCommandValidator
 }
 ```
 
-- [ ] **Step 5: Mark `NJsonSchemaValidator` accessible in tests**
+- [x] **Step 5: Mark `NJsonSchemaValidator` accessible in tests**
 
 The test class above is in `HotRepl.Tests` which has `InternalsVisibleTo`, so it can
 `new NJsonSchemaValidator()`. Run:
@@ -1433,7 +1457,7 @@ dotnet test tests/HotRepl.Tests/ --nologo -v q --filter FullyQualifiedName~Contr
 
 Expected: all PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/HotRepl.Core/Control/Schema/IControlCommandValidator.cs src/HotRepl.Core/Control/Schema/NJsonSchemaValidator.cs tests/HotRepl.Tests/Unit/ControlCommandValidatorTests.cs
@@ -1446,7 +1470,7 @@ git commit -m "feat(core): NJsonSchema-backed validator with diagnostic-projecti
 
 **Files:** Create `src/HotRepl.Core/Control/Internal/TypedCommandAdapter.cs`
 
-- [ ] **Step 1: Tests**
+- [x] **Step 1: Tests**
 
 `tests/HotRepl.Tests/Unit/TypedCommandAdapterTests.cs`:
 
@@ -1487,7 +1511,7 @@ public class TypedCommandAdapterTests
 
         public ValueTask<ControlCommandResult<GreetResult>> ExecuteAsync(
             ControlCommandContext _, GreetArgs args, CancellationToken __)
-            => new(ControlCommandResult<GreetResult>.Ok(new GreetResult
+            => new(ControlCommandResult.Ok(new GreetResult
             {
                 Greeting = $"Hello, {args.Name}!",
             }));
@@ -1582,7 +1606,7 @@ public class TypedCommandAdapterTests
             ControlCommandContext _, GreetArgs args, CancellationToken __)
         {
             _onCall(args);
-            return new(ControlCommandResult<GreetResult>.Ok(new GreetResult()));
+            return new(ControlCommandResult.Ok(new GreetResult()));
         }
     }
 
@@ -1597,7 +1621,7 @@ public class TypedCommandAdapterTests
         {
             var bytes = System.Text.Encoding.UTF8.GetBytes("manifest content");
             var artifact = await context.Artifacts.WriteAsync("manifest", bytes, "text/plain");
-            return ControlCommandResult<GreetResult>.Ok(
+            return ControlCommandResult.Ok(
                 new GreetResult(),
                 "manifest",
                 artifact
@@ -1613,12 +1637,12 @@ public class TypedCommandAdapterTests
         public bool MutatesState => false;
         public ValueTask<ControlCommandResult<GreetResult>> ExecuteAsync(
             ControlCommandContext _, EmptyArgs __, CancellationToken ___)
-            => new(ControlCommandResult<GreetResult>.PreconditionFailed("notReady", "Not ready."));
+            => new(ControlCommandResult.PreconditionFailed<GreetResult>("notReady", "Not ready."));
     }
 }
 ```
 
-- [ ] **Step 2: Run failing tests**
+- [x] **Step 2: Run failing tests**
 
 ```bash
 dotnet test tests/HotRepl.Tests/ --nologo -v q --filter FullyQualifiedName~TypedCommandAdapterTests
@@ -1626,7 +1650,7 @@ dotnet test tests/HotRepl.Tests/ --nologo -v q --filter FullyQualifiedName~Typed
 
 Expected: FAIL (`TypedCommandAdapter` doesn't exist).
 
-- [ ] **Step 3: Implement the adapter**
+- [x] **Step 3: Implement the adapter**
 
 `src/HotRepl.Core/Control/Internal/TypedCommandAdapter.cs`:
 
@@ -1772,7 +1796,7 @@ internal sealed class TypedCommandAdapter<TArgs, TOutput> : ICompiledControlComm
 }
 ```
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 ```bash
 dotnet test tests/HotRepl.Tests/ --nologo -v q --filter FullyQualifiedName~TypedCommandAdapterTests
@@ -1780,7 +1804,7 @@ dotnet test tests/HotRepl.Tests/ --nologo -v q --filter FullyQualifiedName~Typed
 
 Expected: all PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/HotRepl.Core/Control/Internal/TypedCommandAdapter.cs tests/HotRepl.Tests/Unit/TypedCommandAdapterTests.cs
@@ -1789,7 +1813,7 @@ git commit -m "feat(core): TypedCommandAdapter projects typed handlers to the di
 
 ---
 
-### A14: Registry: add `Register<TArgs, TOutput>`; switch `TryGet` to internal compiled shape
+### A14: Registry: add `Register<TArgs, TOutput>`; split internal compiled lookup
 
 **Files:**
 
@@ -1797,7 +1821,7 @@ git commit -m "feat(core): TypedCommandAdapter projects typed handlers to the di
 - Modify: `src/HotRepl.Core/Control/GlobalControlCommandRegistry.cs`
 - Modify: `src/HotRepl.Core/Control/EmptyControlCommandRegistry.cs`
 
-- [ ] **Step 1: Tests**
+- [x] **Step 1: Tests**
 
 `tests/HotRepl.Tests/Unit/RegistryTypedRegisterTests.cs`:
 
@@ -1820,7 +1844,7 @@ public class RegistryTypedRegisterTests
         public bool MutatesState => false;
         public ValueTask<ControlCommandResult<EmptyArgs>> ExecuteAsync(
             ControlCommandContext _, EmptyArgs __, CancellationToken ___)
-            => new(ControlCommandResult<EmptyArgs>.Ok(new EmptyArgs()));
+            => new(ControlCommandResult.Ok(new EmptyArgs()));
     }
 
     [Fact]
@@ -1859,7 +1883,7 @@ public class RegistryTypedRegisterTests
         var registry = new GlobalControlCommandRegistry();
         using var _ = registry.Register(new Cmd());
 
-        Assert.True(registry.TryGet("test.cmd", out var handler));
+        Assert.True(((ICompiledRegistry)registry).TryGet("test.cmd", out var handler));
         Assert.NotNull(handler);
         Assert.Equal("test.cmd", handler!.Descriptor.Name);
     }
@@ -1869,7 +1893,7 @@ public class RegistryTypedRegisterTests
 (`GlobalControlCommandRegistry`'s constructor is currently private — we'll widen it to internal for
 this test, then keep the singleton `Instance` for production callers.)
 
-- [ ] **Step 2: Run failing tests**
+- [x] **Step 2: Run failing tests**
 
 ```bash
 dotnet test tests/HotRepl.Tests/ --nologo -v q --filter FullyQualifiedName~RegistryTypedRegisterTests
@@ -1877,14 +1901,13 @@ dotnet test tests/HotRepl.Tests/ --nologo -v q --filter FullyQualifiedName~Regis
 
 Expected: FAIL.
 
-- [ ] **Step 3: Update the interface**
+- [x] **Step 3: Update the public interface and internal lookup interface**
 
-Replace `src/HotRepl.Core/Control/IControlCommandRegistry.cs`:
+Replace `src/HotRepl.Core/Control/IControlCommandRegistry.cs` with the public authoring surface:
 
 ```csharp
 using System;
 using System.Collections.Generic;
-using HotRepl.Control.Internal;
 
 namespace HotRepl.Control;
 
@@ -1900,16 +1923,21 @@ public interface IControlCommandRegistry
     /// OnDeinitializeMelon.
     /// </summary>
     IDisposable Register<TArgs, TOutput>(IControlCommandHandler<TArgs, TOutput> handler);
+}
+```
 
-    /// <summary>
-    /// Internal lookup used by the router. Returns the compiled
-    /// dispatch shape, not the consumer-facing typed shape.
-    /// </summary>
+Create `src/HotRepl.Core/Control/Internal/ICompiledRegistry.cs` for router-only lookup:
+
+```csharp
+namespace HotRepl.Control.Internal;
+
+internal interface ICompiledRegistry
+{
     bool TryGet(string name, out ICompiledControlCommand? handler);
 }
 ```
 
-- [ ] **Step 4: Update the global registry**
+- [x] **Step 4: Update the global registry**
 
 Replace `src/HotRepl.Core/Control/GlobalControlCommandRegistry.cs`:
 
@@ -1928,7 +1956,7 @@ namespace HotRepl.Control;
 /// control commands. Typed handlers passed to <c>Register</c> are
 /// wrapped in a <see cref="TypedCommandAdapter{TArgs,TOutput}"/>.
 /// </summary>
-public sealed class GlobalControlCommandRegistry : IControlCommandRegistry
+public sealed class GlobalControlCommandRegistry : IControlCommandRegistry, ICompiledRegistry
 {
     private readonly object _sync = new();
     private readonly Dictionary<string, ICompiledControlCommand> _handlers =
@@ -1985,7 +2013,7 @@ public sealed class GlobalControlCommandRegistry : IControlCommandRegistry
     }
 
     /// <inheritdoc />
-    public bool TryGet(string name, out ICompiledControlCommand? handler)
+    bool ICompiledRegistry.TryGet(string name, out ICompiledControlCommand? handler)
     {
         lock (_sync)
             return _handlers.TryGetValue(name, out handler);
@@ -2024,7 +2052,7 @@ public sealed class GlobalControlCommandRegistry : IControlCommandRegistry
 }
 ```
 
-- [ ] **Step 5: Update the empty registry**
+- [x] **Step 5: Update the empty registry**
 
 Replace `src/HotRepl.Core/Control/EmptyControlCommandRegistry.cs`:
 
@@ -2036,7 +2064,7 @@ using HotRepl.Control.Internal;
 namespace HotRepl.Control;
 
 /// <summary>No-op registry used when control commands are disabled.</summary>
-internal sealed class EmptyControlCommandRegistry : IControlCommandRegistry
+public sealed class EmptyControlCommandRegistry : IControlCommandRegistry, ICompiledRegistry
 {
     public static EmptyControlCommandRegistry Instance { get; } = new();
 
@@ -2047,7 +2075,7 @@ internal sealed class EmptyControlCommandRegistry : IControlCommandRegistry
         IControlCommandHandler<TArgs, TOutput> handler
     ) => NullRegistration.Instance;
 
-    public bool TryGet(string name, out ICompiledControlCommand? handler)
+    bool ICompiledRegistry.TryGet(string name, out ICompiledControlCommand? handler)
     {
         handler = null;
         return false;
@@ -2061,7 +2089,7 @@ internal sealed class EmptyControlCommandRegistry : IControlCommandRegistry
 }
 ```
 
-- [ ] **Step 6: Run tests**
+- [x] **Step 6: Run tests**
 
 ```bash
 dotnet test tests/HotRepl.Tests/ --nologo -v q --filter FullyQualifiedName~RegistryTypedRegisterTests
@@ -2069,7 +2097,7 @@ dotnet test tests/HotRepl.Tests/ --nologo -v q --filter FullyQualifiedName~Regis
 
 Expected: all PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/HotRepl.Core/Control/IControlCommandRegistry.cs src/HotRepl.Core/Control/GlobalControlCommandRegistry.cs src/HotRepl.Core/Control/EmptyControlCommandRegistry.cs tests/HotRepl.Tests/Unit/RegistryTypedRegisterTests.cs
@@ -2093,24 +2121,24 @@ non-generic `ControlCommandResult`. After this task it calls
 JObject, ct)` and gets back the
 internal `CompiledCommandResult`. The projection to wire messages is otherwise unchanged.
 
-- [ ] **Step 1: Read the existing router and job manager carefully**
+- [x] **Step 1: Read the existing router and job manager carefully**
 
 ```bash
 read src/HotRepl.Core/Control/ControlCommandRouter.cs:raw
 read src/HotRepl.Core/Control/Jobs/ControlJobManager.cs:raw
 ```
 
-Note the existing methods: `ExecuteSynchronous`, `StartJob`, the `IControlCommandHandler` typing on
-`_registry.TryGet`, the construction of `ControlCommandContext`, and the use of
+Note the existing methods: `ExecuteSynchronous`, `StartJob`, the old `_registry.TryGet` dispatch
+lookup, the construction of `ControlCommandContext`, and the use of
 `ControlJobExecutionContext.ToCommandContext`.
 
-- [ ] **Step 2: Update the router signatures**
+- [x] **Step 2: Update the router signatures**
 
 In `ControlCommandRouter.cs`:
 
-1. Change `if (!_registry.TryGet(message.Name, out var handler))` blocks to expect the new nullable
-   `ICompiledControlCommand?`. Use null-check:
-   `if (!_registry.TryGet(message.Name, out var handler) || handler is null)`.
+1. Store both `_registry: IControlCommandRegistry` and `_compiled: ICompiledRegistry` in the router.
+   Cast the constructor argument to `ICompiledRegistry` with a descriptive `ArgumentException`, then
+   change lookup blocks to call `_compiled.TryGet(...)` and null-check the nullable handler.
 
 2. In `ExecuteSynchronous`, replace the `ControlCommandContext` construction with a
    `CompiledCommandContext`:
@@ -2163,7 +2191,7 @@ var job = _jobs.StartJob(
    exercised when `result.Succeeded == false` and the top-level wire envelope picks up the
    diagnostics.
 
-- [ ] **Step 3: Refactor the job manager**
+- [x] **Step 3: Refactor the job manager**
 
 Replace `ControlJobExecutionContext`'s sole purpose (handing the handler a sync-shaped context) with
 a richer execution context the router can directly populate.
@@ -2208,13 +2236,13 @@ In `Jobs/ControlJobManager.cs`:
 6. The `GetStatus` method's projection to `ControlJobStatus` keeps the same wire shape — only the C#
    field types change.
 
-- [ ] **Step 4: Delete `ControlJobExecutionContext.cs`**
+- [x] **Step 4: Delete `ControlJobExecutionContext.cs`**
 
 ```bash
 git rm src/HotRepl.Core/Control/Jobs/ControlJobExecutionContext.cs
 ```
 
-- [ ] **Step 5: Verify the broader Core build**
+- [x] **Step 5: Verify the broader Core build**
 
 ```bash
 dotnet build src/HotRepl.Core/ --nologo -v q
@@ -2224,7 +2252,7 @@ Expected: clean build. Any test code in `HotRepl.Tests` that still references th
 `IControlCommandHandler` non-generic interface or the old `ControlCommandResult` non-generic record
 fails to compile here — fix those in the next task.
 
-- [ ] **Step 6: Update existing C# tests that touched the old shapes**
+- [x] **Step 6: Update existing C# tests that touched the old shapes**
 
 The following test files reference the old `IControlCommandHandler` / `ControlCommandResult` shapes
 and need rewriting against the typed interface:
@@ -2238,7 +2266,7 @@ For each file the grep surfaces, rewrite to use the new typed shape. The migrati
 1. Replace any custom `IControlCommandHandler`-implementing test double with an
    `IControlCommandHandler<TArgs, TOutput>` typed shape.
 2. Replace `new ControlCommandResult(json, artifacts, diagnostics)` with
-   `ControlCommandResult<TOutput>.Ok(...)` or the appropriate factory.
+   `ControlCommandResult.Ok(...)` or the appropriate factory.
 3. Replace any direct `Register(IControlCommandHandler)` call with the typed
    `Register<TArgs, TOutput>(...)`.
 4. Update any assertions that read `.Result` on the old non-generic result to read `.Output` on the
@@ -2253,11 +2281,11 @@ dotnet test tests/HotRepl.Tests/ --nologo -v q
 
 Expected: all PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/HotRepl.Core/Control/ControlCommandRouter.cs src/HotRepl.Core/Control/Jobs/ tests/HotRepl.Tests/
-git commit -m "feat(core)!: router and job manager consume compiled-command dispatch shape"
+git commit -m "feat(core): router and job manager consume compiled-command dispatch shape"
 ```
 
 ---
@@ -2266,13 +2294,15 @@ git commit -m "feat(core)!: router and job manager consume compiled-command disp
 
 **Files:** Create `tests/HotRepl.Tests/Integration/TypedCommandRoundTripTests.cs`
 
-- [ ] **Step 1: Write the test**
+- [x] **Step 1: Write the test**
 
 This is the integration test that validates the entire dispatch pipeline: register a typed handler →
 router serializes the wire message → adapter validates + deserializes → handler runs → adapter
 projects back → wire result.
 
 ```csharp
+using System.ComponentModel.DataAnnotations;
+using System.Threading;
 using System.Threading.Tasks;
 using HotRepl.Control;
 using HotRepl.Protocol;
@@ -2281,11 +2311,67 @@ using Xunit;
 
 namespace HotRepl.Tests.Integration;
 
-public class TypedCommandRoundTripTests
+public sealed class TypedCommandRoundTripTests
 {
-    // A typed command for round-trip testing.
+    [Fact]
+    public void Execute_TypedCommand_ReturnsSerializedCommandResult()
+    {
+        var command = new EchoCommand();
+        var registry = new GlobalControlCommandRegistry();
+        registry.Register(command);
+        var router = new ControlCommandRouter(registry);
+
+        var result = Assert.IsType<CommandResultMessage>(
+            router.Execute(
+                new CommandCallMessage
+                {
+                    Id = "req-1",
+                    Name = "test.echo",
+                    Args = JObject.Parse("{\"Message\":\"hi\"}"),
+                }
+            )
+        );
+
+        Assert.Equal(MessageType.CommandResult, result.Type);
+        Assert.Equal("req-1", result.Id);
+        Assert.Equal("ok", result.Status);
+        Assert.Equal("hi", result.Output!["Echoed"]!.Value<string>());
+        Assert.Empty(result.Artifacts);
+        Assert.Null(result.Error);
+        Assert.Equal(1, command.Calls);
+    }
+
+    [Fact]
+    public void Execute_InvalidTypedArgs_ReturnsValidationFailureWithoutCallingHandler()
+    {
+        var command = new EchoCommand();
+        var registry = new GlobalControlCommandRegistry();
+        registry.Register(command);
+        var router = new ControlCommandRouter(registry);
+
+        var result = Assert.IsType<CommandResultMessage>(
+            router.Execute(
+                new CommandCallMessage
+                {
+                    Id = "req-2",
+                    Name = "test.echo",
+                    Args = JObject.Parse("{\"Message\":42}"),
+                }
+            )
+        );
+
+        Assert.Equal(MessageType.CommandResult, result.Type);
+        Assert.Equal("req-2", result.Id);
+        Assert.Equal("failed", result.Status);
+        Assert.Equal(ErrorKind.ValidationFailed, result.Error!.Kind);
+        Assert.Equal("argsSchemaViolation", result.Error.Code);
+        Assert.Empty(result.Artifacts);
+        Assert.Equal(0, command.Calls);
+    }
+
     private sealed class EchoArgs
     {
+        [Required]
         public string Message { get; set; } = "";
     }
 
@@ -2296,64 +2382,30 @@ public class TypedCommandRoundTripTests
 
     private sealed class EchoCommand : IControlCommandHandler<EchoArgs, EchoResult>
     {
+        public int Calls { get; private set; }
+
         public string Name => "test.echo";
+
         public int Version => 1;
+
         public ControlCommandKind Kind => ControlCommandKind.Synchronous;
+
         public bool MutatesState => false;
+
         public ValueTask<ControlCommandResult<EchoResult>> ExecuteAsync(
-            ControlCommandContext _, EchoArgs args, System.Threading.CancellationToken __)
-            => new(ControlCommandResult<EchoResult>.Ok(new EchoResult
-            {
-                Echoed = args.Message,
-            }));
-    }
-
-    [Fact]
-    public void RegisterAndExecute_ProducesWireOkResult()
-    {
-        var registry = new GlobalControlCommandRegistry();
-        using var _ = registry.Register(new EchoCommand());
-
-        var router = new ControlCommandRouter(registry);
-        var call = new CommandCallMessage
+            ControlCommandContext context,
+            EchoArgs args,
+            CancellationToken cancellationToken
+        )
         {
-            Id = "req-1",
-            Name = "test.echo",
-            Args = JObject.Parse("{\"Message\":\"hi\"}"),
-        };
-
-        var result = (CommandResultMessage)router.Execute(call);
-
-        Assert.Equal("ok", result.Status);
-        Assert.Equal("hi", (string?)result.Output["Echoed"]);
-        Assert.Empty(result.Artifacts);
-    }
-
-    [Fact]
-    public void Execute_WithInvalidArgs_ReturnsFailedStatusAndDiagnostic()
-    {
-        var registry = new GlobalControlCommandRegistry();
-        using var _ = registry.Register(new EchoCommand());
-        var router = new ControlCommandRouter(registry);
-
-        var call = new CommandCallMessage
-        {
-            Id = "req-2",
-            Name = "test.echo",
-            Args = JObject.Parse("{\"Message\": 42}"), // wrong type
-        };
-
-        var result = (CommandResultMessage)router.Execute(call);
-
-        Assert.Equal("failed", result.Status);
-        // diagnostic content is implementation-specific; just assert
-        // we got a failed wire shape and some diagnostic.
-        Assert.NotNull(result.Error);
+            Calls++;
+            return new(ControlCommandResult.Ok(new EchoResult { Echoed = args.Message }));
+        }
     }
 }
 ```
 
-- [ ] **Step 2: Run, expect PASS**
+- [x] **Step 2: Run, expect PASS**
 
 ```bash
 dotnet test tests/HotRepl.Tests/ --nologo -v q --filter FullyQualifiedName~TypedCommandRoundTripTests
@@ -2361,7 +2413,7 @@ dotnet test tests/HotRepl.Tests/ --nologo -v q --filter FullyQualifiedName~Typed
 
 Expected: all PASS (the foundation works end-to-end).
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add tests/HotRepl.Tests/Integration/TypedCommandRoundTripTests.cs
@@ -2390,17 +2442,18 @@ ls src/HotRepl.Core/bin/Release/netstandard2.1/
 
 Expected output directory contains:
 
-- `HotRepl.Core.dll` (~3 MB)
+- `HotRepl.Core.dll`
+- `HotRepl.Protocol.dll`
 - `Newtonsoft.Json.dll`
-- (any other consumer-facing reference assemblies — Fleck, etc.)
+- `Fleck.dll`
+- `Namotion.Reflection.dll`
 
 NOT in output:
 
 - `NJsonSchema.dll`
-- `Namotion.Reflection.dll`
 
-If `NJsonSchema.dll` or `Namotion.Reflection.dll` appear, the ILRepack target failed to delete them
-— fix the `<Delete>` step in `ILRepack.targets`.
+If `NJsonSchema.dll` appears, the ILRepack target failed to delete it. `Namotion.Reflection.dll` is
+expected because it is intentionally not internalized.
 
 - [ ] **Step 3: Lefthook pre-push gate**
 
@@ -2524,7 +2577,7 @@ public sealed class UnityAppInfoCommand
 
     public ValueTask<ControlCommandResult<UnityAppInfo>> ExecuteAsync(
         ControlCommandContext _, EmptyArgs __, CancellationToken ___)
-        => new(ControlCommandResult<UnityAppInfo>.Ok(new UnityAppInfo
+        => new(ControlCommandResult.Ok(new UnityAppInfo
         {
             ProductName  = UnityEngine.Application.productName,
             UnityVersion = UnityEngine.Application.unityVersion,
@@ -2640,7 +2693,7 @@ public sealed class UnityGameObjectFindCommand
         ControlCommandContext _, UnityGameObjectFindArgs args, CancellationToken __)
     {
         var go = UnityEngine.GameObject.Find(args.Path);
-        return new(ControlCommandResult<UnityGameObjectFindResult>.Ok(
+        return new(ControlCommandResult.Ok(
             new UnityGameObjectFindResult
             {
                 GameObject = go is null ? null : ToDto(go),
@@ -2745,7 +2798,7 @@ public sealed class UnityTimeSetScaleCommand
     {
         var previous = UnityEngine.Time.timeScale;
         UnityEngine.Time.timeScale = args.TimeScale;
-        return new(ControlCommandResult<UnitySetTimeScaleResult>.Ok(
+        return new(ControlCommandResult.Ok(
             new UnitySetTimeScaleResult
             {
                 PreviousTimeScale = previous,
@@ -2845,7 +2898,7 @@ public sealed class UnityScreenshotCommand
                 cancellationToken: ct
             ).ConfigureAwait(true);
 
-            return ControlCommandResult<UnityScreenshotResult>.Ok(
+            return ControlCommandResult.Ok(
                 new UnityScreenshotResult { Width = width, Height = height },
                 "screenshot",
                 artifact
@@ -3664,7 +3717,7 @@ public sealed class HelloWorldCommand
         ControlCommandContext _, HelloWorldArgs args, CancellationToken __)
     {
         var who = string.IsNullOrWhiteSpace(args.Name) ? "world" : args.Name;
-        return new(ControlCommandResult<HelloWorldResult>.Ok(new HelloWorldResult
+        return new(ControlCommandResult.Ok(new HelloWorldResult
         {
             Greeting = $"Hello, {who}!",
             GeneratedAt = DateTimeOffset.UtcNow,

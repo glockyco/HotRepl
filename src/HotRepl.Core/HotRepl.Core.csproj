@@ -27,7 +27,7 @@
     <PackageReference Include="NJsonSchema" PrivateAssets="all" />
     <PackageReference Include="Namotion.Reflection" />
 
-    <!-- ILRepack for internalizing NJsonSchema + Namotion.Reflection -->
+    <!-- ILRepack for internalizing NJsonSchema; Namotion.Reflection stays side-by-side -->
     <PackageReference Include="ILRepack.Lib.MSBuild.Task" PrivateAssets="all" />
   </ItemGroup>
 

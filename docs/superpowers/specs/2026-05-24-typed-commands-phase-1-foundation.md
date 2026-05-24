@@ -134,6 +134,8 @@ namespace HotRepl.Control;
 /// </remarks>
 public sealed class ControlCommandResult<TOutput>
 {
+    private static readonly IReadOnlyDictionary<string, ArtifactRef> EmptyArtifacts =
+        new Dictionary<string, ArtifactRef>(0, StringComparer.Ordinal);
     /// <summary>Successful output. Null for failed results.</summary>
     public TOutput? Output { get; init; }
 
@@ -152,14 +154,18 @@ public sealed class ControlCommandResult<TOutput>
     /// </summary>
     public bool Succeeded { get; init; } = true;
 
-    // ----- Ergonomic factories -----
+}
 
-    /// <summary>Successful result with output.</summary>
-    public static ControlCommandResult<TOutput> Ok(TOutput output)
+/// <summary>Non-generic factory helpers for typed command results.</summary>
+public static class ControlCommandResult
+{
+    public static ControlCommandResult<TOutput> Ok<TOutput>(TOutput output)
         => new() { Output = output };
 
-    /// <summary>Successful result with output + a single artifact.</summary>
-    public static ControlCommandResult<TOutput> Ok(TOutput output, string artifactName, ArtifactRef artifact)
+    public static ControlCommandResult<TOutput> Ok<TOutput>(
+        TOutput output,
+        string artifactName,
+        ArtifactRef artifact)
         => new()
         {
             Output = output,
@@ -167,37 +173,27 @@ public sealed class ControlCommandResult<TOutput>
                 { [artifactName] = artifact },
         };
 
-    /// <summary>Successful result with output + named artifacts.</summary>
-    public static ControlCommandResult<TOutput> Ok(TOutput output, IReadOnlyDictionary<string, ArtifactRef> artifacts)
+    public static ControlCommandResult<TOutput> Ok<TOutput>(
+        TOutput output,
+        IReadOnlyDictionary<string, ArtifactRef> artifacts)
         => new() { Output = output, Artifacts = artifacts };
 
-    /// <summary>
-    ///     Validation failure. The args passed schema validation
-    ///     server-side, but the handler's semantic check rejected them.
-    ///     Wire status: "failed", diagnostic kind: "validation_failed".
-    /// </summary>
-    public static ControlCommandResult<TOutput> ValidationFailed(string code, string message, object? details = null)
-        => Failed(new ControlCommandDiagnostic(
+    public static ControlCommandResult<TOutput> ValidationFailed<TOutput>(
+        string code, string message, object? details = null)
+        => Failed<TOutput>(new ControlCommandDiagnostic(
             ControlCommandDiagnosticKind.ValidationFailed, code, message, retryable: false, details));
 
-    /// <summary>
-    ///     Precondition failure (e.g. "player not in world"). Wire
-    ///     status: "failed", diagnostic kind: "precondition_failed".
-    /// </summary>
-    public static ControlCommandResult<TOutput> PreconditionFailed(string code, string message, object? details = null)
-        => Failed(new ControlCommandDiagnostic(
+    public static ControlCommandResult<TOutput> PreconditionFailed<TOutput>(
+        string code, string message, object? details = null)
+        => Failed<TOutput>(new ControlCommandDiagnostic(
             ControlCommandDiagnosticKind.PreconditionFailed, code, message, retryable: false, details));
 
-    /// <summary>Failed result with a single diagnostic.</summary>
-    public static ControlCommandResult<TOutput> Failed(ControlCommandDiagnostic diagnostic)
+    public static ControlCommandResult<TOutput> Failed<TOutput>(ControlCommandDiagnostic diagnostic)
         => new()
         {
             Succeeded = false,
             Diagnostics = new[] { diagnostic },
         };
-
-    private static readonly IReadOnlyDictionary<string, ArtifactRef> EmptyArtifacts
-        = new Dictionary<string, ArtifactRef>(0, StringComparer.Ordinal);
 }
 
 /// <summary>
@@ -322,12 +318,6 @@ public interface IControlCommandRegistry
     IReadOnlyList<ControlCommandDescriptor> Describe();
 
     /// <summary>
-    ///     Internal lookup used by the router. Returns the adapted
-    ///     dispatch shape, not the consumer-facing typed shape.
-    /// </summary>
-    bool TryGet(string name, out ICompiledControlCommand handler);
-
-    /// <summary>
     ///     Register a typed command. The returned disposable
     ///     unregisters on dispose; use it for proper teardown in
     ///     plugin <c>OnDestroy</c>/<c>OnDeinitializeMelon</c>.
@@ -336,13 +326,23 @@ public interface IControlCommandRegistry
 }
 ```
 
-`ICompiledControlCommand` is the internal dispatch shape (effectively today's
+`ICompiledControlCommand` is the internal dispatch shape (effectively today's v2
 `IControlCommandHandler`). It stays `internal`/non-public so the only consumer-facing handler
-interface is the typed one.
+interface is the typed one. Dispatch lookup lives behind an internal paired interface:
+
+```csharp
+namespace HotRepl.Control.Internal;
+
+internal interface ICompiledRegistry
+{
+    bool TryGet(string name, out ICompiledControlCommand? handler);
+}
+```
 
 `GlobalControlCommandRegistry.Instance` is the canonical singleton (no change from v2). Its
 `Register(IControlCommandHandler<,>)` instantiates the internal adapter (§4.1) and stores the
-resulting `ICompiledControlCommand`.
+resulting `ICompiledControlCommand`; concrete registries implement `ICompiledRegistry` explicitly so
+`TryGet` does not appear on the public API.
 
 ## 4. Internals
 
@@ -517,8 +517,9 @@ The schema engine is **NJsonSchema 10.9.0**, pinned. The 10.x line uses only `Ne
 transitive `System.Text.Json` dependency which doesn't work cleanly on Unity Mono, so we
 deliberately don't upgrade.
 
-NJsonSchema and Namotion.Reflection are **ILRepack-internalized** into `HotRepl.Core.dll` (see §6).
-Consumers never see them.
+NJsonSchema is **ILRepack-internalized** into `HotRepl.Core.dll` (see §6). `Namotion.Reflection.dll`
+stays side-by-side because internalizing its `IsExternalInit` polyfill collides with Core's own
+polyfill under the pinned ILRepack task.
 
 NJsonSchema honors these attributes out of the box; we don't add any custom attribute
 interpretation:
@@ -629,7 +630,7 @@ public sealed class UnityAppInfoCommand
         ControlCommandContext _,
         EmptyArgs __,
         CancellationToken ___)
-        => new(ControlCommandResult<UnityAppInfo>.Ok(new UnityAppInfo
+        => new(ControlCommandResult.Ok(new UnityAppInfo
         {
             ProductName  = UnityEngine.Application.productName,
             UnityVersion = UnityEngine.Application.unityVersion,
@@ -655,7 +656,7 @@ public sealed class UnitySetTimeScaleCommand
     {
         var previous = UnityEngine.Time.timeScale;
         UnityEngine.Time.timeScale = args.TimeScale;
-        return new(ControlCommandResult<UnitySetTimeScaleResult>.Ok(
+        return new(ControlCommandResult.Ok(
             new UnitySetTimeScaleResult
             {
                 PreviousTimeScale = previous,
@@ -702,7 +703,7 @@ public sealed class UnityScreenshotCommand
                 cancellationToken: ct
             ).ConfigureAwait(true);
 
-            return ControlCommandResult<UnityScreenshotResult>.Ok(
+            return ControlCommandResult.Ok(
                 new UnityScreenshotResult { Width = width, Height = height },
                 "screenshot",
                 artifact
@@ -790,64 +791,87 @@ post-build to internalize it.
 <!-- HotRepl.Core.csproj -->
 <ItemGroup>
   <PackageReference Include="NJsonSchema"                 Version="10.9.0" PrivateAssets="all" />
-  <PackageReference Include="Namotion.Reflection"         Version="2.1.2" PrivateAssets="all" />
-  <PackageReference Include="ILRepack.Lib.MSBuild.Task"   Version="2.0.41" PrivateAssets="all" />
+  <PackageReference Include="Namotion.Reflection"         Version="2.1.2" />
+  <PackageReference Include="ILRepack.Lib.MSBuild.Task"   Version="2.0.34.2" PrivateAssets="all" />
 </ItemGroup>
 ```
 
-`Namotion.Reflection 2.1.2` is NJsonSchema 10.9.0's only non-Newtonsoft dependency. On
-`netstandard2.0`/`netstandard2.1` targets it has a transitive `Microsoft.CSharp 4.3.0` dependency;
-this is a BCL package already present in every supported Mono Unity install, so we **do not**
-internalize it — `Microsoft.CSharp.dll` continues to resolve from the game's runtime.
+`Namotion.Reflection 2.1.2` is NJsonSchema 10.9.0's only non-Newtonsoft dependency. It stays as a
+normal consumer-facing dependency because its own `IsExternalInit` polyfill collides with Core's
+polyfill when internalized. The output cleanup keeps `Namotion.Reflection.dll` and removes only
+NJsonSchema plus Unity/Mono-incompatible transitive facades.
 
 ```xml
 <!-- ILRepack.targets — sibling of HotRepl.Core.csproj -->
-<Target Name="ILRepack" AfterTargets="Build">
+<Target Name="ILRepackCore" AfterTargets="Build">
+  <PropertyGroup>
+    <CoreOutput>$(OutputPath)HotRepl.Core.dll</CoreOutput>
+  </PropertyGroup>
   <ItemGroup>
-    <InputAssemblies Include="$(OutputPath)HotRepl.Core.dll" />
-    <InputAssemblies Include="$(OutputPath)NJsonSchema.dll" />
-    <InputAssemblies Include="$(OutputPath)Namotion.Reflection.dll" />
+    <ILRepackInput Include="$(CoreOutput)" />
+    <ILRepackInput Include="$(OutputPath)NJsonSchema.dll" />
   </ItemGroup>
   <ItemGroup>
-    <!-- DO NOT internalize: consumers reference these by type identity. -->
-    <DoNotInternalize Include="HotRepl.Protocol" />
-    <DoNotInternalize Include="Newtonsoft.Json" />
-    <DoNotInternalize Include="Microsoft.CSharp" />
-    <DoNotInternalize Include="UnityEngine" />
-    <DoNotInternalize Include="BepInEx" />
-    <DoNotInternalize Include="MelonLoader" />
+    <ILRepackDoNotInternalize Include="HotRepl.Protocol" />
+    <ILRepackDoNotInternalize Include="Newtonsoft.Json" />
+    <ILRepackDoNotInternalize Include="Microsoft.CSharp" />
+    <ILRepackDoNotInternalize Include="UnityEngine" />
+    <ILRepackDoNotInternalize Include="UnityEngine.CoreModule" />
+    <ILRepackDoNotInternalize Include="BepInEx" />
+    <ILRepackDoNotInternalize Include="MelonLoader" />
+    <ILRepackDoNotInternalize Include="Fleck" />
+    <ILRepackDoNotInternalize Include="netstandard" />
+    <ILRepackDoNotInternalize Include="mscorlib" />
+    <ILRepackDoNotInternalize Include="System" />
+    <ILRepackDoNotInternalize Include="System.Core" />
+    <ILRepackDoNotInternalize Include="System.Runtime" />
   </ItemGroup>
   <ItemGroup>
-    <!-- Tell ILRepack where to resolve referenced assemblies it does
-         not internalize. The .NET ref-assemblies path is the
-         net-standard contract; Newtonsoft is in the output dir. -->
-    <SearchDirectories Include="$(OutputPath)" />
-    <SearchDirectories Include="$(NuGetPackageRoot)newtonsoft.json\13.0.3\lib\netstandard2.1" />
+    <ILRepackLibPath Include="$(OutputPath)" />
   </ItemGroup>
   <ILRepack
     Parallel="true"
     Internalize="true"
-    InternalizeExclude="@(DoNotInternalize)"
-    LibraryPath="@(SearchDirectories)"
-    InputAssemblies="@(InputAssemblies)"
+    InternalizeExclude="@(ILRepackDoNotInternalize)"
+    LibraryPath="@(ILRepackLibPath)"
+    InputAssemblies="@(ILRepackInput)"
     TargetKind="Dll"
-    OutputFile="$(OutputPath)HotRepl.Core.dll"
+    OutputFile="$(CoreOutput)"
   />
-  <!-- Delete the side-by-side input DLLs so they don't ship. -->
-  <Delete Files="$(OutputPath)NJsonSchema.dll;$(OutputPath)Namotion.Reflection.dll" />
+  <ItemGroup>
+    <_HotReplCoreKeep Include="HotRepl.Core.dll" />
+    <_HotReplCoreKeep Include="HotRepl.Core.pdb" />
+    <_HotReplCoreKeep Include="HotRepl.Core.xml" />
+    <_HotReplCoreKeep Include="HotRepl.Core.deps.json" />
+    <_HotReplCoreKeep Include="HotRepl.Protocol.dll" />
+    <_HotReplCoreKeep Include="HotRepl.Protocol.pdb" />
+    <_HotReplCoreKeep Include="HotRepl.Protocol.xml" />
+    <_HotReplCoreKeep Include="Newtonsoft.Json.dll" />
+    <_HotReplCoreKeep Include="Fleck.dll" />
+    <_HotReplCoreKeep Include="Namotion.Reflection.dll" />
+    <_HotReplCoreOutputs Include="$(OutputPath)*.dll" />
+    <_HotReplCoreOutputs Include="$(OutputPath)*.pdb" />
+    <_HotReplCoreOutputs Include="$(OutputPath)*.xml" />
+    <_HotReplCoreDelete
+      Include="@(_HotReplCoreOutputs)"
+      Exclude="@(_HotReplCoreKeep -> '$(OutputPath)%(Identity)')"
+    />
+  </ItemGroup>
+  <Delete Files="@(_HotReplCoreDelete)" />
 </Target>
 ```
 
 After build:
 
-- `HotRepl.Core.dll` is the single file (~3 MB instead of ~50 KB; same name, same public API
-  surface).
-- `NJsonSchema.dll`, `Namotion.Reflection.dll` are **not** in the build output.
-- `Newtonsoft.Json.dll` is still in the build output (consumers reference it directly).
+- `HotRepl.Core.dll` includes internalized NJsonSchema (same name, same public API surface).
+- `NJsonSchema.dll` is **not** in the build output.
+- `Namotion.Reflection.dll`, `Newtonsoft.Json.dll`, and `Fleck.dll` are still in the build output
+  because consumers/runtime code reference them directly.
 - `Microsoft.CSharp.dll` is **not** in the build output (it resolves from the Mono/Unity runtime BCL
   at load time).
 
-Consumer plugin-folder shape is unchanged from v2.
+Consumer plugin-folder shape gains `Namotion.Reflection.dll` relative to v2; no `System.Text.Json`
+dependency is introduced.
 
 ## 7. Configuration
 
@@ -982,7 +1006,7 @@ public sealed class HelloWorldCommand
         CancellationToken __)
     {
         var who = string.IsNullOrWhiteSpace(args.Name) ? "world" : args.Name;
-        return new(ControlCommandResult<HelloWorldResult>.Ok(new HelloWorldResult
+        return new(ControlCommandResult.Ok(new HelloWorldResult
         {
             Greeting = $"Hello, {who}!",
             GeneratedAt = System.DateTimeOffset.UtcNow,
@@ -1015,8 +1039,9 @@ The Phase 1 work is done when:
 - `bun run --filter './packages/*' test` and `dotnet test
   tests/HotRepl.Tests/` are green.
 - `lefthook run pre-push --force` is green.
-- `HotRepl.Core 3.0.0` ILRepack output: built `HotRepl.Core.dll` is ~3 MB, `NJsonSchema.dll` and
-  `Namotion.Reflection.dll` are not in the output, `Newtonsoft.Json.dll` is.
+- `HotRepl.Core 3.0.0` ILRepack output: `NJsonSchema.dll` is not in the output; `HotRepl.Core.dll`,
+  `HotRepl.Protocol.dll`, `Newtonsoft.Json.dll`, `Fleck.dll`, and `Namotion.Reflection.dll` are
+  present.
 - A fresh BepInEx install with `HotRepl.BepInEx.dll` and `HotRepl.UnityCommands.BepInEx.dll`
   deployed: starting a game with the plugin loaded shows the 4 unity.* commands in
   `bunx @hotrepl/cli list-commands` output.
@@ -1054,7 +1079,7 @@ is unchanged).
   host's plugin folder) needs a concrete pick. Phase 1 declares the interface; Phase 2 picks the
   default implementation and tests it through Ardenfall's `run.finalize` (which writes multiple
   ~100KB artifacts).
-- Whether `ControlCommandResult<T>.Ok` overloads should also exist for `IEnumerable<ArtifactRef>`
+- Whether `ControlCommandResult.Ok<T>` overloads should also exist for `IEnumerable<ArtifactRef>`
   (vs only `IReadOnlyDictionary<>`). Phase 2 decides based on what Ardenfall's existing handlers
   actually want.
 - Whether handlers should be allowed to set wire `status = "failed"` WITH an `Output` (e.g. "the
