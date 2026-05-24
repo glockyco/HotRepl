@@ -12,7 +12,7 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@hotrepl/protocol": "2.0.0",
-    "@hotrepl/sdk": "2.0.0"
+    "@hotrepl/protocol": "3.0.0",
+    "@hotrepl/sdk": "3.0.0"
   }
 }
