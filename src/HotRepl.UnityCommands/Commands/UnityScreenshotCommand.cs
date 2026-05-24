@@ -25,16 +25,16 @@ public sealed class UnityScreenshotCommand
     }
 
     /// <inheritdoc />
-    public string Name => UnityCommandCatalogNames.ScreenshotCapture;
+    public string Name => UnityCommandCatalogMetadata.ScreenshotCapture.Name;
 
     /// <inheritdoc />
     public int Version => 1;
 
     /// <inheritdoc />
-    public ControlCommandKind Kind => ControlCommandKind.Job;
+    public ControlCommandKind Kind => UnityCommandCatalogMetadata.ScreenshotCapture.Kind;
 
     /// <inheritdoc />
-    public bool MutatesState => false;
+    public bool MutatesState => UnityCommandCatalogMetadata.ScreenshotCapture.MutatesState;
 
     /// <inheritdoc />
     public async ValueTask<ControlCommandResult<UnityScreenshotResult>> ExecuteAsync(

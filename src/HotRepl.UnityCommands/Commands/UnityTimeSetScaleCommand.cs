@@ -10,16 +10,16 @@ public sealed class UnityTimeSetScaleCommand
     : IControlCommandHandler<UnitySetTimeScaleArgs, UnitySetTimeScaleResult>
 {
     /// <inheritdoc />
-    public string Name => UnityCommandCatalogNames.TimeSetScale;
+    public string Name => UnityCommandCatalogMetadata.TimeSetScale.Name;
 
     /// <inheritdoc />
     public int Version => 1;
 
     /// <inheritdoc />
-    public ControlCommandKind Kind => ControlCommandKind.Synchronous;
+    public ControlCommandKind Kind => UnityCommandCatalogMetadata.TimeSetScale.Kind;
 
     /// <inheritdoc />
-    public bool MutatesState => true;
+    public bool MutatesState => UnityCommandCatalogMetadata.TimeSetScale.MutatesState;
 
     /// <inheritdoc />
     public ValueTask<ControlCommandResult<UnitySetTimeScaleResult>> ExecuteAsync(

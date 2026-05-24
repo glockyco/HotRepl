@@ -18,6 +18,5 @@ public static class UnityCommandCatalogNames
     public const string ScreenshotCapture = "unity.screenshot.capture";
 
     /// <summary>Command names in registration order.</summary>
-    public static IReadOnlyList<string> Names { get; } =
-        new[] { AppInfo, GameObjectFind, TimeSetScale, ScreenshotCapture };
+    public static IReadOnlyList<string> Names => UnityCommandCatalogMetadata.Names;
 }

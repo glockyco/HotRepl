@@ -599,6 +599,8 @@ src/HotRepl.UnityCommands/                 ← shared source folder, no csproj
   Vec3.cs                                  ← shared POCO replacing UnityEngine.Vector3 in schemas
   UnityCommandCatalog.cs                   ← static catalog used by both loader plugins
   UnityCommandCatalogNames.cs              ← command-name constants testable without UnityEngine refs
+  UnityCommandCatalogMetadata.cs           ← Unity-free catalog safety metadata used by tests and handlers
+  UnityCommandCatalogMetadataEntry.cs      ← metadata row type split for MA0048
 
 src/HotRepl.UnityCommands.BepInEx/         ← loader-specific csproj, Mono UnityEngine ref
   Plugin.cs                                ← BaseUnityPlugin with [BepInPlugin] + [BepInDependency("hotrepl.bepinex", HardDependency)]
@@ -613,6 +615,11 @@ The shared source folder has no .csproj. Both loader csprojs compile the same so
 respective `UnityEngine.dll`. Standard dual-runtime mod pattern (UnityExplorer, RuntimeUnityEditor).
 Both loader csprojs reference `System.ComponentModel.Annotations` so `[Required]` and `[Range]`
 attributes compile and are present for schema reflection at runtime.
+
+The main `HotRepl.Tests` project must not reference `UnityEngine.dll`; those DLLs are gitignored
+game-local inputs and are absent on GitHub-hosted CI runners. UnityCommands catalog tests therefore
+link only `UnityCommandCatalogNames.cs` plus the Unity-free metadata files. Loader-specific builds
+remain the verification point for full Unity API compilation.
 
 ### 5.2 The four demo commands
 

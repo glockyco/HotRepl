@@ -10,16 +10,16 @@ public sealed class UnityGameObjectFindCommand
     : IControlCommandHandler<UnityGameObjectFindArgs, UnityGameObjectFindResult>
 {
     /// <inheritdoc />
-    public string Name => UnityCommandCatalogNames.GameObjectFind;
+    public string Name => UnityCommandCatalogMetadata.GameObjectFind.Name;
 
     /// <inheritdoc />
     public int Version => 1;
 
     /// <inheritdoc />
-    public ControlCommandKind Kind => ControlCommandKind.Synchronous;
+    public ControlCommandKind Kind => UnityCommandCatalogMetadata.GameObjectFind.Kind;
 
     /// <inheritdoc />
-    public bool MutatesState => false;
+    public bool MutatesState => UnityCommandCatalogMetadata.GameObjectFind.MutatesState;
 
     /// <inheritdoc />
     public ValueTask<ControlCommandResult<UnityGameObjectFindResult>> ExecuteAsync(

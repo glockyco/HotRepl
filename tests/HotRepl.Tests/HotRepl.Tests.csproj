@@ -24,8 +24,15 @@
   </ItemGroup>
   <ItemGroup>
     <Compile
-      Include="../../src/HotRepl.UnityCommands/**/*.cs"
-      Exclude="../../src/HotRepl.UnityCommands/bin/**;../../src/HotRepl.UnityCommands/obj/**"
+      Include="../../src/HotRepl.UnityCommands/UnityCommandCatalogNames.cs"
+      LinkBase="ImportedCatalog"
+    />
+    <Compile
+      Include="../../src/HotRepl.UnityCommands/UnityCommandCatalogMetadata.cs"
+      LinkBase="ImportedCatalog"
+    />
+    <Compile
+      Include="../../src/HotRepl.UnityCommands/UnityCommandCatalogMetadataEntry.cs"
       LinkBase="ImportedCatalog"
     />
   </ItemGroup>
@@ -34,15 +41,5 @@
       <HintPath>../../lib/mcs.dll</HintPath>
     </Reference>
     <None Include="../../lib/mcs.dll" CopyToOutputDirectory="PreserveNewest" Link="mcs.dll" />
-  </ItemGroup>
-  <ItemGroup>
-    <Reference Include="UnityEngine">
-      <HintPath>../../src/HotRepl.BepInEx/lib/UnityEngine.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
-    <Reference Include="UnityEngine.CoreModule">
-      <HintPath>../../src/HotRepl.BepInEx/lib/UnityEngine.CoreModule.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
   </ItemGroup>
 </Project>

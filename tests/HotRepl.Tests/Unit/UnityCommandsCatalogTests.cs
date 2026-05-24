@@ -24,32 +24,19 @@ public sealed class UnityCommandsCatalogTests
     }
 
     [Fact]
-    public void Build_AdvertisesRuntimeSafetyMetadata()
+    public void Metadata_AdvertisesRuntimeSafetyForEveryCommand()
     {
-        var registry = new GlobalControlCommandRegistry();
-        var registrations = UnityCommandCatalog
-            .Build()
-            .Select(factory => factory(registry))
-            .ToArray();
-        try
-        {
-            var descriptors = registry
-                .Describe()
-                .ToDictionary(descriptor => descriptor.Name, StringComparer.Ordinal);
+        var descriptors = UnityCommandCatalogMetadata.Commands.ToDictionary(
+            command => command.Name,
+            StringComparer.Ordinal
+        );
+        Assert.Equal(UnityCommandCatalogNames.Names, descriptors.Keys);
 
-            Assert.Equal(
-                ControlCommandKind.Job,
-                descriptors[UnityCommandCatalogNames.ScreenshotCapture].Kind
-            );
-            Assert.False(descriptors[UnityCommandCatalogNames.ScreenshotCapture].MutatesState);
-            Assert.True(descriptors[UnityCommandCatalogNames.TimeSetScale].MutatesState);
-        }
-        finally
-        {
-            foreach (var registration in registrations)
-            {
-                registration.Dispose();
-            }
-        }
+        Assert.Equal(
+            ControlCommandKind.Job,
+            descriptors[UnityCommandCatalogNames.ScreenshotCapture].Kind
+        );
+        Assert.False(descriptors[UnityCommandCatalogNames.ScreenshotCapture].MutatesState);
+        Assert.True(descriptors[UnityCommandCatalogNames.TimeSetScale].MutatesState);
     }
 }

@@ -107,7 +107,10 @@ questions re-surfacing in each phase spec.
    UnityCommands' command bodies live in a source folder that two loader-specific csprojs each
    `<Compile Include>` against their own `UnityEngine.dll` reference. The mod template uses the same
    layout. No `MyMod.Core` csproj with Unity dependencies — that would force a choice between Mono
-   and IL2CPP-unhollowed flavors of `UnityEngine.dll`.
+   and IL2CPP-unhollowed flavors of `UnityEngine.dll`. Unity-free catalog metadata is kept in
+   separate shared-source files so ordinary .NET CI can verify command names/kinds/mutation flags
+   without checked-in Unity assemblies; loader builds remain the authority for Unity API
+   compilation.
 
 8. **MelonLoader bootstrap via `OnLateInitializeMelon`.** Introduced in 0.6, fires after every
    `OnInitializeMelon` across all mods — guaranteed to run after

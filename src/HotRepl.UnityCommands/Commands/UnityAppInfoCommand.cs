@@ -9,16 +9,16 @@ namespace HotRepl.UnityCommands.Commands;
 public sealed class UnityAppInfoCommand : IControlCommandHandler<EmptyArgs, UnityAppInfo>
 {
     /// <inheritdoc />
-    public string Name => UnityCommandCatalogNames.AppInfo;
+    public string Name => UnityCommandCatalogMetadata.AppInfo.Name;
 
     /// <inheritdoc />
     public int Version => 1;
 
     /// <inheritdoc />
-    public ControlCommandKind Kind => ControlCommandKind.Synchronous;
+    public ControlCommandKind Kind => UnityCommandCatalogMetadata.AppInfo.Kind;
 
     /// <inheritdoc />
-    public bool MutatesState => false;
+    public bool MutatesState => UnityCommandCatalogMetadata.AppInfo.MutatesState;
 
     /// <inheritdoc />
     public ValueTask<ControlCommandResult<UnityAppInfo>> ExecuteAsync(

@@ -89,6 +89,8 @@ A; B and C are independent of each other.
 | `src/HotRepl.UnityCommands/Screenshots/UnsupportedUnityScreenshotCapturer.cs`    | Create: safe default when no loader host is supplied                                 |
 | `src/HotRepl.UnityCommands/UnityCommandCatalog.cs`                               | Create: static enumeration used by both loaders                                      |
 | `src/HotRepl.UnityCommands/UnityCommandCatalogNames.cs`                          | Create: command-name constants testable without UnityEngine refs                     |
+| `src/HotRepl.UnityCommands/UnityCommandCatalogMetadata.cs`                       | Create: Unity-free catalog safety metadata used by handlers and CI tests             |
+| `src/HotRepl.UnityCommands/UnityCommandCatalogMetadataEntry.cs`                  | Create: metadata row type split for MA0048                                           |
 | `src/HotRepl.UnityCommands.BepInEx/HotRepl.UnityCommands.BepInEx.csproj`         | Create                                                                               |
 | `src/HotRepl.UnityCommands.BepInEx/Plugin.cs`                                    | Create                                                                               |
 | `src/HotRepl.UnityCommands.MelonLoader/HotRepl.UnityCommands.MelonLoader.csproj` | Create                                                                               |
@@ -3017,62 +3019,37 @@ public sealed class UnityCommandsCatalogTests
     }
 
     [Fact]
-    public void Build_AdvertisesRuntimeSafetyMetadata()
+    public void Metadata_AdvertisesRuntimeSafetyForEveryCommand()
     {
-        var registry = new GlobalControlCommandRegistry();
-        var registrations = UnityCommandCatalog
-            .Build()
-            .Select(factory => factory(registry))
-            .ToArray();
-        try
-        {
-            var descriptors = registry
-                .Describe()
-                .ToDictionary(descriptor => descriptor.Name, StringComparer.Ordinal);
+        var descriptors = UnityCommandCatalogMetadata
+            .Commands
+            .ToDictionary(command => command.Name, StringComparer.Ordinal);
+        Assert.Equal(UnityCommandCatalogNames.Names, descriptors.Keys);
 
-            Assert.Equal(
-                ControlCommandKind.Job,
-                descriptors[UnityCommandCatalogNames.ScreenshotCapture].Kind
-            );
-            Assert.False(descriptors[UnityCommandCatalogNames.ScreenshotCapture].MutatesState);
-            Assert.True(descriptors[UnityCommandCatalogNames.TimeSetScale].MutatesState);
-        }
-        finally
-        {
-            foreach (var registration in registrations)
-            {
-                registration.Dispose();
-            }
-        }
+        Assert.Equal(
+            ControlCommandKind.Job,
+            descriptors[UnityCommandCatalogNames.ScreenshotCapture].Kind
+        );
+        Assert.False(descriptors[UnityCommandCatalogNames.ScreenshotCapture].MutatesState);
+        Assert.True(descriptors[UnityCommandCatalogNames.TimeSetScale].MutatesState);
     }
 }
 ```
 
 The first catalog test keeps the Unity-free contract (`UnityCommandCatalogNames.Names`) small and
-stable. The second test compiles the full shared source into `HotRepl.Tests` with the same
-`UnityEngine.dll` references used by the BepInEx loader, registers the catalog against a real
-`GlobalControlCommandRegistry`, and asserts the runtime safety metadata that matters for clients:
-`screenshot.capture` is a job and `time.set_scale` is mutating.
+stable. The second test links only the Unity-free metadata source into `HotRepl.Tests` and asserts
+the runtime safety metadata that matters for clients: `screenshot.capture` is a job and
+`time.set_scale` is mutating. Full Unity API compilation stays in the loader-project build checks
+because `UnityEngine.dll` is a gitignored game-local input and is absent on GitHub-hosted CI
+runners.
 
-`tests/HotRepl.Tests.csproj` links the shared source and Unity stubs:
+`tests/HotRepl.Tests.csproj` links only the Unity-free catalog metadata source:
 
 ```xml
 <ItemGroup>
-  <Compile
-    Include="../../src/HotRepl.UnityCommands/**/*.cs"
-    Exclude="../../src/HotRepl.UnityCommands/bin/**;../../src/HotRepl.UnityCommands/obj/**"
-    LinkBase="ImportedCatalog"
-  />
-</ItemGroup>
-<ItemGroup>
-  <Reference Include="UnityEngine">
-    <HintPath>../../src/HotRepl.BepInEx/lib/UnityEngine.dll</HintPath>
-    <Private>false</Private>
-  </Reference>
-  <Reference Include="UnityEngine.CoreModule">
-    <HintPath>../../src/HotRepl.BepInEx/lib/UnityEngine.CoreModule.dll</HintPath>
-    <Private>false</Private>
-  </Reference>
+  <Compile Include="../../src/HotRepl.UnityCommands/UnityCommandCatalogNames.cs" LinkBase="ImportedCatalog" />
+  <Compile Include="../../src/HotRepl.UnityCommands/UnityCommandCatalogMetadata.cs" LinkBase="ImportedCatalog" />
+  <Compile Include="../../src/HotRepl.UnityCommands/UnityCommandCatalogMetadataEntry.cs" LinkBase="ImportedCatalog" />
 </ItemGroup>
 ```
 
@@ -3087,7 +3064,7 @@ Expected: PASS.
 - [x] **Step 4: Commit**
 
 ```bash
-git add src/HotRepl.UnityCommands/UnityCommandCatalog.cs src/HotRepl.UnityCommands/UnityCommandCatalogNames.cs tests/HotRepl.Tests/Unit/UnityCommandsCatalogTests.cs tests/HotRepl.Tests/HotRepl.Tests.csproj
+git add src/HotRepl.UnityCommands/UnityCommandCatalog.cs src/HotRepl.UnityCommands/UnityCommandCatalogNames.cs src/HotRepl.UnityCommands/UnityCommandCatalogMetadata.cs src/HotRepl.UnityCommands/UnityCommandCatalogMetadataEntry.cs tests/HotRepl.Tests/Unit/UnityCommandsCatalogTests.cs tests/HotRepl.Tests/HotRepl.Tests.csproj
 git commit -m "feat(unity-commands): catalog + names test"
 ```
 
