@@ -1,4 +1,5 @@
 using Newtonsoft.Json.Linq;
+using NJsonSchema;
 
 namespace HotRepl.Control.Schema;
 
@@ -6,5 +7,5 @@ namespace HotRepl.Control.Schema;
 public interface IControlCommandValidator
 {
     /// <summary>Apply <paramref name="schema"/> to <paramref name="args"/> and report the outcome.</summary>
-    SchemaValidationResult Validate(JObject args, JObject schema);
+    SchemaValidationResult Validate(JObject args, JsonSchema schema);
 }

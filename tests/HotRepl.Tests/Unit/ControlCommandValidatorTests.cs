@@ -1,7 +1,9 @@
 using System.ComponentModel.DataAnnotations;
+using System.Threading.Tasks;
 using HotRepl.Control;
 using HotRepl.Control.Schema;
 using Newtonsoft.Json.Linq;
+using NJsonSchema;
 using Xunit;
 
 namespace HotRepl.Tests.Unit;
@@ -16,7 +18,7 @@ public class ControlCommandValidatorTests
     }
 
     private static readonly NJsonSchemaValidator Validator = new();
-    private static readonly JObject ArgsSchema = SchemaCache.For<Args>();
+    private static readonly JsonSchema ArgsSchema = SchemaCache.CompiledFor<Args>();
 
     [Fact]
     public void Validate_PassesValidArgs()
@@ -43,8 +45,22 @@ public class ControlCommandValidatorTests
     [Fact]
     public void Validate_PassesEmptyArgsAgainstClosedSchema()
     {
-        var schema = SchemaCache.For<EmptyArgs>();
+        var schema = SchemaCache.CompiledFor<EmptyArgs>();
         var result = Validator.Validate(JObject.Parse("{}"), schema);
         Assert.True(result.Ok);
+    }
+
+    [Fact]
+    public async Task Validate_AcceptsCompiledSchemaWithoutReparsingFromJObject()
+    {
+        var compiled = await JsonSchema.FromJsonAsync(
+            "{\"type\":\"object\",\"required\":[\"name\"],\"properties\":{\"name\":{\"type\":\"string\"}}}"
+        );
+
+        var ok = Validator.Validate(new JObject(new JProperty("name", "x")), compiled);
+        var bad = Validator.Validate(new JObject(), compiled);
+
+        Assert.True(ok.Ok);
+        Assert.False(bad.Ok);
     }
 }

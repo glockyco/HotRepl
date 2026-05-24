@@ -51,8 +51,8 @@ internal sealed class TypedCommandAdapter<TArgs, TOutput> : ICompiledControlComm
         CancellationToken cancellationToken
     )
     {
-        // 1. Validate against the descriptor's args schema.
-        var validation = _validator.Validate(args, Descriptor.ArgsSchema);
+        // 1. Validate against the compiled args schema.
+        var validation = _validator.Validate(args, SchemaCache.CompiledFor<TArgs>());
         if (!validation.Ok)
         {
             return new CompiledCommandResult(

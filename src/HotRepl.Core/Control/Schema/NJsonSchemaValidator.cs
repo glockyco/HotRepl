@@ -1,5 +1,6 @@
 using System.Linq;
 using Newtonsoft.Json.Linq;
+using NJsonSchema;
 
 namespace HotRepl.Control.Schema;
 
@@ -11,13 +12,9 @@ namespace HotRepl.Control.Schema;
 internal sealed class NJsonSchemaValidator : IControlCommandValidator
 {
     /// <inheritdoc />
-    public SchemaValidationResult Validate(JObject args, JObject schema)
+    public SchemaValidationResult Validate(JObject args, JsonSchema schema)
     {
-        var parsed = NJsonSchema
-            .JsonSchema.FromJsonAsync(schema.ToString())
-            .GetAwaiter()
-            .GetResult();
-        var errors = parsed.Validate(args);
+        var errors = schema.Validate(args);
         if (errors.Count == 0)
         {
             return SchemaValidationResult.Pass;
