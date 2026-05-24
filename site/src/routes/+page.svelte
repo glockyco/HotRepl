@@ -188,7 +188,7 @@
     </a>
     <a class="path-card" href="/protocol/">
       <span class="path-card__label">Protocol reference</span>
-      <strong>Implementers and debugging</strong>
+      <strong>Clients and frame debugging</strong>
       <code>command_call</code>
     </a>
   </div>
