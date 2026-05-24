@@ -1,3 +1,5 @@
+using System;
+using System.Threading;
 using System.Threading.Tasks;
 using HotRepl.Sdk.Internal;
 using HotRepl.Sdk.Tests.Fakes;
@@ -48,6 +50,35 @@ public sealed class HotReplSessionTests
 
         Assert.Equal(42, result.Output.Value);
         Assert.True(result.Artifacts.ContainsKey("data"));
+    }
+
+    [Fact]
+    public async Task StartJobAsync_WaitsForTerminalResult()
+    {
+        await using var channel = new FakeFrameChannel();
+        await using var session = CreateSession(channel);
+        var pending = session.StartJobAsync<EchoArgs, EchoOutput>(
+            "test.export",
+            new EchoArgs { Text = "go" }
+        );
+
+        await channel.WaitForSentCountAsync(1);
+        channel.EnqueueIncoming(
+            "{\"type\":\"job_accepted\",\"id\":\"job-1\",\"jobId\":\"job-123\",\"state\":\"running\"}"
+        );
+
+        var job = await pending;
+        var completion = job.WaitForCompletionAsync(TimeSpan.Zero, CancellationToken.None);
+
+        await channel.WaitForSentCountAsync(2);
+        channel.EnqueueIncoming(
+            "{\"type\":\"job_result\",\"id\":\"status-2\",\"jobId\":\"job-123\",\"state\":\"done\",\"status\":\"ok\",\"output\":{\"value\":99},\"artifacts\":{}}"
+        );
+
+        var result = await completion;
+
+        Assert.Equal("job-123", job.Id);
+        Assert.Equal(99, result.Output.Value);
     }
 
     private static HotReplSession CreateSession(FakeFrameChannel channel)

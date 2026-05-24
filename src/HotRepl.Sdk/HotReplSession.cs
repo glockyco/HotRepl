@@ -136,6 +136,46 @@ public sealed class HotReplSession : IAsyncDisposable
         return RunInternalAsync<JToken>(command, argsJson, options, cancellationToken);
     }
 
+    /// <summary>Start a job command.</summary>
+    public async Task<HotReplJob<TResult>> StartJobAsync<TArgs, TResult>(
+        string command,
+        TArgs args,
+        HotReplRunOptions? options = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        var argsJson = args is null ? new JObject() : JObject.FromObject(args, _serializer);
+        var id = NextId("job");
+        var message = new JObject
+        {
+            ["type"] = "command_call",
+            ["id"] = id,
+            ["name"] = command,
+            ["args"] = argsJson,
+        };
+        if (options?.Timeout is TimeSpan timeout)
+        {
+            message["timeoutMs"] = (long)timeout.TotalMilliseconds;
+        }
+
+        var response = await RequestRawAsync(message, cancellationToken).ConfigureAwait(false);
+        var responseType = (string?)response["type"];
+        if (!string.Equals(responseType, "job_accepted", StringComparison.Ordinal))
+        {
+            throw new HotReplProtocolException(
+                "expectedJobAccepted",
+                $"Expected job_accepted, got '{responseType}'."
+            );
+        }
+
+        var jobId =
+            (string?)response["jobId"]
+            ?? throw new HotReplProtocolException("missingJobId", "job_accepted is missing jobId.");
+        var state = (string?)response["state"] ?? "running";
+        var pollingInterval = options?.PollingInterval ?? _options.JobPollingInterval;
+        return new HotReplJob<TResult>(this, jobId, state, pollingInterval);
+    }
+
     internal HotReplResult<TResult> ToTypedResult<TResult>(JObject response)
     {
         if (string.Equals((string?)response["status"], "failed", StringComparison.Ordinal))
