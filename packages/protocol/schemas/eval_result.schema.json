@@ -21,6 +21,12 @@
     "valueType": {
       "type": "string"
     },
+    "truncated": {
+      "type": "boolean"
+    },
+    "truncatedBytes": {
+      "type": "number"
+    },
     "stdout": {
       "type": "string"
     },

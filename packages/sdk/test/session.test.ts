@@ -56,6 +56,26 @@ describe("Session", () => {
     expect(runtime.requestCount("command_describe", "math.double")).toBe(0);
   });
 
+  test("eval returns native typed values and the truncation signal", async () => {
+    const runtime = new FakeRuntime();
+    runtime.setEvalHandler((code) =>
+      code === "big"
+        ? { hasValue: true, truncated: true, truncatedBytes: 4096 }
+        : { value: { x: 1, y: "z" }, valueType: "Anon" }
+    );
+    const session = await MockSession.create(runtime);
+
+    const obj = await session.eval<{ x: number; y: string }>("o");
+    expect(obj.value).toEqual({ x: 1, y: "z" });
+    expect(obj.truncated).toBeUndefined();
+
+    const big = await session.eval("big");
+    expect(big.hasValue).toBe(true);
+    expect(big.truncated).toBe(true);
+    expect(big.truncatedBytes).toBe(4096);
+    expect(big.value).toBeUndefined();
+  });
+
   test("run waits for job commands by polling job_status", async () => {
     const runtime = new FakeRuntime();
     runtime.registerCommand(

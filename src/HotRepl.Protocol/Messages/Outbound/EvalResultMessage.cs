@@ -21,6 +21,12 @@ public sealed record EvalResultMessage
     [JsonProperty("valueType")]
     public string? ValueType { get; set; }
 
+    [JsonProperty("truncated")]
+    public bool Truncated { get; set; }
+
+    [JsonProperty("truncatedBytes")]
+    public long? TruncatedBytes { get; set; }
+
     [JsonProperty("stdout")]
     public string? Stdout { get; set; }
 

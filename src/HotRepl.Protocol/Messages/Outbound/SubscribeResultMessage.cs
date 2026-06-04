@@ -24,6 +24,12 @@ public sealed record SubscribeResultMessage
     [JsonProperty("valueType")]
     public string? ValueType { get; set; }
 
+    [JsonProperty("truncated")]
+    public bool Truncated { get; set; }
+
+    [JsonProperty("truncatedBytes")]
+    public long? TruncatedBytes { get; set; }
+
     [JsonProperty("durationMs")]
     public long DurationMs { get; set; }
 

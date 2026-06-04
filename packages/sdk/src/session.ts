@@ -60,6 +60,8 @@ export interface EvalResponse<T = unknown> {
   hasValue: boolean;
   value?: T;
   valueType?: string;
+  truncated?: boolean;
+  truncatedBytes?: number;
   stdout?: string;
   durationMs: number;
 }
@@ -75,6 +77,8 @@ export interface WatchTick<T = unknown> {
   hasValue: boolean;
   value?: T;
   valueType?: string;
+  truncated?: boolean;
+  truncatedBytes?: number;
   final: boolean;
   durationMs: number;
 }
@@ -191,6 +195,8 @@ export class Session {
       durationMs: response.durationMs,
     };
     if (response.valueType !== undefined) result.valueType = response.valueType;
+    if (response.truncated !== undefined) result.truncated = response.truncated;
+    if (response.truncatedBytes !== undefined) result.truncatedBytes = response.truncatedBytes;
     if (response.stdout !== undefined) result.stdout = response.stdout;
     return result;
   }
@@ -239,6 +245,8 @@ export class Session {
       };
       if (event.hasValue && event.value !== undefined) tick.value = event.value as T;
       if (event.valueType !== undefined) tick.valueType = event.valueType;
+      if (event.truncated !== undefined) tick.truncated = event.truncated;
+      if (event.truncatedBytes !== undefined) tick.truncatedBytes = event.truncatedBytes;
       yield tick;
       if (event.final) return;
     }

@@ -76,10 +76,14 @@ JSON object.
 { "type": "eval", "id": "eval-1", "code": "1 + 1", "timeoutMs": 10000 }
 ```
 
-Success returns `eval_result`; failure returns `eval_error` with `error`:
+Success returns `eval_result`; failure returns `eval_error` with `error`. `value` is the result
+serialized to native JSON, so consumers receive properly typed output without a second parse;
+`valueType` carries the .NET type name. When the serialized value exceeds `maxResultLength`, `value`
+is `null`, `truncated` is `true`, and `truncatedBytes` reports the original byte size.
 
 ```json
-{ "type": "eval_result", "id": "eval-1", "hasValue": true, "value": "2", "durationMs": 3 }
+{ "type": "eval_result", "id": "eval-1", "hasValue": true, "value": 2, "valueType": "System.Int32", "truncated": false, "durationMs": 3 }
+{ "type": "eval_result", "id": "eval-2", "hasValue": true, "value": null, "valueType": "System.String", "truncated": true, "truncatedBytes": 250112, "durationMs": 8 }
 { "type": "eval_error", "id": "eval-1", "error": { "kind": "internal", "code": "runtimeException", "message": "...", "retryable": false } }
 ```
 
@@ -102,8 +106,10 @@ Success returns `eval_result`; failure returns `eval_error` with `error`:
 `onChange` (boolean, optional) triggers only when the expression value changes rather than every
 interval. `timeoutMs` (number, optional) bounds each tick.
 
-The server emits `subscribe_result` frames until `final: true`, or `subscribe_error` with `error`. A
-new client connection sends `session_evicted` to the old session and closes its subscriptions.
+The server emits `subscribe_result` frames until `final: true`, or `subscribe_error` with `error`.
+`subscribe_result` carries `value`/`truncated`/`truncatedBytes` with the same native-JSON semantics
+as `eval_result`. A new client connection sends `session_evicted` to the old session and closes its
+subscriptions.
 
 ## Typed commands
 
