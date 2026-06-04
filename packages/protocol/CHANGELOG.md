@@ -1,5 +1,21 @@
 # @hotrepl/protocol
 
+## 4.0.0
+
+### Major Changes
+
+- [#2](https://github.com/glockyco/HotRepl/pull/2)
+  [`5725a51`](https://github.com/glockyco/HotRepl/commit/5725a51cef3db2b46475c6d007b94b1de6b742e7)
+  Thanks [@glockyco](https://github.com/glockyco)! - Eval and subscription results now return
+  properly typed output. `value` is emitted as native JSON instead of a JSON-encoded string,
+  `valueType` carries the .NET type name, and a `truncated` / `truncatedBytes` pair signals when a
+  result exceeds `maxResultLength` (in which case `value` is `null` rather than partial, invalid
+  JSON).
+
+  This is a breaking change for consumers that previously parsed `value` a second time.
+  `Session.eval<T>()` and `Session.watch<T>()` now return the typed value directly and expose
+  `truncated` / `truncatedBytes`.
+
 ## 3.0.0
 
 ### Major Changes
