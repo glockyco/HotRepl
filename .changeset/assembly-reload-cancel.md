@@ -1,6 +1,5 @@
 ---
 "@hotrepl/sdk": minor
-"@hotrepl/testing": minor
 ---
 
 Handle assembly reloads and cancellation in the SDK. `Session.onAssemblyReload` surfaces hot-reload
