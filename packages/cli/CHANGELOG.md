@@ -1,5 +1,14 @@
 # @hotrepl/cli
 
+## 3.0.1
+
+### Patch Changes
+
+- Updated dependencies
+  [[`74d2b68`](https://github.com/glockyco/HotRepl/commit/74d2b68069ceaa502f8349aee439b2b4548e90b0),
+  [`5725a51`](https://github.com/glockyco/HotRepl/commit/5725a51cef3db2b46475c6d007b94b1de6b742e7)]:
+  - @hotrepl/sdk@4.0.0
+
 ## 3.0.0
 
 ### Major Changes

@@ -1,6 +1,6 @@
 {
   "name": "@hotrepl/cli",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "HotRepl v2 command-line client — inspect and automate a running Unity game's REPL from your shell.",
   "keywords": [
     "hotrepl",
@@ -43,7 +43,7 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@hotrepl/sdk": "3.0.0"
+    "@hotrepl/sdk": "4.0.0"
   },
   "devDependencies": {
     "@hotrepl/testing": "2.0.0"
