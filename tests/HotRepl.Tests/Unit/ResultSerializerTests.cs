@@ -13,9 +13,11 @@ namespace HotRepl.Tests.Unit;
 /// <summary>
 /// Contract tests for JsonResultSerializer.
 ///
-/// The serializer produces JSON. Consumers that need a typed value should
-/// parse the string with JSON.parse / JToken.Parse; consumers that only
-/// need a display string can use it directly.
+/// <see cref="JsonResultSerializer.Serialize"/> produces a JSON string used for
+/// the journal/history display. <see cref="JsonResultSerializer.ToWireValue(object, ReplConfig)"/>
+/// produces a native <see cref="JToken"/> for the eval/subscription wire value so
+/// consumers receive properly typed output without a second parse, or a
+/// truncation signal when the value exceeds the configured size budget.
 /// </summary>
 public class ResultSerializerTests
 {
@@ -166,6 +168,56 @@ public class ResultSerializerTests
     {
         var s = new string('x', 50);
         Assert.Equal(s, JsonResultSerializer.Truncate(s, 50));
+    }
+
+    // ── ToWireValue (typed wire value) ─────────────────────────────────────────
+
+    [Fact]
+    public void ToWireValue_Int_ProducesNativeNumberToken()
+    {
+        var wire = JsonResultSerializer.ToWireValue(2, _defaults);
+        Assert.False(wire.Truncated);
+        Assert.NotNull(wire.Value);
+        Assert.Equal(JTokenType.Integer, wire.Value!.Type);
+        Assert.Equal(2, wire.Value!.Value<int>());
+    }
+
+    [Fact]
+    public void ToWireValue_String_ProducesNativeStringToken()
+    {
+        var wire = JsonResultSerializer.ToWireValue("Ardenfall", _defaults);
+        Assert.False(wire.Truncated);
+        Assert.Equal(JTokenType.String, wire.Value!.Type);
+        Assert.Equal("Ardenfall", wire.Value!.Value<string>());
+    }
+
+    [Fact]
+    public void ToWireValue_Object_ProducesNativeObjectToken()
+    {
+        var wire = JsonResultSerializer.ToWireValue(new { X = 1, Y = "hello" }, _defaults);
+        Assert.False(wire.Truncated);
+        Assert.Equal(JTokenType.Object, wire.Value!.Type);
+        Assert.Equal(1, wire.Value!["X"]!.Value<int>());
+        Assert.Equal("hello", wire.Value!["Y"]!.Value<string>());
+    }
+
+    [Fact]
+    public void ToWireValue_OversizedValue_TruncatesWithoutValue()
+    {
+        var config = new ReplConfig { MaxResultLength = 16 };
+        var wire = JsonResultSerializer.ToWireValue(new string('x', 500), config);
+        Assert.True(wire.Truncated);
+        Assert.Null(wire.Value);
+        Assert.NotNull(wire.ByteCount);
+        Assert.True(wire.ByteCount > 16);
+    }
+
+    [Fact]
+    public void ToWireValue_Null_ProducesNullTokenNotTruncated()
+    {
+        var wire = JsonResultSerializer.ToWireValue((object?)null, _defaults);
+        Assert.False(wire.Truncated);
+        Assert.True(wire.Value == null || wire.Value.Type == JTokenType.Null);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

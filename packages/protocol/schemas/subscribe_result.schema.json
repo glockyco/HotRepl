@@ -26,6 +26,12 @@
     "valueType": {
       "type": "string"
     },
+    "truncated": {
+      "type": "boolean"
+    },
+    "truncatedBytes": {
+      "type": "number"
+    },
     "durationMs": {
       "type": "number"
     },

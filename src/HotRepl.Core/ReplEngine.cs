@@ -18,7 +18,6 @@ using HotRepl.Protocol.Serialization;
 using HotRepl.Serialization;
 using HotRepl.Server;
 using HotRepl.Subscriptions;
-using Newtonsoft.Json.Linq;
 
 namespace HotRepl;
 
@@ -746,21 +745,18 @@ public sealed class ReplEngine : IDisposable
         string json;
         if (outcome.Success)
         {
-            string? serialized = null;
-            if (outcome.HasValue && outcome.Value != null)
-            {
-                serialized = JsonResultSerializer.Serialize(outcome.Value, _host.Config);
-                serialized = JsonResultSerializer.Truncate(
-                    serialized,
-                    _host.Config.MaxResultLength
-                );
-            }
+            var wire =
+                outcome.HasValue && outcome.Value != null
+                    ? JsonResultSerializer.ToWireValue(outcome.Value, _host.Config)
+                    : default;
             json = Serialize(
                 new EvalResultMessage
                 {
                     Id = id,
                     HasValue = outcome.HasValue,
-                    Value = serialized == null ? null : JToken.FromObject(serialized),
+                    Value = wire.Value,
+                    Truncated = wire.Truncated,
+                    TruncatedBytes = wire.ByteCount,
                     ValueType = outcome.ValueType,
                     Stdout = string.IsNullOrEmpty(outcome.Stdout) ? null : outcome.Stdout,
                     DurationMs = outcome.DurationMs,

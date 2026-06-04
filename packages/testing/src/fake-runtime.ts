@@ -47,6 +47,14 @@ type WatchEvent =
   | { hasValue?: boolean; value?: unknown; valueType?: string; final: boolean }
   | { error: HotReplErrorEnvelope; final: boolean };
 
+type FakeEvalResult = {
+  value?: unknown;
+  valueType?: string;
+  hasValue?: boolean;
+  truncated?: boolean;
+  truncatedBytes?: number;
+};
+
 export interface FakeRuntimeOptions {
   protocolVersion?: number;
   supportsCompletion?: boolean;
@@ -66,7 +74,7 @@ export class FakeRuntime implements RuntimeTransport {
   private readonly journalEntries: JournalEntry[] = [];
   private readonly counters = new Map<string, number>();
   private readonly evictionListeners = new Set<(event: SessionEvictedMessage) => void>();
-  private evalHandler: (code: string) => { value?: unknown; valueType?: string } = () => ({});
+  private evalHandler: (code: string) => FakeEvalResult = () => ({});
   private activeRequests = 0;
   private nextJob = 0;
   private isClosed = false;
@@ -116,7 +124,7 @@ export class FakeRuntime implements RuntimeTransport {
     });
   }
 
-  setEvalHandler(handler: (code: string) => { value?: unknown; valueType?: string }): void {
+  setEvalHandler(handler: (code: string) => FakeEvalResult): void {
     this.evalHandler = handler;
   }
 
@@ -271,11 +279,13 @@ export class FakeRuntime implements RuntimeTransport {
       const response: EvalResultMessage = {
         type: MESSAGE_TYPES.evalResult,
         id: request.id,
-        hasValue: value !== undefined,
+        hasValue: result.hasValue ?? value !== undefined,
         value,
         durationMs: 0,
       };
       if (result.valueType !== undefined) response.valueType = result.valueType;
+      if (result.truncated !== undefined) response.truncated = result.truncated;
+      if (result.truncatedBytes !== undefined) response.truncatedBytes = result.truncatedBytes;
       return response;
     } catch (caught) {
       const envelope = toEnvelope(caught);

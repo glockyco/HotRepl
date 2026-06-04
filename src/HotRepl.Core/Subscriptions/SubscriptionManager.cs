@@ -4,7 +4,6 @@ using HotRepl.Evaluator;
 using HotRepl.Protocol;
 using HotRepl.Protocol.Serialization;
 using HotRepl.Serialization;
-using Newtonsoft.Json.Linq;
 
 namespace HotRepl.Subscriptions;
 
@@ -121,7 +120,6 @@ internal sealed class SubscriptionManager
         if (outcome.HasValue && outcome.Value != null)
         {
             serialized = JsonResultSerializer.Serialize(outcome.Value, _config);
-            serialized = JsonResultSerializer.Truncate(serialized, _config.MaxResultLength);
         }
 
         // onChange: suppress if value hasn't changed since last delivery.
@@ -133,6 +131,9 @@ internal sealed class SubscriptionManager
         sub.DeliveryCount++;
         bool isFinal = sub.Limit > 0 && sub.DeliveryCount >= sub.Limit;
 
+        var wire =
+            serialized == null ? default : JsonResultSerializer.ToWireValue(serialized, _config);
+
         send(
             sub.ConnectionId,
             ProtocolMessageSerializer.Serialize(
@@ -141,7 +142,9 @@ internal sealed class SubscriptionManager
                     Id = sub.Id,
                     Seq = sub.Seq,
                     HasValue = outcome.HasValue,
-                    Value = serialized == null ? null : JToken.FromObject(serialized),
+                    Value = wire.Value,
+                    Truncated = wire.Truncated,
+                    TruncatedBytes = wire.ByteCount,
                     ValueType = outcome.ValueType,
                     DurationMs = outcome.DurationMs,
                     Final = isFinal,

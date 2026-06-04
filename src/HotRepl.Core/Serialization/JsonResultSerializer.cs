@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace HotRepl.Serialization;
 
@@ -47,6 +48,56 @@ internal static class JsonResultSerializer
             {
                 return "{\"error\":\"Serialization failed\"}";
             }
+        }
+    }
+
+    /// <summary>A typed wire value plus a truncation signal for oversized results.</summary>
+    internal readonly struct WireValue
+    {
+        public WireValue(JToken? value, bool truncated, long? byteCount)
+        {
+            Value = value;
+            Truncated = truncated;
+            ByteCount = byteCount;
+        }
+
+        public JToken? Value { get; }
+        public bool Truncated { get; }
+        public long? ByteCount { get; }
+    }
+
+    /// <summary>
+    /// Produces the native JSON token for an eval/subscription wire value so consumers
+    /// receive properly typed output. Values whose serialized form exceeds
+    /// <see cref="ReplConfig.MaxResultLength"/> bytes are reported as truncated with a
+    /// null value rather than emitting partial, invalid JSON.
+    /// </summary>
+    public static WireValue ToWireValue(object? value, ReplConfig config) =>
+        ToWireValue(Serialize(value, config), config);
+
+    /// <summary>
+    /// Builds the wire value from an already-serialized JSON string, so callers that
+    /// also need the string form (e.g. subscription change-detection) serialize once.
+    /// </summary>
+    public static WireValue ToWireValue(string serialized, ReplConfig config)
+    {
+        var byteCount = Encoding.UTF8.GetByteCount(serialized);
+        if (config.MaxResultLength > 0 && byteCount > config.MaxResultLength)
+            return new WireValue(null, truncated: true, byteCount);
+
+        try
+        {
+            return new WireValue(JToken.Parse(serialized), truncated: false, byteCount: null);
+        }
+        catch (JsonReaderException)
+        {
+            // Serialize always returns valid JSON, but stay defensive: fall back to a
+            // string token rather than throwing on the eval hot path.
+            return new WireValue(
+                JValue.CreateString(serialized),
+                truncated: false,
+                byteCount: null
+            );
         }
     }
 
