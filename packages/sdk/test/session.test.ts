@@ -76,6 +76,32 @@ describe("Session", () => {
     expect(big.value).toBeUndefined();
   });
 
+  test("assembly_reload invalidates the command cache and notifies listeners", async () => {
+    const runtime = new FakeRuntime();
+    runtime.registerCommand(syncDescriptor, async () => ({ output: {} }));
+    const session = await MockSession.create(runtime);
+    await session.listCommands();
+
+    let reloaded = "";
+    session.onAssemblyReload((event) => {
+      reloaded = event.message;
+    });
+    runtime.emitAssemblyReload("rebuilt");
+
+    expect(reloaded).toBe("rebuilt");
+    await session.listCommands();
+    expect(runtime.requestCount("commands_list")).toBe(2);
+  });
+
+  test("cancel forwards the target id to the transport", async () => {
+    const runtime = new FakeRuntime();
+    const session = await MockSession.create(runtime);
+
+    session.cancel("eval-7");
+
+    expect(runtime.cancelled()).toContain("eval-7");
+  });
+
   test("run waits for job commands by polling job_status", async () => {
     const runtime = new FakeRuntime();
     runtime.registerCommand(

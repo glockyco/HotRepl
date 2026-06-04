@@ -23,7 +23,14 @@ function serveRuntime(runtime: FakeRuntime): { close: () => void; url: string } 
         socket.data.closeEviction();
       },
       async message(socket, message) {
-        const request = JSON.parse(String(message)) as RuntimeRequest;
+        const parsed = JSON.parse(String(message)) as
+          | RuntimeRequest
+          | { type: "cancel"; targetId: string };
+        if (parsed.type === "cancel") {
+          runtime.cancel(parsed.targetId);
+          return;
+        }
+        const request = parsed;
         if (request.type === "subscribe") {
           for await (const event of runtime.watch(request)) {
             socket.send(JSON.stringify(event));

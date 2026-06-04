@@ -1,5 +1,6 @@
 import {
   type ArtifactRef,
+  type AssemblyReloadMessage,
   type CommandDescriptor,
   defaultLimits,
   ERROR_KINDS,
@@ -74,6 +75,8 @@ export class FakeRuntime implements RuntimeTransport {
   private readonly journalEntries: JournalEntry[] = [];
   private readonly counters = new Map<string, number>();
   private readonly evictionListeners = new Set<(event: SessionEvictedMessage) => void>();
+  private readonly reloadListeners = new Set<(event: AssemblyReloadMessage) => void>();
+  private readonly cancelledTargets: string[] = [];
   private evalHandler: (code: string) => FakeEvalResult = () => ({});
   private activeRequests = 0;
   private nextJob = 0;
@@ -245,6 +248,25 @@ export class FakeRuntime implements RuntimeTransport {
   evict(reason: string): void {
     const event: SessionEvictedMessage = { type: MESSAGE_TYPES.sessionEvicted, reason };
     for (const listener of this.evictionListeners) listener(event);
+  }
+
+  onAssemblyReload(listener: (event: AssemblyReloadMessage) => void): () => void {
+    this.reloadListeners.add(listener);
+    return () => this.reloadListeners.delete(listener);
+  }
+
+  emitAssemblyReload(message = "reloaded", assembly?: string): void {
+    const event: AssemblyReloadMessage = { type: MESSAGE_TYPES.assemblyReload, message };
+    if (assembly !== undefined) event.assembly = assembly;
+    for (const listener of this.reloadListeners) listener(event);
+  }
+
+  cancel(targetId: string): void {
+    this.cancelledTargets.push(targetId);
+  }
+
+  cancelled(): readonly string[] {
+    return this.cancelledTargets;
   }
 
   async putArtifact(

@@ -1,6 +1,7 @@
 import { MESSAGE_TYPES } from "@hotrepl/protocol";
 import type {
   ArtifactRef,
+  AssemblyReloadMessage,
   HandshakeMessage,
   ServerMessage,
   SessionEvictedMessage,
@@ -69,6 +70,8 @@ export class WebSocketTransport implements RuntimeTransport {
   private readonly pending = new Map<string, PendingRequest>();
   private readonly subscriptions = new Map<string, AsyncMessageQueue<WatchWireMessage>>();
   private readonly evictionListeners = new Set<(event: SessionEvictedMessage) => void>();
+  private readonly reloadListeners = new Set<(event: AssemblyReloadMessage) => void>();
+  private cancelSeq = 0;
   private handshakeMessage: HandshakeMessage | undefined;
   private evicted: SessionEvictedMessage | undefined;
 
@@ -110,14 +113,20 @@ export class WebSocketTransport implements RuntimeTransport {
     this.ensureAvailable();
     const queue = new AsyncMessageQueue<WatchWireMessage>();
     this.subscriptions.set(request.id, queue);
+    let final = false;
     try {
       this.socket.send(JSON.stringify(request));
       for await (const message of queue) {
         yield message;
-        if (message.final) return;
+        if (message.final) {
+          final = true;
+          return;
+        }
       }
     } finally {
       this.subscriptions.delete(request.id);
+      // If the consumer stopped early, tell the server to end the subscription.
+      if (!final) this.cancel(request.id);
     }
   }
 
@@ -141,6 +150,23 @@ export class WebSocketTransport implements RuntimeTransport {
   onSessionEvicted(listener: (event: SessionEvictedMessage) => void): () => void {
     this.evictionListeners.add(listener);
     return () => this.evictionListeners.delete(listener);
+  }
+
+  onAssemblyReload(listener: (event: AssemblyReloadMessage) => void): () => void {
+    this.reloadListeners.add(listener);
+    return () => this.reloadListeners.delete(listener);
+  }
+
+  cancel(targetId: string): void {
+    if (this.socket.readyState !== WebSocket.OPEN) return;
+    this.cancelSeq += 1;
+    try {
+      this.socket.send(
+        JSON.stringify({ type: MESSAGE_TYPES.cancel, id: `cancel-${this.cancelSeq}`, targetId }),
+      );
+    } catch {
+      // Cancellation is best-effort; a closing socket simply drops it.
+    }
   }
   close(): void {
     this.socket.close();
@@ -191,6 +217,11 @@ export class WebSocketTransport implements RuntimeTransport {
       const error = new HotReplSessionEvicted(message);
       for (const listener of this.evictionListeners) listener(message);
       this.failAll(error);
+      return;
+    }
+
+    if (message.type === MESSAGE_TYPES.assemblyReload) {
+      for (const listener of this.reloadListeners) listener(message);
       return;
     }
 

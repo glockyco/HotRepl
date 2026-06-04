@@ -301,8 +301,8 @@ export const JournalQueryResultMessageSchema = Type.Object(
 );
 export type JournalQueryResultMessage = Static<typeof JournalQueryResultMessageSchema>;
 
-/** Sent by the server when a game assembly is hot-reloaded.
- *  Currently unhandled by the SDK transport (dropped silently). */
+/** Sent by the server when a game assembly is hot-reloaded. The SDK surfaces this via
+ *  Session.onAssemblyReload and invalidates its cached command catalog/descriptors. */
 export const AssemblyReloadMessageSchema = Type.Object(
   {
     type: Type.Literal(MESSAGE_TYPES.assemblyReload),
@@ -400,8 +400,8 @@ export const SubscribeMessageSchema = Type.Object(
 );
 export type SubscribeMessage = Static<typeof SubscribeMessageSchema>;
 
-/** Defined in C# CancelMessage; not yet used by the SDK RuntimeRequest.
- *  Cancels an active eval or subscription by its request id. */
+/** Cancels an active eval or subscription by its request id. Sent by the SDK via
+ *  Session.cancel(targetId), and automatically when a watch() iterator stops early. */
 export const CancelMessageSchema = Type.Object(
   {
     type: Type.Literal(MESSAGE_TYPES.cancel),

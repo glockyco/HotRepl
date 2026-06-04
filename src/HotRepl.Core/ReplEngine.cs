@@ -163,6 +163,15 @@ public sealed class ReplEngine : IDisposable
         // 3. At most one eval per Tick.
         DrainOneEval();
 
+        // 3b. Cancel subscriptions targeted by a cancel request this Tick. (Eval
+        //     cancels were already applied above; ids that match no subscription
+        //     are ignored.)
+        if (!_cancelledIds.IsEmpty)
+        {
+            foreach (var cancelledId in _cancelledIds.Keys)
+                _subscriptions!.Cancel(cancelledId);
+        }
+
         // 4. Subscriptions.
         _subscriptions!.Tick(
             (id, code, timeoutMs) => GuardedEvaluate(id, code, timeoutMs),
