@@ -1,6 +1,7 @@
 import { MESSAGE_TYPES, PROTOCOL_VERSION } from "@hotrepl/protocol";
 import type {
   ArtifactRef,
+  AssemblyReloadMessage,
   CommandDescribeResultMessage,
   CommandDescriptor,
   CommandResultMessage,
@@ -45,6 +46,8 @@ export interface RuntimeTransport {
   watch(request: Extract<RuntimeRequest, { type: "subscribe" }>): AsyncIterable<WatchWireMessage>;
   readArtifact(ref: ArtifactRef): Promise<Uint8Array>;
   onSessionEvicted(listener: (event: SessionEvictedMessage) => void): () => void;
+  onAssemblyReload?(listener: (event: AssemblyReloadMessage) => void): () => void;
+  cancel?(targetId: string): void;
   close(): void;
 }
 
@@ -125,6 +128,7 @@ export class Session {
   private readonly descriptors: DescriptorCache = new Map();
   private catalog: CommandSummary[] | undefined;
   private readonly evictionListeners = new Set<(event: SessionEvictedMessage) => void>();
+  private readonly reloadListeners = new Set<(event: AssemblyReloadMessage) => void>();
   private sequence = 0;
   private evicted: SessionEvictedMessage | undefined;
   private closed = false;
@@ -136,11 +140,26 @@ export class Session {
       this.evicted = event;
       for (const listener of this.evictionListeners) listener(event);
     });
+    this.transport.onAssemblyReload?.((event) => {
+      // A hot-reloaded assembly can change registered commands and their schemas.
+      this.catalog = undefined;
+      this.descriptors.clear();
+      for (const listener of this.reloadListeners) listener(event);
+    });
   }
 
   onSessionEvicted(listener: (event: SessionEvictedMessage) => void): () => void {
     this.evictionListeners.add(listener);
     return () => this.evictionListeners.delete(listener);
+  }
+
+  onAssemblyReload(listener: (event: AssemblyReloadMessage) => void): () => void {
+    this.reloadListeners.add(listener);
+    return () => this.reloadListeners.delete(listener);
+  }
+
+  cancel(targetId: string): void {
+    this.transport.cancel?.(targetId);
   }
 
   async run<T = unknown>(
