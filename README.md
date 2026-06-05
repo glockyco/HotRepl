@@ -4,7 +4,7 @@
 [![@hotrepl/cli](https://img.shields.io/npm/v/@hotrepl/cli.svg?label=%40hotrepl%2Fcli)](https://www.npmjs.com/package/@hotrepl/cli)
 [![@hotrepl/mcp](https://img.shields.io/npm/v/@hotrepl/mcp.svg?label=%40hotrepl%2Fmcp)](https://www.npmjs.com/package/@hotrepl/mcp)
 [![@hotrepl/protocol](https://img.shields.io/npm/v/@hotrepl/protocol.svg?label=%40hotrepl%2Fprotocol)](https://www.npmjs.com/package/@hotrepl/protocol)
-[![license](https://img.shields.io/github/license/glockyco/HotRepl.svg)](LICENSE)
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 HotRepl is a runtime C# REPL and typed command bridge for Unity games. It embeds in a game through
 BepInEx/Mono or MelonLoader/IL2CPP, runs work on Unity's main thread, and exposes a local WebSocket
