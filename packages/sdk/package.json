@@ -1,6 +1,6 @@
 {
   "name": "@hotrepl/sdk",
-  "version": "4.0.0",
+  "version": "4.0.1",
   "description": "Canonical TypeScript SDK for HotRepl v2 runtimes.",
   "keywords": [
     "hotrepl",
@@ -41,7 +41,7 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@hotrepl/protocol": "4.0.0"
+    "@hotrepl/protocol": "4.0.1"
   },
   "devDependencies": {
     "@hotrepl/testing": "2.0.0"

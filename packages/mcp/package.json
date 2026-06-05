@@ -1,6 +1,6 @@
 {
   "name": "@hotrepl/mcp",
-  "version": "3.0.1",
+  "version": "3.0.2",
   "description": "HotRepl v2 MCP stdio server — expose a running Unity game's REPL and typed commands to MCP-enabled agents.",
   "keywords": [
     "hotrepl",
@@ -43,7 +43,7 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@hotrepl/sdk": "4.0.0",
+    "@hotrepl/sdk": "4.0.1",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "zod": "^4.0.0"
   },
