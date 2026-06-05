@@ -1,6 +1,6 @@
+import { connect, HotReplError, type RuntimeTransport, Session } from "@hotrepl/sdk";
 import { FakeRuntime, MockSession } from "@hotrepl/testing";
 import { describe, expect, test } from "bun:test";
-import { connect, HotReplError, type RuntimeTransport, Session } from "../src";
 
 const syncDescriptor = {
   name: "math.double",

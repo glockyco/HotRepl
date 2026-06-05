@@ -1,7 +1,7 @@
+import type { RuntimeRequest } from "@hotrepl/sdk";
+import { connect, HotReplError, HotReplSessionEvicted, WebSocketTransport } from "@hotrepl/sdk";
 import { FakeRuntime } from "@hotrepl/testing";
 import { describe, expect, test } from "bun:test";
-import type { RuntimeRequest } from "../src";
-import { connect, HotReplError, HotReplSessionEvicted, WebSocketTransport } from "../src";
 
 function serveRuntime(runtime: FakeRuntime): { close: () => void; url: string } {
   const server = Bun.serve<{ closeEviction: () => void }>({

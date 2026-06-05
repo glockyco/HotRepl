@@ -5,7 +5,7 @@
   "workspaces": ["packages/*", "site"],
   "scripts": {
     "build": "bun run --filter './packages/*' build",
-    "test": "bun test packages/*/test",
+    "test": "bun run build && bun test packages/*/test",
     "typecheck": "bun run --filter './packages/*' typecheck",
     "schemas:export": "bun run --cwd packages/protocol schemas:export",
     "changeset": "changeset",
