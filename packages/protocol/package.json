@@ -1,6 +1,6 @@
 {
   "name": "@hotrepl/protocol",
-  "version": "4.0.0",
+  "version": "4.0.1",
   "description": "Canonical HotRepl v2 wire protocol types and JSON Schemas.",
   "keywords": [
     "hotrepl",
