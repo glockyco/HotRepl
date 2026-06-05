@@ -1,6 +1,6 @@
+import { HotReplArtifactCorrupted } from "@hotrepl/sdk";
 import { FakeRuntime, MockSession } from "@hotrepl/testing";
 import { describe, expect, test } from "bun:test";
-import { HotReplArtifactCorrupted } from "../src";
 
 describe("Artifact", () => {
   test("reads text, json, bytes, and open metadata after hash verification", async () => {

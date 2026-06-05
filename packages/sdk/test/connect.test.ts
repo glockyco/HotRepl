@@ -1,5 +1,5 @@
+import { resolveHotReplUrl } from "@hotrepl/sdk";
 import { describe, expect, test } from "bun:test";
-import { resolveHotReplUrl } from "../src";
 
 describe("resolveHotReplUrl", () => {
   test("uses the runtime default port unless env or explicit URL overrides it", () => {
