@@ -1,3 +1,13 @@
+---
+title: "HotRepl Control Plane Implementation Plan"
+type: plan
+status: superseded
+created: 2026-05-06
+parent: 2026-05-06-hotrepl-control-plane-design
+superseded_by: 2026-05-22-hotrepl-clean-architecture-implementation
+archived: 2026-06-25
+---
+
 # HotRepl Control Plane Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use skill://superpowers:subagent-driven-development

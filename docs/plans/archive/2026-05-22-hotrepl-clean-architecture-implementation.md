@@ -1,3 +1,13 @@
+---
+title: "HotRepl Clean Architecture Implementation Plan"
+type: plan
+status: implemented
+created: 2026-05-22
+parent: 2026-05-22-hotrepl-clean-architecture-design
+superseded_by:
+archived: 2026-06-25
+---
+
 # HotRepl Clean Architecture Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development

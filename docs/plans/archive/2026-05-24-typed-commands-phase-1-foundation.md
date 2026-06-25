@@ -1,3 +1,13 @@
+---
+title: "Typed commands — Phase 1 foundation implementation plan"
+type: plan
+status: implemented
+created: 2026-05-24
+parent: 2026-05-24-typed-commands-phase-1-foundation-design
+superseded_by:
+archived: 2026-06-25
+---
+
 # Typed commands — Phase 1 foundation implementation plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development

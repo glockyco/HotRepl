@@ -1,3 +1,13 @@
+---
+title: "HotRepl Site Implementation Plan"
+type: plan
+status: implemented
+created: 2026-05-23
+parent: 2026-05-23-hotrepl-site-design
+superseded_by:
+archived: 2026-06-25
+---
+
 # HotRepl Site Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development

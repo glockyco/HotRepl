@@ -28,7 +28,8 @@
     "**/obj",
     "**/node_modules",
     "**/*-lock.json",
-    "./lib"
+    "./lib",
+    "docs/plans"
   ],
   "plugins": [
     "https://plugins.dprint.dev/json-0.21.3.wasm",

@@ -1,3 +1,13 @@
+---
+title: "Formatting & Linting Overhaul — Execution Plan"
+type: plan
+status: implemented
+created: 2026-05-07
+parent:
+superseded_by:
+archived: 2026-06-25
+---
+
 # Formatting & Linting Overhaul — Execution Plan
 
 ## Goal

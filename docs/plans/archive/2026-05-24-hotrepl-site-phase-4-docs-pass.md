@@ -1,3 +1,13 @@
+---
+title: "HotRepl Site Phase 4 Docs Pass Implementation Plan"
+type: plan
+status: implemented
+created: 2026-05-24
+parent: 2026-05-24-hotrepl-site-phase-4-docs-pass-design
+superseded_by:
+archived: 2026-06-25
+---
+
 # HotRepl Site Phase 4 Docs Pass Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development

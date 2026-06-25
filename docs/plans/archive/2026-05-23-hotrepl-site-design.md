@@ -1,3 +1,13 @@
+---
+title: "HotRepl Site — Design Spec"
+type: spec
+status: implemented
+created: 2026-05-23
+parent:
+superseded_by:
+archived: 2026-06-25
+---
+
 # HotRepl Site — Design Spec
 
 **Date:** 2026-05-23

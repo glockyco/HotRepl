@@ -1,3 +1,13 @@
+---
+title: "HotRepl Clean Architecture Design"
+type: spec
+status: implemented
+created: 2026-05-22
+parent:
+superseded_by:
+archived: 2026-06-25
+---
+
 # HotRepl Clean Architecture Design
 
 ## Status

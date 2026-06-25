@@ -1,3 +1,13 @@
+---
+title: "Phase 4 consolidation — implementation plan"
+type: plan
+status: implemented
+created: 2026-05-24
+parent: 2026-05-24-typed-commands-phase-4-consolidation-design
+superseded_by:
+archived: 2026-06-25
+---
+
 # Phase 4 consolidation — implementation plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development

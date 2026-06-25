@@ -1,3 +1,13 @@
+---
+title: "Phase 2 — Ardenfall typed-command migration"
+type: spec
+status: implemented
+created: 2026-05-24
+parent:
+superseded_by:
+archived: 2026-06-25
+---
+
 # Phase 2 — Ardenfall typed-command migration
 
 Detailed design for the second phase of the typed-commands roadmap

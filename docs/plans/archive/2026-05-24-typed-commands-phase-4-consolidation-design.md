@@ -1,3 +1,13 @@
+---
+title: "Typed commands — Phase 4 consolidation design"
+type: spec
+status: implemented
+created: 2026-05-24
+parent:
+superseded_by:
+archived: 2026-06-25
+---
+
 # Typed commands — Phase 4 consolidation design
 
 Status: **draft, awaiting implementation approval**

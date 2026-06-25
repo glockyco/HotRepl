@@ -1,3 +1,13 @@
+---
+title: "HotRepl Control Plane Design"
+type: spec
+status: superseded
+created: 2026-05-06
+parent:
+superseded_by: 2026-05-22-hotrepl-clean-architecture-design
+archived: 2026-06-25
+---
+
 # HotRepl Control Plane Design
 
 ## Status

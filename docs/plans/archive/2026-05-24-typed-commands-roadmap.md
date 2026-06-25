@@ -1,3 +1,13 @@
+---
+title: "Typed commands — roadmap"
+type: spec
+status: implemented
+created: 2026-05-24
+parent:
+superseded_by:
+archived: 2026-06-25
+---
+
 # Typed commands — roadmap
 
 A cross-repo design and delivery roadmap for replacing HotRepl's hand-written-`JObject`-schema

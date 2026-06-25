@@ -1,3 +1,13 @@
+---
+title: "HotRepl Agent DX Design"
+type: spec
+status: implemented
+created: 2026-05-21
+parent:
+superseded_by:
+archived: 2026-06-25
+---
+
 # HotRepl Agent DX Design
 
 ## Status

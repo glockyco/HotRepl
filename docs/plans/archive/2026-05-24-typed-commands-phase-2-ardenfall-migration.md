@@ -1,3 +1,13 @@
+---
+title: "Ardenfall Typed-Command Migration Implementation Plan"
+type: plan
+status: implemented
+created: 2026-05-24
+parent: 2026-05-24-typed-commands-phase-2-ardenfall-migration-design
+superseded_by:
+archived: 2026-06-25
+---
+
 # Ardenfall Typed-Command Migration Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development

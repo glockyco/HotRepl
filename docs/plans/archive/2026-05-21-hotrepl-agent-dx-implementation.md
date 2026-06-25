@@ -1,3 +1,13 @@
+---
+title: "HotRepl Agent DX Implementation Plan"
+type: plan
+status: implemented
+created: 2026-05-21
+parent: 2026-05-21-hotrepl-agent-dx-design
+superseded_by:
+archived: 2026-06-25
+---
+
 # HotRepl Agent DX Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development

@@ -1,3 +1,13 @@
+---
+title: "Publish-ready bin robustness implementation plan"
+type: plan
+status: implemented
+created: 2026-05-23
+parent: 2026-05-23-publish-ready-bin-robustness-design
+superseded_by:
+archived: 2026-06-25
+---
+
 # Publish-ready bin robustness implementation plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development

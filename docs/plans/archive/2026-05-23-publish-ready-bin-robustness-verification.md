@@ -1,3 +1,13 @@
+---
+title: "Bin robustness verification results"
+type: audit
+status: implemented
+created: 2026-05-23
+parent:
+superseded_by:
+archived: 2026-06-25
+---
+
 # Bin robustness verification results
 
 Both bins (`hotrepl`, `hotrepl-mcp`) were verified against tarballs built from the implementation
