@@ -24,11 +24,23 @@ public sealed class ArtifactsSchemaTests
         Assert.Equal("object", schema["type"]!.ToString());
         var patterns = Assert.IsType<JObject>(schema["patternProperties"]);
         Assert.Equal(2, patterns.Count);
-        Assert.Contains("^data\\.[^.]+$", patterns.Properties().Select(p => p.Name));
-        Assert.Contains("^screenshots\\.metadata$", patterns.Properties().Select(p => p.Name));
+        Assert.Contains(
+            "^data\\.[^.]+$",
+            patterns.Properties().Select(p => p.Name),
+            StringComparer.Ordinal
+        );
+        Assert.Contains(
+            "^screenshots\\.metadata$",
+            patterns.Properties().Select(p => p.Name),
+            StringComparer.Ordinal
+        );
 
         var required = Assert.IsType<JArray>(schema["required"]);
-        Assert.Contains("screenshots.metadata", required.Select(x => x.ToString()));
+        Assert.Contains(
+            "screenshots.metadata",
+            required.Select(x => x.ToString()),
+            StringComparer.Ordinal
+        );
     }
 
     [ControlCommand("test.two-artifacts")]
