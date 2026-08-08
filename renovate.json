@@ -1,4 +1,26 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["local>glockyco/renovate-config"]
+  "extends": ["local>glockyco/renovate-config"],
+  "packageRules": [
+    {
+      "description": "TypeScript 7 awaits tsup and Svelte tooling support",
+      "matchPackageNames": ["typescript"],
+      "allowedVersions": "<7"
+    },
+    {
+      "description": "Bun 1.3 types require the Node 25 declaration generation",
+      "matchPackageNames": ["@types/node"],
+      "allowedVersions": "<26"
+    },
+    {
+      "description": "Roslyn 4.4 is the last release compatible with the net6 MelonLoader target",
+      "matchPackageNames": ["Microsoft.CodeAnalysis.CSharp.Scripting"],
+      "allowedVersions": "<4.5"
+    },
+    {
+      "description": "ILRepack 2.0.46 cannot resolve the Core assembly during macOS builds",
+      "matchPackageNames": ["ILRepack.Lib.MSBuild.Task"],
+      "allowedVersions": "<2.0.46"
+    }
+  ]
 }

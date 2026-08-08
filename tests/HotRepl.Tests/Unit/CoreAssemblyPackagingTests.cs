@@ -18,7 +18,7 @@ public class CoreAssemblyPackagingTests
     {
         var core = typeof(ControlCommandResult).Assembly;
         var referenced = core.GetReferencedAssemblies().Select(name => name.Name).ToArray();
-        Assert.DoesNotContain("NJsonSchema", referenced);
+        Assert.DoesNotContain("NJsonSchema", referenced, System.StringComparer.Ordinal);
     }
 
     [Fact]
@@ -26,7 +26,7 @@ public class CoreAssemblyPackagingTests
     {
         var core = typeof(ControlCommandResult).Assembly;
         var referenced = core.GetReferencedAssemblies().Select(name => name.Name).ToArray();
-        Assert.DoesNotContain("Namotion.Reflection", referenced);
+        Assert.DoesNotContain("Namotion.Reflection", referenced, System.StringComparer.Ordinal);
     }
 
     [Fact]
