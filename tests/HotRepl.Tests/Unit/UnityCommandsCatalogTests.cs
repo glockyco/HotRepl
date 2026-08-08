@@ -31,7 +31,7 @@ public sealed class UnityCommandsCatalogTests
             command => command.Name,
             StringComparer.Ordinal
         );
-        Assert.Equal(UnityCommandCatalogNames.Names, descriptors.Keys);
+        Assert.Equal(UnityCommandCatalogNames.Names, descriptors.Keys, StringComparer.Ordinal);
 
         Assert.Equal(
             ControlCommandKind.Job,

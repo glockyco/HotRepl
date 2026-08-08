@@ -868,15 +868,15 @@ public sealed class ReplEngine : IDisposable
 
         // FieldInfo.GetValue cross-assembly mismatch
         if (
-            message.Contains("is not a field on the target object")
-            || message.Contains("is not a field on the target type")
+            message.Contains("is not a field on the target object", StringComparison.Ordinal)
+            || message.Contains("is not a field on the target type", StringComparison.Ordinal)
         )
             return message + hint;
 
         // InvalidCastException where source and target type names are identical
         // (e.g. "Cannot cast object of type 'Foo' to type 'Foo'")
         if (
-            message.Contains("InvalidCastException")
+            message.Contains("InvalidCastException", StringComparison.Ordinal)
             || message.StartsWith("Cannot cast object of type", StringComparison.Ordinal)
         )
         {

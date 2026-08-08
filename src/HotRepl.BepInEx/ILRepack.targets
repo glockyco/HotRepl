@@ -8,14 +8,11 @@
   >
     <PropertyGroup>
       <NuGetPackagesPath Condition="'$(NuGetPackageRoot)' != ''"
-        >$(NuGetPackageRoot)</NuGetPackagesPath
-      >
+        >$(NuGetPackageRoot)</NuGetPackagesPath>
       <NuGetPackagesPath Condition="'$(NuGetPackagesPath)' == '' AND '$(OS)' == 'Windows_NT'"
-        >$(USERPROFILE)\.nuget\packages</NuGetPackagesPath
-      >
+        >$(USERPROFILE)\.nuget\packages</NuGetPackagesPath>
       <NuGetPackagesPath Condition="'$(NuGetPackagesPath)' == ''"
-        >$(HOME)/.nuget/packages</NuGetPackagesPath
-      >
+        >$(HOME)/.nuget/packages</NuGetPackagesPath>
       <BepInExSource>$(NuGetPackagesPath)/bepinex.baselib/5.4.20/lib/netstandard2.0/BepInEx.dll</BepInExSource>
     </PropertyGroup>
     <Copy

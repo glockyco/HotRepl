@@ -46,7 +46,7 @@ public class SchemaCacheTests
         Assert.Equal("0-100 inclusive.", (string?)value["description"]);
 
         var required = (IList<JToken>)schema["required"]!;
-        Assert.Contains("Value", required.Select(t => (string?)t));
+        Assert.Contains("Value", required.Select(t => (string?)t), System.StringComparer.Ordinal);
     }
 
     [Fact]

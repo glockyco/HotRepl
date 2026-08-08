@@ -17,9 +17,9 @@ public class ProtocolV2MessageSerializerTests
         Assert.Equal(MessageType.Handshake, back.Type);
         Assert.Equal(2, back.ProtocolVersion);
         Assert.Equal(4 * 1024 * 1024, back.Limits.MaxMessageBytes);
-        Assert.Contains("maxJobConcurrency", back.Enforces);
-        Assert.Contains("maxResultLength", back.Enforces);
-        Assert.Contains("maxEnumerableElements", back.Enforces);
+        Assert.Contains("maxJobConcurrency", back.Enforces, StringComparer.Ordinal);
+        Assert.Contains("maxResultLength", back.Enforces, StringComparer.Ordinal);
+        Assert.Contains("maxEnumerableElements", back.Enforces, StringComparer.Ordinal);
     }
 
     [Fact]
