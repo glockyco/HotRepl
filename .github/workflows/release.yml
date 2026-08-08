@@ -36,7 +36,7 @@ jobs:
       # fetch-depth: 0 gives @changesets/changelog-github full git
       # history so it can resolve PR numbers and commit authors when
       # generating per-package CHANGELOG.md entries.
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           fetch-depth: 0
           lfs: false
