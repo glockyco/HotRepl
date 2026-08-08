@@ -21,6 +21,11 @@
       "description": "ILRepack 2.0.46 cannot resolve the Core assembly during macOS builds",
       "matchPackageNames": ["ILRepack.Lib.MSBuild.Task"],
       "allowedVersions": "<2.0.46"
+    },
+    {
+      "description": "NJsonSchema 11 runtime dependencies conflict with ILRepack and net6",
+      "matchPackageNames": ["NJsonSchema"],
+      "allowedVersions": "<11"
     }
   ]
 }
