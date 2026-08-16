@@ -143,13 +143,9 @@ fi
 # ---- restore per-worktree state --------------------------------------------
 
 echo "Restoring per-worktree state:"
-run dotnet tool restore
-
-if command -v bun >/dev/null 2>&1; then
-  run bun install --frozen-lockfile
-else
-  echo "  skip    bun install --frozen-lockfile (bun not on PATH)"
-fi
+run "$repo_root/scripts/run-in-nix.sh" dotnet tool restore
+run "$repo_root/scripts/run-in-nix.sh" bun install --frozen-lockfile
+run "$repo_root/scripts/run-in-nix.sh" lefthook install
 
 # ---- verify ----------------------------------------------------------------
 

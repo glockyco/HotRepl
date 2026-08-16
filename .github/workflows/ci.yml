@@ -6,231 +6,45 @@ on:
   pull_request:
     branches: [main]
 
-# Defense in depth: every action and tool is pinned to an immutable SHA so a
-# compromised tag cannot silently rewrite our CI. Brew/script installs use
-# either a tagged tarball or a project-pinned version. Comments next to each
-# pin record the human-readable version for easier upgrades.
-
 permissions:
   contents: read
 
 jobs:
-  format-and-lint:
-    name: format & lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          lfs: false
-
-      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
-        with:
-          dotnet-version: 10.x
-
-      - name: Restore CSharpier
-        run: dotnet tool restore
-
-      - name: dprint check
-        uses: dprint/check@9cb3a2b17a8e606d37aae341e49df3654933fc23 # v2.3
-
-      - name: typos
-        uses: crate-ci/typos@8a48f81b6c64dcfea44b3633223084c4be58ac5f # v1.49.0
-
-      - name: actionlint
-        run: |
-          bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/03d0035246f3e81f36aed592ffb4bebf33a03106/scripts/download-actionlint.bash) 1.7.7
-          ./actionlint -color
-
-      - name: CSharpier check
-        run: dotnet csharpier check src/ tests/
-
-  typescript:
-    name: TypeScript packages
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          lfs: false
-
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
-        with:
-          bun-version: 1.3.14
-
-      - name: Install
-        run: bun install --frozen-lockfile
-
-      - name: Test
-        run: bun run test
-
-      - name: Typecheck
-        run: bun run typecheck
-
-      - name: Export schemas
-        run: bun run schemas:export
-
-  site:
-    name: Site
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          lfs: false
-
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
-        with:
-          bun-version: 1.3.14
-
-      - name: Install
-        run: bun install --frozen-lockfile
-
-      - name: Build protocol package
-        run: bun run --cwd packages/protocol build
-
-      - name: Check
-        run: bun run --cwd site check
-
-      - name: Build
-        run: bun run --cwd site build
-
-  csharp:
-    name: C# build & test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          lfs: true
-
-      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
-        with:
-          dotnet-version: 10.x
-
-      - name: Restore tools
-        run: dotnet tool restore
-
-      # Only the projects that build without game-local Unity / Il2Cpp /
-      # MelonLoader assemblies. TreatWarningsAsErrors is unconditional via
-      # Directory.Build.props, and CSharpier.MsBuild runs inline during build,
-      # so any unformatted C# fails this job.
-      - name: Restore
-        run: |
-          dotnet restore src/HotRepl.Core/HotRepl.Core.csproj
-          dotnet restore src/HotRepl.Evaluator.MonoCSharp/HotRepl.Evaluator.MonoCSharp.csproj
-          dotnet restore src/HotRepl.Evaluator.Roslyn/HotRepl.Evaluator.Roslyn.csproj
-          dotnet restore tests/HotRepl.Tests/HotRepl.Tests.csproj
-
-      - name: Build
-        run: |
-          dotnet build src/HotRepl.Core/HotRepl.Core.csproj --no-restore --nologo -v q
-          dotnet build src/HotRepl.Evaluator.MonoCSharp/HotRepl.Evaluator.MonoCSharp.csproj --no-restore --nologo -v q
-          dotnet build src/HotRepl.Evaluator.Roslyn/HotRepl.Evaluator.Roslyn.csproj --no-restore --nologo -v q
-          dotnet build tests/HotRepl.Tests/HotRepl.Tests.csproj --no-restore --nologo -v q
-
-      - name: Test
-        run: dotnet test tests/HotRepl.Tests/HotRepl.Tests.csproj --no-build --nologo -v q
-
-  commit-lint:
-    name: commitlint (PR only)
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
+  check:
+    name: check (${{ matrix.runner }})
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-latest, macos-15]
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
+          lfs: true
 
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
-        with:
-          node-version: "24"
+      - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
 
-      - name: Install commitlint
-        run: npm install --global "@commitlint/cli@20.5.3"
+      - name: Bootstrap locked dependencies
+        run: nix run .#bootstrap
 
-      # Validates every commit in the PR range against commitlint.config.js.
-      # Each commit in base..HEAD is checked individually; a single rule
-      # violation anywhere in the range fails the PR.
-      - name: Lint commits in PR
+      - name: Run canonical repository gate
+        run: nix run .#check
+
+      - name: Lint pull-request commits
+        if: github.event_name == 'pull_request'
         env:
           BASE: ${{ github.event.pull_request.base.sha }}
           HEAD: ${{ github.event.pull_request.head.sha }}
-        run: commitlint --from "$BASE" --to "$HEAD" --verbose
-
-  hooks-parity:
-    name: hooks parity (lefthook pre-push)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          lfs: true
-
-      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
-        with:
-          dotnet-version: 10.x
-
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
-        with:
-          bun-version: 1.3.14
-
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
-        with:
-          node-version: "24"
-
-      # Direct binary downloads, version-pinned. Tarballs are extracted under
-      # ~/.local/bin which is on PATH for ubuntu-latest.
-      - name: Install dprint, typos, actionlint, lefthook, commitlint
-        env:
-          DPRINT_VERSION: "0.54.0"
-          TYPOS_VERSION: "1.43.3"
-          ACTIONLINT_VERSION: "1.7.7"
-          LEFTHOOK_VERSION: "2.1.6"
-          COMMITLINT_VERSION: "20.5.3"
-        run: |
-          set -euo pipefail
-          mkdir -p "$HOME/.local/bin"
-
-          curl -fsSL "https://github.com/dprint/dprint/releases/download/${DPRINT_VERSION}/dprint-x86_64-unknown-linux-gnu.zip" -o /tmp/dprint.zip
-          unzip -q /tmp/dprint.zip -d "$HOME/.local/bin"
-
-          curl -fsSL "https://github.com/crate-ci/typos/releases/download/v${TYPOS_VERSION}/typos-v${TYPOS_VERSION}-x86_64-unknown-linux-musl.tar.gz" \
-            | tar -xz -C "$HOME/.local/bin" ./typos
-
-          curl -fsSL "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" \
-            | tar -xz -C "$HOME/.local/bin" actionlint
-
-          curl -fsSL "https://github.com/evilmartians/lefthook/releases/download/v${LEFTHOOK_VERSION}/lefthook_${LEFTHOOK_VERSION}_Linux_x86_64.gz" \
-            | gunzip > "$HOME/.local/bin/lefthook"
-          chmod +x "$HOME/.local/bin/lefthook"
-
-          npm install --global "@commitlint/cli@${COMMITLINT_VERSION}"
-
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-
-      - name: Restore CSharpier
-        run: dotnet tool restore
-
-      # Use --force so the gate runs even when there's nothing ahead of
-      # origin/HEAD. Without it, lefthook 2.x silently skips every command
-      # with "no matching push files", making this job vacuously pass.
-      - name: lefthook run pre-push
-        run: lefthook run pre-push --force
+        run: nix develop --command commitlint --from "$BASE" --to "$HEAD" --verbose
 
   ci-success:
     name: CI Success
     if: always()
-    needs:
-      - format-and-lint
-      - typescript
-      - site
-      - csharp
-      - commit-lint
-      - hooks-parity
+    needs: [check]
     runs-on: ubuntu-latest
     steps:
-      - name: Require every applicable CI job
+      - name: Require every platform check
         env:
-          RESULTS: ${{ join(needs.*.result, ' ') }}
-        run: |
-          for result in $RESULTS; do
-            case "$result" in
-              success | skipped) ;;
-              *) exit 1 ;;
-            esac
-          done
+          RESULT: ${{ needs.check.result }}
+        run: test "$RESULT" = success

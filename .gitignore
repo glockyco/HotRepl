@@ -1,4 +1,5 @@
 .worktrees/
+.direnv/
 bin/
 obj/
 *.user

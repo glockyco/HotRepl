@@ -6,17 +6,15 @@ using HotRepl to inspect a running game, see `.claude/skills/hotrepl/SKILL.md`.
 
 ## Commands
 
-Bootstrap once per machine:
+Enter the pinned environment automatically with nix-direnv or explicitly with `nix develop`.
+Bootstrap mutable worktree state once:
 
 ```bash
-brew install lefthook dprint actionlint commitlint typos
-bun install --frozen-lockfile
-dotnet tool restore
-lefthook install
+nix run .#bootstrap
 ```
 
-`dotnet 10.x` is required because `HotRepl.Tests` targets `net10.0`. Bun is pinned by `package.json`
-(`bun@1.3.14`).
+The flake supplies .NET 10, Bun 1.3.14, formatters, linters, and Lefthook on Darwin and Linux. Do
+not install a second Homebrew or user-level toolchain for this repository.
 
 Common local checks:
 
@@ -31,15 +29,14 @@ typos
 actionlint
 ```
 
-Use lefthook for repo gates:
+Use the pinned repository gate:
 
 ```bash
-lefthook run pre-commit --all-files
-lefthook run pre-push --force
+nix run .#check
 ```
 
-`pre-commit` auto-fixes staged C# / TypeScript / docs formatting. `pre-push` mirrors the full CI
-gate; CI also runs `lefthook run pre-push --force` in `hooks-parity`.
+`pre-commit` auto-fixes staged C#, TypeScript, and documentation formatting. `nix run .#check` runs
+the complete pre-push gate in the same environment as CI.
 
 `--force` is required when no commits are ahead of `origin/HEAD` (e.g., a fresh checkout on `main`,
 or manually validating before pushing). Without it, lefthook 2.x silently skips every command with
@@ -88,7 +85,7 @@ for deterministic SDK, CLI, MCP, and consumer-facade coverage.
 - For C# behavior, prefer xUnit coverage under `tests/HotRepl.Tests/`.
 - For protocol, SDK, CLI, MCP, and conformance behavior, update package tests under
   `packages/*/test`.
-- Before claiming branch-level completion, run `lefthook run pre-push --force`.
+- Before claiming branch-level completion, run `nix run .#check`.
 
 ## Authoring Typed Commands
 
@@ -195,7 +192,7 @@ Project-local worktrees go in `.worktrees/<branch-name>` (gitignored). Each work
 DLLs linked from another checkout. The canonical bootstrap is:
 
 ```bash
-scripts/bootstrap-worktree.sh [--source <trusted-checkout>]
+nix run .#bootstrap -- [--source <trusted-checkout>]
 ```
 
 Use a worktree whenever a change touches multiple commits; do not work on `main` directly for
