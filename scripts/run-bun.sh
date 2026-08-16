@@ -1,12 +1,4 @@
-#!/bin/sh
-set -eu
+#!/usr/bin/env bash
+set -euo pipefail
 
-for dir in "$HOME/.bun/bin" /opt/homebrew/bin /usr/local/bin; do
-  if [ -x "$dir/bun" ]; then
-    PATH="$dir:$PATH"
-    export PATH
-    exec "$dir/bun" "$@"
-  fi
-done
-
-exec bun "$@"
+exec "$(dirname "$0")/run-in-nix.sh" bun "$@"

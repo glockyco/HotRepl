@@ -1,12 +1,9 @@
 // Conventional Commits ruleset, copied verbatim from
 // @commitlint/config-conventional (conventional-changelog org).
 //
-// Why inline (no `extends`):
-//   - The brew formula for commitlint does NOT bundle
-//     `@commitlint/config-conventional`, so `extends: ['@commitlint/config-conventional']`
-//     would require contributors to install Node modules separately.
-//   - The ruleset is small and stable; vendoring it keeps the brew install
-//     path zero-dep and makes the policy auditable in one place.
+// Why inline (no `extends`): the pinned commitlint executable does not need a
+// second configuration package, and the repository keeps its small policy
+// auditable in one place.
 //
 // Severity values: 0 = disabled, 1 = warning, 2 = error.
 

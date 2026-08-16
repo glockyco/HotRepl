@@ -179,24 +179,42 @@ For working on HotRepl itself, not just consuming it.
 
 ### Setup
 
+Install Nix, then enter the shell with nix-direnv or run:
+
 ```bash
-brew install lefthook dprint actionlint commitlint typos
-bun install --frozen-lockfile
-dotnet tool restore
-lefthook install
+nix develop
+nix run .#bootstrap
 ```
 
-.NET 10.x is required because `HotRepl.Tests` targets `net10.0`.
+The flake supplies the pinned .NET 10, Bun 1.3.14, formatter, linter, and hook toolchain on Darwin
+and Linux. Bootstrap restores only ignored worktree state. Run `nix run .#doctor` to print the
+resolved tool and source versions without restoring or building project dependencies.
 
 ### Verification
 
 ```bash
-lefthook run pre-push --force
+nix run .#check
 ```
 
-`pre-push` mirrors CI: Bun install/tests/typecheck/schema export, dprint, typos, actionlint, C#
-build, and C# tests. See [`AGENTS.md`](AGENTS.md) for agent-specific constraints and targeted
-commands.
+The command mirrors CI: Bun install, tests, type checks, schema export, site checks, formatting,
+linters, the C# build, and C# tests. See [`AGENTS.md`](AGENTS.md) for agent-specific constraints and
+targeted commands.
+
+### Pinned loader builds
+
+A game repository can build a loader from an exact HotRepl revision without a sibling checkout:
+
+```bash
+nix run github:glockyco/HotRepl/<revision>#build-loader -- \
+  --loader bepinex \
+  --assemblies /path/to/unity-managed-assemblies \
+  --output ./artifacts/hotrepl-bepinex
+```
+
+For MelonLoader, also pass `--assemblies /path/to/UnityDependencies`,
+`--melonloader /path/to/MelonLoader`, and `--il2cpp /path/to/Il2CppAssemblies`. The output includes
+`hotrepl-build.json` with source, tool, input, and output hashes. This command does not discover or
+modify a game or CrossOver bottle.
 
 ### Running from source
 
