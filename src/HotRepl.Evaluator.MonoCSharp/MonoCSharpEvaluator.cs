@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Reflection;
-using System.Text;
 using System.Threading;
 using HotRepl.Evaluator;
 using Mono.CSharp;
@@ -46,7 +46,7 @@ public sealed class MonoCSharpEvaluator : ICodeEvaluator, IDisposable
 
     private readonly IReplHost _host;
     private Mono.CSharp.Evaluator? _evaluator;
-    private StringBuilder? _errors;
+    private StringWriter? _diagnostics;
     private bool _isInitialized;
     private bool _disposed;
 
@@ -109,7 +109,7 @@ public sealed class MonoCSharpEvaluator : ICodeEvaluator, IDisposable
     public EvalOutcome Evaluate(string code, CancellationToken cancellationToken)
     {
         _ = cancellationToken;
-        _errors!.Clear();
+        _diagnostics!.GetStringBuilder().Clear();
         var sw = Stopwatch.StartNew();
 
         // Temporarily replace Console.Out so we capture stdout produced by eval
@@ -162,10 +162,10 @@ public sealed class MonoCSharpEvaluator : ICodeEvaluator, IDisposable
     {
         CompiledMethod? compiled = _evaluator!.Compile(code);
 
-        if (_errors!.Length > 0)
+        if (_diagnostics!.GetStringBuilder().Length > 0)
         {
             return EvalOutcome.CompileError(
-                _errors.ToString().Trim(),
+                _diagnostics.ToString().Trim(),
                 Stdout(capture),
                 sw.ElapsedMilliseconds
             );
@@ -219,7 +219,7 @@ public sealed class MonoCSharpEvaluator : ICodeEvaluator, IDisposable
     /// </summary>
     public void RunInternal(string code)
     {
-        _errors!.Clear();
+        _diagnostics!.GetStringBuilder().Clear();
         try
         {
             _evaluator!.Compile(code);
@@ -233,8 +233,8 @@ public sealed class MonoCSharpEvaluator : ICodeEvaluator, IDisposable
 
     private void CreateSession()
     {
-        _errors = new StringBuilder();
-        var printer = new SbReportPrinter(_errors);
+        _diagnostics = new StringWriter(CultureInfo.InvariantCulture);
+        var printer = new ErrorOnlyStreamReportPrinter(_diagnostics);
 
         var settings = new CompilerSettings
         {
@@ -269,7 +269,8 @@ public sealed class MonoCSharpEvaluator : ICodeEvaluator, IDisposable
     {
         AppDomain.CurrentDomain.AssemblyLoad -= OnAssemblyLoad;
         _evaluator = null;
-        _errors = null;
+        _diagnostics?.Dispose();
+        _diagnostics = null;
         _isInitialized = false;
     }
 
@@ -331,21 +332,5 @@ public sealed class MonoCSharpEvaluator : ICodeEvaluator, IDisposable
         }
 
         TryReference(e.LoadedAssembly);
-    }
-
-    // ── Compiler error sink ───────────────────────────────────────────────────
-
-    private sealed class SbReportPrinter : ReportPrinter
-    {
-        private readonly StringBuilder _sb;
-
-        public SbReportPrinter(StringBuilder sb) => _sb = sb;
-
-        public override void Print(AbstractMessage msg, bool showFullPath)
-        {
-            if (msg.IsWarning)
-                return; // suppress warnings; they're noise in a REPL
-            _sb.AppendLine(msg.ToString());
-        }
     }
 }
