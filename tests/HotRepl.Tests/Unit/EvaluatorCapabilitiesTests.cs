@@ -1,5 +1,6 @@
 using HotRepl;
 using HotRepl.Evaluator;
+using HotRepl.Evaluator.MonoCSharp;
 using Xunit;
 
 namespace HotRepl.Tests.Unit;
@@ -17,14 +18,7 @@ public class EvaluatorCapabilitiesTests
     [Fact]
     public void Capabilities_CarryEvaluatorContract()
     {
-        var capabilities = new EvaluatorCapabilities
-        {
-            Name = "Mono.CSharp",
-            LanguageVersion = "7.x",
-            SupportsPersistentState = true,
-            SupportsCompletion = true,
-            TimeoutMode = TimeoutMode.HardAbort,
-        };
+        var capabilities = MonoCSharpEvaluator.MonoCapabilities;
 
         Assert.Equal("Mono.CSharp", capabilities.Name);
         Assert.Equal("7.x", capabilities.LanguageVersion);

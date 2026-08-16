@@ -20,7 +20,7 @@ The server sends `handshake` immediately after connection:
     "supportsCompletion": true,
     "cancellation": "hardAbort"
   },
-  "availableEvaluators": ["Mono.CSharp"],
+  "availableEvaluators": ["Mono.CSharp", "Roslyn.Script"],
   "defaultUsings": ["System"],
   "helpers": ["String[] Help()"],
   "control": { "supported": true, "commandsListChanged": false, "schemaValidation": true },
