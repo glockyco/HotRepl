@@ -23,4 +23,4 @@
 - [x] 4.2 Verify a clean Core-only worktree bootstrap and complete pre-push gate
 - [x] 4.3 Build one real BepInEx artifact from local game assemblies and inspect provenance
 - [x] 4.4 Commit specification and implementation as atomic Conventional Commits
-- [ ] 4.5 Publish the pull request, require clean checks, and archive the accepted change
+- [x] 4.5 Publish the pull request, require clean checks, and archive the accepted change
