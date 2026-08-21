@@ -31,6 +31,11 @@ jobs:
       - name: Run canonical repository gate
         run: nix run .#check
 
+      # Defined once for the whole workstation in the fleet input. Fails on an
+      # invalid artifact and on a change archived with unfinished tasks.
+      - name: Validate OpenSpec artifacts
+        run: nix build --no-link ".#checks.$(nix eval --raw --impure --expr builtins.currentSystem).openspec"
+
       - name: Lint pull-request commits
         if: github.event_name == 'pull_request'
         env:
