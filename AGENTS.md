@@ -6,15 +6,19 @@ using HotRepl to inspect a running game, see `.claude/skills/hotrepl/SKILL.md`.
 
 ## Commands
 
-Enter the pinned environment automatically with nix-direnv or explicitly with `nix develop`.
-Bootstrap mutable worktree state once:
+Work in the primary checkout. Enter the pinned environment automatically with nix-direnv or
+explicitly with `nix develop`. Restore repository-owned mutable dependencies when they are absent:
 
 ```bash
-nix run .#bootstrap
+dotnet tool restore
+bun install --frozen-lockfile
+lefthook install
 ```
 
 The flake supplies .NET 10, Bun 1.3.14, formatters, linters, and Lefthook on Darwin and Linux. Do
-not install a second Homebrew or user-level toolchain for this repository.
+not install a second Homebrew or user-level toolchain for this repository. Run `nix run .#doctor` to
+report the pinned tools and optional local assemblies. BepInEx host builds require `lib/`,
+`src/HotRepl.BepInEx/lib/`, and `Local.props`; Core and package work does not.
 
 Common local checks:
 
@@ -155,12 +159,10 @@ These are non-discoverable requirements; do not "simplify" them away:
 - No broad suppression baselines. Use targeted `[SuppressMessage]` with justification when a
   suppression is semantically required.
 
-## Commit Guidelines
+## Commits
 
-See `.claude/skills/commit-guidelines/SKILL.md` for the full conventions. Short version:
-`type(scope): imperative summary` — prose body explaining why, not what. One concept per commit. No
-attribution lines. The `commit-msg` lefthook hook runs `commitlint` against `commitlint.config.js`,
-so a non-conformant message is rejected before the commit lands.
+Use `skill://commit-policy`. `commitlint.config.js` is the repository authority for the permitted
+Conventional Commit types and subject constraints. The `commit-msg` hook enforces it.
 
 ## Releases
 
@@ -184,19 +186,6 @@ Listing only the directly-changed package is enough.
 The workflow opens a `chore(release): version packages` PR on push to `main`. Merging that PR
 publishes via npm trusted publishing (OIDC, no token) and creates one tagged GitHub Release per
 published package.
-
-## Worktrees
-
-Project-local worktrees go in `.worktrees/<branch-name>` (gitignored). Each worktree needs
-`dotnet tool restore`, `bun install --frozen-lockfile`, and (for the BepInEx host) gitignored Unity
-DLLs linked from another checkout. The canonical bootstrap is:
-
-```bash
-nix run .#bootstrap -- [--source <trusted-checkout>]
-```
-
-Use a worktree whenever a change touches multiple commits; do not work on `main` directly for
-non-trivial work.
 
 ## Shell Conventions
 

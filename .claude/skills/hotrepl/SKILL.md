@@ -179,13 +179,13 @@ List and describe commands before calling them:
 
 ```json
 { "type": "commands_list", "id": "commands-1" }
-{ "type": "command_describe", "id": "describe-1", "name": "archive.preflight" }
+{ "type": "command_describe", "id": "describe-1", "name": "unity.app.info" }
 ```
 
 Run a sync command:
 
 ```json
-{ "type": "command_call", "id": "cmd-1", "name": "archive.preflight", "args": {} }
+{ "type": "command_call", "id": "cmd-1", "name": "unity.app.info", "args": {} }
 ```
 
 Run a job command: `command_call` returns `job_accepted`; poll `job_status` until it returns
@@ -200,12 +200,12 @@ helper rehashes bytes before returning `bytes()`, `text()`, `json()`, or `open()
 ## TypeScript CLI shortcuts
 
 ```bash
-hotrepl info                                      # show host/evaluator metadata
+hotrepl info                                     # show host/evaluator metadata
 hotrepl eval 'Camera.main.transform.position'    # eval and print formatted result
 hotrepl eval 'Time.frameCount' --format json     # JSON output
 hotrepl complete 'Time.'                         # completions at end of snippet
-hotrepl run archive.preflight '{}'               # typed command call
-hotrepl describe archive.preflight               # descriptor details
+hotrepl run unity.app.info '{}'                  # typed command call
+hotrepl describe unity.app.info                  # descriptor details
 hotrepl journal --limit 20                       # recent eval/command entries
 ```
 

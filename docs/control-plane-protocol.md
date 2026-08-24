@@ -122,7 +122,7 @@ List commands:
 Describe one command:
 
 ```json
-{ "type": "command_describe", "id": "describe-1", "name": "archive.preflight" }
+{ "type": "command_describe", "id": "describe-1", "name": "unity.app.info" }
 ```
 
 Descriptors include `name`, `majorVersion`, `kind` (`sync` or `job`), `mutatesState`, `inputSchema`,
@@ -131,7 +131,7 @@ Descriptors include `name`, `majorVersion`, `kind` (`sync` or `job`), `mutatesSt
 Run a command:
 
 ```json
-{ "type": "command_call", "id": "cmd-1", "name": "archive.preflight", "args": {} }
+{ "type": "command_call", "id": "cmd-1", "name": "unity.app.info", "args": {} }
 ```
 
 Synchronous commands return:

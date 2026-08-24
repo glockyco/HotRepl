@@ -61,11 +61,13 @@ const product = await session.eval<string>(
 // → { hasValue: true, value: "Ardenfall", valueType: "System.String", durationMs: 7 }
 
 // Typed, schema-validated game command:
-const preflight = await session.run<{ writable: boolean; freeMb: number }>(
-  "archive.preflight",
-  {},
-);
-// → { output: { writable: true, freeMb: 41213 }, artifacts: {} }
+const app = await session.run<{
+  productName: string;
+  unityVersion: string;
+  platform: string;
+  isEditor: boolean;
+}>("unity.app.info", {});
+// → { output: { productName: "Ardenfall", unityVersion: "2022.3.62f2", platform: "WindowsPlayer", isEditor: false }, artifacts: {} }
 ```
 
 Set `HOTREPL_URL` (or pass `url:` to `connect`) to point at a non-default host.
@@ -100,8 +102,8 @@ Core request families:
 ```json
 { "type": "eval", "id": "e1", "code": "1 + 1" }
 { "type": "commands_list", "id": "c1" }
-{ "type": "command_describe", "id": "c2", "name": "archive.preflight" }
-{ "type": "command_call", "id": "c3", "name": "archive.preflight", "args": {} }
+{ "type": "command_describe", "id": "c2", "name": "unity.app.info" }
+{ "type": "command_call", "id": "c3", "name": "unity.app.info", "args": {} }
 { "type": "journal_query", "id": "j1", "limit": 10 }
 ```
 
@@ -183,12 +185,14 @@ Install Nix, then enter the shell with nix-direnv or run:
 
 ```bash
 nix develop
-nix run .#bootstrap
+dotnet tool restore
+bun install --frozen-lockfile
+lefthook install
 ```
 
 The flake supplies the pinned .NET 10, Bun 1.3.14, formatter, linter, and hook toolchain on Darwin
-and Linux. Bootstrap restores only ignored worktree state. Run `nix run .#doctor` to print the
-resolved tool and source versions without restoring or building project dependencies.
+and Linux. Run `nix run .#doctor` to report the resolved tools and optional BepInEx host inputs
+without restoring dependencies or modifying local assemblies.
 
 ### Verification
 
@@ -226,7 +230,7 @@ invoke their source entry points directly:
 # CLI:
 bun packages/cli/src/index.ts info
 bun packages/cli/src/index.ts eval 'UnityEngine.Application.productName'
-bun packages/cli/src/index.ts run archive.preflight '{}'
+bun packages/cli/src/index.ts run unity.app.info '{}'
 
 # MCP — point your client at the source file by absolute path:
 {

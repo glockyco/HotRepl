@@ -36,6 +36,9 @@ pre-commit:
     actionlint:
       glob: ".github/workflows/*.{yml,yaml}"
       run: scripts/run-in-nix.sh actionlint
+    command-examples:
+      glob: "{.claude/skills/hotrepl/SKILL.md,src/HotRepl.UnityCommands/UnityCommandCatalogNames.cs,scripts/check-command-examples.py}"
+      run: scripts/run-in-nix.sh python3 scripts/check-command-examples.py
 
 commit-msg:
   commands:
@@ -63,6 +66,8 @@ pre-push:
       run: scripts/run-in-nix.sh typos
     actionlint:
       run: scripts/run-in-nix.sh actionlint
+    command-examples:
+      run: scripts/run-in-nix.sh python3 scripts/check-command-examples.py
     loader-build-contract:
       run: scripts/run-in-nix.sh scripts/test-build-loader.sh
     dotnet-build:

@@ -81,18 +81,6 @@
               exec ${./scripts/build-loader.sh} "$@"
             '';
           };
-          bootstrap = pkgs.writeShellApplication {
-            name = "hotrepl-bootstrap";
-            runtimeInputs = tools.packages;
-            text = ''
-              if [[ ! -f flake.nix || ! -f bun.lock || ! -f HotRepl.slnx ]]; then
-                echo "Run nix run .#bootstrap from the HotRepl repository root." >&2
-                exit 1
-              fi
-              export IN_NIX_SHELL=1
-              exec ${./scripts/bootstrap-worktree.sh} "$@"
-            '';
-          };
           doctor = pkgs.writeShellApplication {
             name = "hotrepl-doctor";
             runtimeInputs = tools.packages;
@@ -101,7 +89,18 @@
               printf 'dotnet %s\n' "$(dotnet --version)"
               dprint --version
               printf 'lefthook %s\n' "$(lefthook version)"
+              printf 'commitlint %s\n' "$(commitlint --version)"
+              printf 'typos %s\n' "$(typos --version)"
+              printf 'actionlint %s\n' "$(actionlint --version)"
               printf 'revision %s\n' ${nixpkgs.lib.escapeShellArg revision}
+
+              if [[ -d lib && -d src/HotRepl.BepInEx/lib && -f Local.props ]]; then
+                echo 'optional BepInEx host inputs: available'
+              else
+                echo 'optional BepInEx host inputs: unavailable'
+                echo '  Host builds require local Unity assemblies in lib/ and src/HotRepl.BepInEx/lib plus Local.props.'
+                echo '  Core, protocol, SDK, CLI, MCP, and test work remain available.'
+              fi
             '';
           };
           check = pkgs.writeShellApplication {
@@ -132,10 +131,6 @@
           build-loader = {
             type = "app";
             program = "${packages.build-loader}/bin/hotrepl-build-loader";
-          };
-          bootstrap = {
-            type = "app";
-            program = "${packages.bootstrap}/bin/hotrepl-bootstrap";
           };
           check = {
             type = "app";
@@ -176,7 +171,6 @@
         };
         devShell = self.devShells.${system}.default;
         inherit (self.packages.${system})
-          bootstrap
           build-loader
           check
           doctor

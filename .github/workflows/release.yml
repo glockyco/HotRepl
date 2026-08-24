@@ -45,8 +45,8 @@ jobs:
 
       # The flake supplies exact Bun, Node, npm, dprint, and dependency versions.
       # Node 24 includes npm's OIDC trusted-publishing support.
-      - name: Bootstrap locked dependencies
-        run: nix run .#bootstrap
+      - name: Restore locked dependencies
+        run: nix develop --command bun install --frozen-lockfile
 
       - name: Create Release PR or publish to npm
         id: changesets
