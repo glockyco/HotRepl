@@ -111,7 +111,7 @@
                 echo "Run nix run .#check from the HotRepl repository root." >&2
                 exit 1
               fi
-              export IN_NIX_SHELL=1
+              export HOTREPL_DEV_SHELL=1
               exec lefthook run pre-push --force
             '';
           };
@@ -154,6 +154,7 @@
             name = "hotrepl-dev";
             packages = tools.packages;
             shellHook = ''
+              export HOTREPL_DEV_SHELL=1
               export DOTNET_CLI_TELEMETRY_OPTOUT=1
               export DOTNET_NOLOGO=1
               if repo_root=$(git rev-parse --show-toplevel 2>/dev/null); then
