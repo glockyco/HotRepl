@@ -17,7 +17,9 @@ contract for repeatable exports, tests, and agent workflows.
 ## Requirements
 
 - A Unity game running the BepInEx plugin (`HotRepl.BepInEx.dll`) or the MelonLoader mod
-  (`HotRepl.Host.MelonLoader.dll`). The plugin opens `ws://127.0.0.1:18590` by default.
+  (`HotRepl.Host.MelonLoader.dll`). The plugin opens `ws://127.0.0.1:18590` by default. Set
+  `HOTREPL_PORT` in a process's environment to move that process to another port. BepInEx also
+  exposes the port as a plugin configuration entry.
 - Bun 1.3.14 or Node 20+ to consume the npm packages.
 
 ## Install

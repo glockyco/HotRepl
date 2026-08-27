@@ -30,7 +30,10 @@ public sealed class ReplMod : MelonMod
         {
             ClassInjector.RegisterTypeInIl2Cpp<CoroutineHostBehaviour>();
 
-            _host = new MelonLoaderHost(LoggerInstance);
+            _host = new MelonLoaderHost(
+                LoggerInstance,
+                new ReplConfig().ApplyEnvironmentOverrides()
+            );
             _engine = new ReplEngine(_host);
             _engine.Start();
             LoggerInstance.Msg($"HotRepl loaded — REPL on port {_host.Config.Port}.");

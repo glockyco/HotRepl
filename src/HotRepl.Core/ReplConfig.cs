@@ -1,3 +1,6 @@
+using System;
+using System.Globalization;
+
 namespace HotRepl;
 
 /// <summary>
@@ -6,6 +9,9 @@ namespace HotRepl;
 /// </summary>
 public sealed class ReplConfig
 {
+    /// <summary>Environment variable that overrides <see cref="Port"/> for one process.</summary>
+    public const string PortVariable = "HOTREPL_PORT";
+
     /// <summary>WebSocket listen port. Default: 18590.</summary>
     public int Port { get; set; } = 18590;
 
@@ -46,4 +52,43 @@ public sealed class ReplConfig
 
     /// <summary>Maximum buffered event count per control-plane job. Default: 1000.</summary>
     public int MaxJobEventBuffer { get; set; } = 1000;
+
+    /// <summary>
+    /// Applies per-process overrides from the environment and returns this instance.
+    /// </summary>
+    /// <remarks>
+    /// The environment carries these values because they differ per process, where a configuration
+    /// file is read identically by every process that loads the same host.
+    /// </remarks>
+    public ReplConfig ApplyEnvironmentOverrides()
+    {
+        if (TryParsePort(Environment.GetEnvironmentVariable(PortVariable), out var port))
+            Port = port;
+
+        return this;
+    }
+
+    /// <summary>
+    /// Parses a listen port. Returns false for absent, malformed, or out-of-range text, so a
+    /// mistyped variable keeps the default rather than failing the host at startup.
+    /// </summary>
+    public static bool TryParsePort(string? value, out int port)
+    {
+        port = 0;
+        if (
+            !int.TryParse(
+                value?.Trim(),
+                NumberStyles.None,
+                CultureInfo.InvariantCulture,
+                out var parsed
+            )
+        )
+            return false;
+
+        if (parsed is < 1 or > 65535)
+            return false;
+
+        port = parsed;
+        return true;
+    }
 }
