@@ -27,6 +27,9 @@ Default endpoint: `ws://127.0.0.1:18590`. Override with `HOTREPL_URL` or CLI `--
 unavailable, connect with any WebSocket client and read the initial `handshake` frame before sending
 requests.
 
+The host reads `HOTREPL_PORT` from its process environment, which is how two instances of one game
+serve at once. BepInEx also exposes the port as a plugin configuration entry.
+
 ## Handshake
 
 On connection the server immediately sends:
