@@ -38,13 +38,16 @@ hotrepl reset                    # reset evaluator state
 hotrepl complete '<prefix>' [N]  # completions for partial C#
 hotrepl run <name> '<json args>' # invoke a typed command
 hotrepl describe <name>          # show a command's schema
-hotrepl artifacts read <ref>     # read and verify an artifact
+hotrepl artifacts read <ref>     # read and verify an artifact (add --output for bytes)
 hotrepl journal [--limit N]      # recent eval/command history
 hotrepl watch '<C# expr>'        # stream frame-by-frame values
 ```
 
 Global flags: `--format text|json|jsonl`, `--json` (alias), `--jsonl` (alias),
-`--url ws://host:port`, `--limit N`.
+`--url ws://host:port`, `--limit N`, `--output <file>`.
+
+`artifacts read` decodes an artifact as text. A binary artifact such as a screenshot needs
+`--output <file>`, which writes the verified bytes and prints the path and size.
 
 ## Environment
 

@@ -14,7 +14,10 @@ public class ControlJobManagerTests
     [Fact]
     public void StartJob_CreatesRunningState()
     {
-        var manager = new ControlJobManager(maxEventBuffer: 100);
+        var manager = new ControlJobManager(
+            maxEventBuffer: 100,
+            artifactDirectory: TestArtifacts.Directory()
+        );
 
         var job = manager.StartJob(
             "request-1",
@@ -29,7 +32,11 @@ public class ControlJobManagerTests
     [Fact]
     public void StartJob_RejectsWhenRunningJobConcurrencyIsExhausted()
     {
-        var manager = new ControlJobManager(maxEventBuffer: 100, maxRunningJobs: 1);
+        var manager = new ControlJobManager(
+            maxEventBuffer: 100,
+            artifactDirectory: TestArtifacts.Directory(),
+            maxRunningJobs: 1
+        );
         manager.StartJob("request-1", (_, _) => ValueTask.FromResult(CompiledCommandResult.Empty));
 
         var error = Assert.Throws<InvalidOperationException>(() =>
@@ -45,7 +52,10 @@ public class ControlJobManagerTests
     [Fact]
     public async Task RunJob_TransitionsToCompletedWithResult()
     {
-        var manager = new ControlJobManager(maxEventBuffer: 100);
+        var manager = new ControlJobManager(
+            maxEventBuffer: 100,
+            artifactDirectory: TestArtifacts.Directory()
+        );
         var job = manager.StartJob(
             "request-1",
             (_, _) =>
@@ -69,7 +79,10 @@ public class ControlJobManagerTests
     [Fact]
     public async Task RunJob_HandlerExceptionTransitionsToFailedError()
     {
-        var manager = new ControlJobManager(maxEventBuffer: 100);
+        var manager = new ControlJobManager(
+            maxEventBuffer: 100,
+            artifactDirectory: TestArtifacts.Directory()
+        );
         var job = manager.StartJob(
             "request-1",
             (_, _) => throw new InvalidOperationException("boom")
@@ -86,7 +99,10 @@ public class ControlJobManagerTests
     [Fact]
     public async Task CancelJob_TransitionsToCancelled()
     {
-        var manager = new ControlJobManager(maxEventBuffer: 100);
+        var manager = new ControlJobManager(
+            maxEventBuffer: 100,
+            artifactDirectory: TestArtifacts.Directory()
+        );
         var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var job = manager.StartJob(
             "request-1",
@@ -117,7 +133,10 @@ public class ControlJobManagerTests
     [Fact]
     public async Task EventsAfter_ReturnsEventsAfterRequestedSequence()
     {
-        var manager = new ControlJobManager(maxEventBuffer: 100);
+        var manager = new ControlJobManager(
+            maxEventBuffer: 100,
+            artifactDirectory: TestArtifacts.Directory()
+        );
         var job = manager.StartJob(
             "request-1",
             (env, _) =>
@@ -144,7 +163,10 @@ public class ControlJobManagerTests
     [Fact]
     public async Task EventsAfter_CapsAtConfiguredBufferSize()
     {
-        var manager = new ControlJobManager(maxEventBuffer: 3);
+        var manager = new ControlJobManager(
+            maxEventBuffer: 3,
+            artifactDirectory: TestArtifacts.Directory()
+        );
         var job = manager.StartJob(
             "request-1",
             (env, _) =>

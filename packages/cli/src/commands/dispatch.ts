@@ -1,10 +1,12 @@
 import type { Session, WatchTick } from "@hotrepl/sdk";
+import { writeFile } from "node:fs/promises";
 import { type CliFormat, json, jsonl, line, printable, serializableResult } from "../format";
 
 export interface CommandRequest {
   args: string[];
   format: CliFormat;
   limit?: number;
+  output?: string;
 }
 
 export async function dispatchCommand(session: Session, request: CommandRequest): Promise<string> {
@@ -30,7 +32,7 @@ export async function dispatchCommand(session: Session, request: CommandRequest)
     case "describe":
       return renderDescribe(session, args, request.format);
     case "artifacts":
-      return renderArtifact(session, args, request.format);
+      return renderArtifact(session, args, request.format, request.output);
     case "journal":
       return renderJournal(session, request.format, request.limit);
     default:
@@ -109,11 +111,20 @@ async function renderArtifact(
   session: Session,
   args: string[],
   format: CliFormat,
+  output: string | undefined,
 ): Promise<string> {
   const [subcommand, refJson] = args;
   if (subcommand !== "read") throw new Error("Expected 'artifacts read'.");
   if (refJson === undefined) throw new Error("Missing artifact reference.");
   const artifact = session.artifact(JSON.parse(refJson) as Parameters<Session["artifact"]>[0]);
+  // A PNG or any other binary artifact survives only as bytes; decoding it as
+  // text corrupts it, so --output is the path for those.
+  if (output !== undefined) {
+    const bytes = await artifact.bytes();
+    await writeFile(output, bytes);
+    const written = { bytes: bytes.byteLength, path: output };
+    return format === "json" ? json(written) : line(`${output} (${bytes.byteLength} bytes)`);
+  }
   if (format === "json") return json(await artifact.json());
   return line(await artifact.text());
 }

@@ -2,12 +2,15 @@ import { PROTOCOL_VERSION } from "@hotrepl/protocol";
 import { HotReplError } from "./errors";
 import type { RuntimeTransport } from "./session";
 import { Session } from "./session";
+import type { ArtifactPathResolver } from "./websocket-transport";
 import { WebSocketTransport } from "./websocket-transport";
 
 export interface ConnectOptions {
   runtime?: RuntimeTransport;
   url?: string;
   env?: Record<string, string | undefined>;
+  /** Maps an artifact reference onto a path this process can open. */
+  resolveArtifactPath?: ArtifactPathResolver;
 }
 
 export function resolveHotReplUrl(options: ConnectOptions = {}): string {
@@ -15,7 +18,11 @@ export function resolveHotReplUrl(options: ConnectOptions = {}): string {
 }
 
 export async function connect(options: ConnectOptions = {}): Promise<Session> {
-  const runtime = options.runtime ?? (await WebSocketTransport.connect(resolveHotReplUrl(options)));
+  const runtime = options.runtime
+    ?? (await WebSocketTransport.connect(
+      resolveHotReplUrl(options),
+      options.resolveArtifactPath,
+    ));
 
   const handshake = await runtime.handshake();
   if (handshake.protocolVersion !== PROTOCOL_VERSION) {

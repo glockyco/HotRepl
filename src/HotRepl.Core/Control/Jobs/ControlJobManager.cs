@@ -13,13 +13,24 @@ internal sealed class ControlJobManager
 {
     private readonly int _maxEventBuffer;
     private readonly int _maxRunningJobs;
+    private readonly string _artifactDirectory;
     private readonly object _sync = new();
     private readonly Dictionary<string, JobState> _jobs = new(StringComparer.Ordinal);
 
-    public ControlJobManager(int maxEventBuffer, int maxRunningJobs = int.MaxValue)
+    public ControlJobManager(
+        int maxEventBuffer,
+        string artifactDirectory,
+        int maxRunningJobs = int.MaxValue
+    )
     {
+        if (string.IsNullOrWhiteSpace(artifactDirectory))
+        {
+            throw new ArgumentException("Artifact directory required.", nameof(artifactDirectory));
+        }
+
         _maxEventBuffer = Math.Max(1, maxEventBuffer);
         _maxRunningJobs = Math.Max(1, maxRunningJobs);
+        _artifactDirectory = artifactDirectory;
     }
 
     public ControlJob StartJob(
@@ -39,7 +50,7 @@ internal sealed class ControlJobManager
         }
 
         var jobId = Guid.NewGuid().ToString("N");
-        var state = new JobState(jobId, connectionId, requestId, execute);
+        var state = new JobState(jobId, connectionId, requestId, _artifactDirectory, execute);
         lock (_sync)
         {
             if (RunningJobCountLocked() >= _maxRunningJobs)
@@ -227,6 +238,7 @@ internal sealed class ControlJobManager
             string jobId,
             Guid connectionId,
             string requestId,
+            string artifactDirectory,
             Func<
                 JobExecutionEnvironment,
                 CancellationToken,
@@ -238,7 +250,9 @@ internal sealed class ControlJobManager
             ConnectionId = connectionId;
             RequestId = requestId;
             Execute = execute;
-            Artifacts = new InMemoryArtifactWriter();
+            Artifacts = new FileSystemArtifactWriter(
+                FileSystemArtifactWriter.ScopeDirectory(artifactDirectory, jobId)
+            );
         }
 
         public string JobId { get; }
@@ -254,7 +268,7 @@ internal sealed class ControlJobManager
         public long NextSequence { get; set; }
         public JObject? Progress { get; set; }
         public JObject? Result { get; set; }
-        public InMemoryArtifactWriter Artifacts { get; }
+        public IArtifactWriter Artifacts { get; }
         public ArtifactRef[] ArtifactList { get; set; } = Array.Empty<ArtifactRef>();
         public ControlCommandError[] Diagnostics { get; set; } = Array.Empty<ControlCommandError>();
         public ControlCommandError? Error { get; set; }

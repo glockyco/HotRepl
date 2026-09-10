@@ -1,5 +1,6 @@
 import { FakeRuntime } from "@hotrepl/testing";
 import { describe, expect, test } from "bun:test";
+import { readFile, rm } from "node:fs/promises";
 import { runCli } from "../src/index";
 
 const commandDescriptor = {
@@ -144,5 +145,26 @@ describe("hotrepl CLI output", () => {
 
     await expect(runtime.request({ type: "eval", id: "post-close-error", code: "1" }))
       .rejects.toThrow(/closed/i);
+  });
+  test("artifacts read --output writes the bytes instead of decoding them", async () => {
+    const runtime = await configuredRuntime();
+    const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    const artifact = await runtime.putArtifact("screenshot", png, {
+      contentType: "image/png",
+    });
+    const output = `${import.meta.dir}/cli-artifact-output.tmp`;
+
+    try {
+      const result = await runCli(
+        ["artifacts", "read", JSON.stringify(artifact), "--output", output],
+        { runtime },
+      );
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain("8 bytes");
+      expect(new Uint8Array(await readFile(output))).toEqual(png);
+    } finally {
+      await rm(output, { force: true });
+    }
   });
 });

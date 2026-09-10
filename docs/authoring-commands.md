@@ -141,6 +141,11 @@ Use the attachment method that matches the source data:
 - `AttachStreamAsync` for generated data that should be hashed while streaming.
 - `AttachFileAsync` for files already written on disk.
 
+`AttachBytesAsync` and `AttachStreamAsync` write the data into the engine's artifact directory, and
+`AttachFileAsync` references the file where the handler already put it. Either way the reference the
+client receives carries a `path`, so a handler never needs to choose an output location or invent a
+delivery mechanism of its own.
+
 Declare expected artifact keys on the handler so `command_describe` exposes the artifact schema:
 
 ```csharp

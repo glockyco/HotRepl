@@ -1,8 +1,8 @@
 using System;
 using System.Diagnostics;
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Text;
+using HotRepl.Storage;
 using Newtonsoft.Json;
 
 namespace HotRepl.Discovery;
@@ -76,26 +76,7 @@ internal sealed class InstanceDocumentWriter : IDisposable
         catch (UnauthorizedAccessException) { }
     }
 
-    private static string GetDefaultRoot()
-    {
-        var xdgRuntime = Environment.GetEnvironmentVariable("XDG_RUNTIME_DIR");
-        if (!string.IsNullOrWhiteSpace(xdgRuntime))
-            return System.IO.Path.Combine(xdgRuntime, "hotrepl", "instances");
-
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
-            var localAppData = Environment.GetFolderPath(
-                Environment.SpecialFolder.LocalApplicationData
-            );
-            return System.IO.Path.Combine(localAppData, "HotRepl", "instances");
-        }
-
-        var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-        if (!string.IsNullOrWhiteSpace(appData))
-            return System.IO.Path.Combine(appData, "HotRepl", "instances");
-
-        return System.IO.Path.Combine(System.IO.Path.GetTempPath(), "hotrepl", "instances");
-    }
+    private static string GetDefaultRoot() => HotReplStateDirectory.Resolve("instances");
 
     private static string CreateInstanceId(HostInfo host, ReplConfig config) =>
         string.Join(

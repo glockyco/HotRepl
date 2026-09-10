@@ -1,5 +1,6 @@
 using System;
 using System.Globalization;
+using HotRepl.Storage;
 
 namespace HotRepl;
 
@@ -11,6 +12,11 @@ public sealed class ReplConfig
 {
     /// <summary>Environment variable that overrides <see cref="Port"/> for one process.</summary>
     public const string PortVariable = "HOTREPL_PORT";
+
+    /// <summary>
+    /// Environment variable that overrides <see cref="ArtifactDirectory"/> for one process.
+    /// </summary>
+    public const string ArtifactDirectoryVariable = "HOTREPL_ARTIFACT_DIR";
 
     /// <summary>WebSocket listen port. Default: 18590.</summary>
     public int Port { get; set; } = 18590;
@@ -54,6 +60,17 @@ public sealed class ReplConfig
     public int MaxJobEventBuffer { get; set; } = 1000;
 
     /// <summary>
+    /// Directory that holds command artifacts. A command attaches bytes, the engine writes them
+    /// here, and the reference it returns carries this path so a client on the same machine reads
+    /// the file. Default: the per-user state directory.
+    /// </summary>
+    /// <remarks>
+    /// A game that runs under Wine or Proton sees a Windows path. Point this at a mapped drive when
+    /// the client reads artifacts from the host filesystem.
+    /// </remarks>
+    public string ArtifactDirectory { get; set; } = HotReplStateDirectory.Resolve("artifacts");
+
+    /// <summary>
     /// Applies per-process overrides from the environment and returns this instance.
     /// </summary>
     /// <remarks>
@@ -64,6 +81,10 @@ public sealed class ReplConfig
     {
         if (TryParsePort(Environment.GetEnvironmentVariable(PortVariable), out var port))
             Port = port;
+
+        var directory = Environment.GetEnvironmentVariable(ArtifactDirectoryVariable);
+        if (!string.IsNullOrWhiteSpace(directory))
+            ArtifactDirectory = directory!.Trim();
 
         return this;
     }

@@ -198,6 +198,26 @@ Consumers must verify `sha256`, size, finalization, schema, and counts before tr
 content. The SDK `Artifact` helper performs hash verification before returning bytes, text, JSON, or
 open metadata.
 
+The engine writes every attachment to a file, so `path` always points at the bytes: a sync command
+writes under `<artifactDirectory>/<requestId>/`, and a job writes under
+`<artifactDirectory>/<jobId>/`. `ReplConfig.ArtifactDirectory` selects the root, the
+`HOTREPL_ARTIFACT_DIR` variable overrides it for one process, and the default is the per-user state
+directory. The files outlive the process, and the consumer owns their removal.
+
+A game under Wine or Proton reports paths in its own namespace, such as
+`C:\users\...\HotRepl\artifacts\<jobId>\screenshot`. Pass `resolveArtifactPath` to `connect` to map
+such a reference onto a path the client process can open:
+
+```ts
+const session = await connect({
+  url,
+  resolveArtifactPath: (ref) =>
+    ref.path?.startsWith("C:\\") === true
+      ? `${bottle}/drive_c/${ref.path.slice(3).replaceAll("\\", "/")}`
+      : undefined,
+});
+```
+
 ## Journal
 
 `journal_query` returns recent eval and command entries:

@@ -19,6 +19,7 @@ interface ParsedArgs {
   args: string[];
   format: CliFormat;
   limit?: number;
+  output?: string;
   url?: string;
 }
 
@@ -56,6 +57,7 @@ function parseArgs(argv: string[]): ParsedArgs {
   const args: string[] = [];
   let format: CliFormat = "text";
   let limit: number | undefined;
+  let output: string | undefined;
   let url: string | undefined;
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -68,6 +70,8 @@ function parseArgs(argv: string[]): ParsedArgs {
       format = "jsonl";
     } else if (arg === "--limit") {
       limit = Number(requireValue(argv, index += 1, "--limit"));
+    } else if (arg === "--output") {
+      output = requireValue(argv, index += 1, "--output");
     } else if (arg === "--url") {
       url = requireValue(argv, index += 1, "--url");
     } else {
@@ -77,6 +81,7 @@ function parseArgs(argv: string[]): ParsedArgs {
 
   const parsed: ParsedArgs = { args, format };
   if (limit !== undefined) parsed.limit = limit;
+  if (output !== undefined) parsed.output = output;
   if (url !== undefined) parsed.url = url;
   return parsed;
 }

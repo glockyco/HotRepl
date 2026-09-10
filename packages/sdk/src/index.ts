@@ -18,4 +18,4 @@ export {
   type WatchTick,
   type WatchWireMessage,
 } from "./session";
-export { WebSocketTransport } from "./websocket-transport";
+export { type ArtifactPathResolver, WebSocketTransport } from "./websocket-transport";

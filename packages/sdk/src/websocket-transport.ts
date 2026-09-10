@@ -6,8 +6,16 @@ import type {
   ServerMessage,
   SessionEvictedMessage,
 } from "@hotrepl/protocol";
+import { readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 import { HotReplError, HotReplSessionEvicted } from "./errors";
 import type { RuntimeRequest, RuntimeTransport, WatchWireMessage } from "./session";
+
+/**
+ * Maps an artifact reference onto a path this process can open. Returning
+ * undefined keeps the reference's own path.
+ */
+export type ArtifactPathResolver = (ref: ArtifactRef) => string | undefined;
 
 type PendingRequest = {
   reject: (reason: unknown) => void;
@@ -75,10 +83,16 @@ export class WebSocketTransport implements RuntimeTransport {
   private handshakeMessage: HandshakeMessage | undefined;
   private evicted: SessionEvictedMessage | undefined;
 
-  private constructor(private readonly socket: WebSocket) {}
+  private constructor(
+    private readonly socket: WebSocket,
+    private readonly resolveArtifactPath?: ArtifactPathResolver,
+  ) {}
 
-  static connect(url: string): Promise<WebSocketTransport> {
-    const transport = new WebSocketTransport(new WebSocket(url));
+  static connect(
+    url: string,
+    resolveArtifactPath?: ArtifactPathResolver,
+  ): Promise<WebSocketTransport> {
+    const transport = new WebSocketTransport(new WebSocket(url), resolveArtifactPath);
     return transport.open();
   }
 
@@ -131,8 +145,28 @@ export class WebSocketTransport implements RuntimeTransport {
   }
 
   async readArtifact(ref: ArtifactRef): Promise<Uint8Array> {
-    if (ref.path !== undefined) {
-      return new Uint8Array(await Bun.file(ref.path).arrayBuffer());
+    // A game under Wine or Proton reports its own path namespace, so the caller
+    // that knows the mapping supplies the host path for that reference.
+    const path = this.resolveArtifactPath?.(ref) ?? ref.path;
+    if (path !== undefined) {
+      return new Uint8Array(await readFile(path));
+    }
+
+    const scheme = ref.uri.slice(0, Math.max(0, ref.uri.indexOf(":")));
+    if (scheme === "file") {
+      return new Uint8Array(await readFile(fileURLToPath(ref.uri)));
+    }
+    // fetch() accepts http, https and s3 only; any other scheme is a producer that
+    // kept its bytes to itself, and a native TypeError would hide that.
+    if (scheme !== "http" && scheme !== "https" && scheme !== "s3") {
+      throw new HotReplError({
+        kind: "artifact_missing",
+        code: "artifactNotReadable",
+        message:
+          `Artifact ${ref.uri} carries no path and its '${scheme}' scheme cannot be fetched. `
+          + `The producing command must attach a file-backed artifact.`,
+        retryable: false,
+      });
     }
 
     const response = await fetch(ref.uri);

@@ -98,6 +98,7 @@ public sealed class ReplEngine : IDisposable
         _router = new MessageRouter(this, msg => _host.LogInfo(msg));
         _controlJobs = new ControlJobManager(
             _host.Config.MaxJobEventBuffer,
+            _host.Config.ArtifactDirectory,
             _host.Config.MaxJobConcurrency
         );
         _controlRouter = new ControlCommandRouter(

@@ -59,7 +59,16 @@ public sealed class ReplPlugin : BaseUnityPlugin
             "127.0.0.1",
             "WebSocket bind host. Use 127.0.0.1 for loopback-only, or explicitly set 0.0.0.0 for host-reachable automation."
         );
+        var artifactDirectory = Config.Bind(
+            "Server",
+            "ArtifactDirectory",
+            "",
+            "Directory for command artifacts. Empty uses the per-user state directory. A game under Wine or Proton writes a Windows path, so point this at a mapped drive when the client reads artifacts from the host filesystem."
+        );
         var config = new ReplConfig { Port = port.Value, BindHost = bindHost.Value };
+        if (!string.IsNullOrWhiteSpace(artifactDirectory.Value))
+            config.ArtifactDirectory = artifactDirectory.Value.Trim();
+
         foreach (var warning in ReplConfigExposurePolicy.Validate(config).Warnings)
             Logger.LogWarning(warning);
 

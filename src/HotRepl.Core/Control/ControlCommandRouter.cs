@@ -176,7 +176,9 @@ internal sealed class ControlCommandRouter
                 timeout: timeout,
                 jobId: null,
                 progressSink: null,
-                artifacts: new InMemoryArtifactWriter()
+                artifacts: new FileSystemArtifactWriter(
+                    FileSystemArtifactWriter.ScopeDirectory(_config.ArtifactDirectory, message.Id)
+                )
             );
             var result = handler
                 .ExecuteAsync(compiledContext, message.Args, CancellationToken.None)

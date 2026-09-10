@@ -104,8 +104,14 @@ export function createHotReplTools(manager: SessionManager): HotReplMcpTool[] {
       z.object({ ref: z.unknown() }),
       safeTool(async (args) => {
         const current = await manager.getSession();
-        const artifact = current.artifact(args.ref as Parameters<Session["artifact"]>[0]);
-        return result({ text: await artifact.text() });
+        const ref = args.ref as Parameters<Session["artifact"]>[0];
+        const artifact = current.artifact(ref);
+        // Decoding a PNG or any other binary artifact as text returns mojibake, so
+        // verify the bytes and hand back the location the caller can open instead.
+        if (/^text\/|^application\/(json|xml)|\+(json|xml)$/.test(ref.contentType)) {
+          return result({ text: await artifact.text() });
+        }
+        return result(await artifact.open());
       }),
       readOnly(),
     ),

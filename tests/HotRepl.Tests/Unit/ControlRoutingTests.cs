@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using HotRepl.Control;
@@ -162,7 +164,10 @@ public class ControlRoutingTests
     [Fact]
     public void Execute_JobCommand_ReturnsCommandAccepted()
     {
-        var jobs = new ControlJobManager(maxEventBuffer: 100);
+        var jobs = new ControlJobManager(
+            maxEventBuffer: 100,
+            artifactDirectory: TestArtifacts.Directory()
+        );
         var registry = NewRegistry(r => r.Register(new JobCommand()));
         var router = new ControlCommandRouter(registry, jobs: jobs);
 
@@ -180,7 +185,10 @@ public class ControlRoutingTests
     [Fact]
     public void JobStatus_ReturnsCurrentState()
     {
-        var jobs = new ControlJobManager(maxEventBuffer: 100);
+        var jobs = new ControlJobManager(
+            maxEventBuffer: 100,
+            artifactDirectory: TestArtifacts.Directory()
+        );
         var registry = NewRegistry(r => r.Register(new JobCommand()));
         var router = new ControlCommandRouter(registry, jobs: jobs);
         var accepted = Assert.IsType<JobAcceptedMessage>(
@@ -200,7 +208,10 @@ public class ControlRoutingTests
     [Fact]
     public async Task JobStatus_AfterCompletion_ReturnsTerminalJobResult()
     {
-        var jobs = new ControlJobManager(maxEventBuffer: 100);
+        var jobs = new ControlJobManager(
+            maxEventBuffer: 100,
+            artifactDirectory: TestArtifacts.Directory()
+        );
         var registry = NewRegistry(r => r.Register(new JobCommand()));
         var router = new ControlCommandRouter(registry, jobs: jobs);
         var accepted = Assert.IsType<JobAcceptedMessage>(
@@ -223,7 +234,10 @@ public class ControlRoutingTests
     [Fact]
     public async Task JobStatus_AfterCompletion_RecordsTerminalCommandJournalEntry()
     {
-        var jobs = new ControlJobManager(maxEventBuffer: 100);
+        var jobs = new ControlJobManager(
+            maxEventBuffer: 100,
+            artifactDirectory: TestArtifacts.Directory()
+        );
         var recorded = new List<ControlCommandJournalEntry>();
         var registry = NewRegistry(r => r.Register(new JobCommand()));
         var router = new ControlCommandRouter(registry, jobs: jobs, onCommandResult: recorded.Add);
@@ -247,7 +261,10 @@ public class ControlRoutingTests
     [Fact]
     public async Task JobStatus_AppliesConfiguredTerminalOutputLimits()
     {
-        var jobs = new ControlJobManager(maxEventBuffer: 100);
+        var jobs = new ControlJobManager(
+            maxEventBuffer: 100,
+            artifactDirectory: TestArtifacts.Directory()
+        );
         var registry = NewRegistry(r => r.Register(new LargeJobCommand()));
         var router = new ControlCommandRouter(
             registry,
@@ -273,7 +290,10 @@ public class ControlRoutingTests
     [Fact]
     public void JobCancel_ReturnsAcknowledgement()
     {
-        var jobs = new ControlJobManager(maxEventBuffer: 100);
+        var jobs = new ControlJobManager(
+            maxEventBuffer: 100,
+            artifactDirectory: TestArtifacts.Directory()
+        );
         var registry = NewRegistry(r => r.Register(new JobCommand()));
         var router = new ControlCommandRouter(registry, jobs: jobs);
         var accepted = Assert.IsType<JobAcceptedMessage>(
@@ -297,6 +317,66 @@ public class ControlRoutingTests
         var registry = new GlobalControlCommandRegistry();
         configure(registry);
         return registry;
+    }
+
+    [Fact]
+    public void Execute_SyncCommandWithAttachedBytes_ReturnsRefTheClientCanRead()
+    {
+        var directory = TestArtifacts.Directory();
+        try
+        {
+            var registry = NewRegistry(r => r.Register(new AttachingCommand()));
+            var router = new ControlCommandRouter(
+                registry,
+                config: new ReplConfig { ArtifactDirectory = directory }
+            );
+
+            var result = Assert.IsType<CommandResultMessage>(
+                router.Execute(new CommandCallMessage { Id = "cmd-1", Name = "archive.attach" })
+            );
+
+            var artifact = result.Artifacts["blob"];
+            Assert.NotNull(artifact.Path);
+            Assert.Equal("payload", File.ReadAllText(artifact.Path!));
+            Assert.StartsWith("file://", artifact.Uri, StringComparison.Ordinal);
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+                Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task JobStatus_AfterCompletion_ReturnsRefTheClientCanRead()
+    {
+        var directory = TestArtifacts.Directory();
+        try
+        {
+            var jobs = new ControlJobManager(maxEventBuffer: 100, artifactDirectory: directory);
+            var registry = NewRegistry(r => r.Register(new AttachingJobCommand()));
+            var router = new ControlCommandRouter(registry, jobs: jobs);
+            var accepted = Assert.IsType<JobAcceptedMessage>(
+                router.Execute(new CommandCallMessage { Id = "cmd-1", Name = "archive.attachJob" })
+            );
+            await router.RunJobAsync(accepted.JobId);
+
+            var result = Assert.IsType<JobResultMessage>(
+                router.GetJobStatus(
+                    new JobStatusMessage { Id = "status-1", JobId = accepted.JobId },
+                    Guid.Empty
+                )
+            );
+
+            var artifact = result.Artifacts["blob"];
+            Assert.NotNull(artifact.Path);
+            Assert.Equal("payload", File.ReadAllText(artifact.Path!));
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+                Directory.Delete(directory, recursive: true);
+        }
     }
 
     private sealed class EchoArgs
@@ -390,6 +470,52 @@ public class ControlRoutingTests
             return new(
                 ControlCommandResult.Ok(new EchoResult { Value = "done" }, "items", artifact)
             );
+        }
+    }
+
+    private sealed class AttachingCommand : IControlCommandHandler<EmptyArgs, EchoResult>
+    {
+        public string Name => "archive.attach";
+        public int Version => 1;
+        public ControlCommandKind Kind => ControlCommandKind.Sync;
+        public bool MutatesState => false;
+
+        public async ValueTask<ControlCommandResult<EchoResult>> ExecuteAsync(
+            ControlCommandContext<EchoResult> context,
+            EmptyArgs args,
+            CancellationToken cancellationToken
+        )
+        {
+            var artifact = await context.Artifacts.AttachBytesAsync(
+                "blob",
+                Encoding.UTF8.GetBytes("payload"),
+                "text/plain",
+                cancellationToken
+            );
+            return ControlCommandResult.Ok(new EchoResult { Value = "done" }, "blob", artifact);
+        }
+    }
+
+    private sealed class AttachingJobCommand : IControlCommandHandler<EmptyArgs, EchoResult>
+    {
+        public string Name => "archive.attachJob";
+        public int Version => 1;
+        public ControlCommandKind Kind => ControlCommandKind.Job;
+        public bool MutatesState => false;
+
+        public async ValueTask<ControlCommandResult<EchoResult>> ExecuteAsync(
+            ControlCommandContext<EchoResult> context,
+            EmptyArgs args,
+            CancellationToken cancellationToken
+        )
+        {
+            var artifact = await context.Artifacts.AttachBytesAsync(
+                "blob",
+                Encoding.UTF8.GetBytes("payload"),
+                "text/plain",
+                cancellationToken
+            );
+            return ControlCommandResult.Ok(new EchoResult { Value = "done" }, "blob", artifact);
         }
     }
 

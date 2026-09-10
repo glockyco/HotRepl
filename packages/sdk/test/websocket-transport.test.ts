@@ -181,6 +181,50 @@ describe("WebSocket transport", () => {
       server.stop(true);
     }
   });
+  test("reads a file-backed artifact from its uri when the ref carries no path", async () => {
+    const runtime = new FakeRuntime();
+    const server = serveRuntime(runtime);
+    const path = `${import.meta.dir}/artifact-read.tmp`;
+    try {
+      await Bun.write(path, "payload");
+      const transport = await WebSocketTransport.connect(server.url);
+
+      const bytes = await transport.readArtifact({
+        uri: Bun.pathToFileURL(path).href,
+        sha256: "",
+        byteSize: 7,
+        contentType: "text/plain",
+        finalized: true,
+      });
+
+      expect(new TextDecoder().decode(bytes)).toBe("payload");
+    } finally {
+      await Bun.file(path).delete();
+      server.close();
+    }
+  });
+
+  test("rejects an artifact whose scheme cannot be fetched", async () => {
+    const runtime = new FakeRuntime();
+    const server = serveRuntime(runtime);
+    try {
+      const transport = await WebSocketTransport.connect(server.url);
+
+      await expect(transport.readArtifact({
+        uri: "hotrepl-artifact://memory/screenshot",
+        sha256: "",
+        byteSize: 1,
+        contentType: "image/png",
+        finalized: true,
+      })).rejects.toMatchObject({
+        kind: "artifact_missing",
+        code: "artifactNotReadable",
+      });
+    } finally {
+      server.close();
+    }
+  });
+
   test("connect to an unreachable port rejects without uncaughtException", async () => {
     const uncaught: unknown[] = [];
     const onUncaught = (err: unknown) => uncaught.push(err);
@@ -201,5 +245,34 @@ describe("WebSocket transport", () => {
     process.off("uncaughtException", onUncaught);
     process.off("unhandledRejection", onUncaught);
     expect(uncaught).toEqual([]);
+  });
+  test("a resolver maps a foreign path onto one this process can open", async () => {
+    const runtime = new FakeRuntime();
+    const server = serveRuntime(runtime);
+    const hostPath = `${import.meta.dir}/artifact-resolved.tmp`;
+    try {
+      await Bun.write(hostPath, "payload");
+      const session = await connect({
+        url: server.url,
+        resolveArtifactPath: (ref) =>
+          ref.path?.startsWith("Z:\\") === true
+            ? ref.path.slice(2).replaceAll("\\", "/")
+            : undefined,
+      });
+
+      const bytes = await session.artifact({
+        uri: "file:///Z:/foreign/artifact",
+        path: `Z:${hostPath.replaceAll("/", "\\")}`,
+        sha256: "239f59ed55e737c77147cf55ad0c1b030b6d7ee748a7426952f9b852d5a935e5",
+        byteSize: 7,
+        contentType: "text/plain",
+        finalized: true,
+      }).bytes();
+
+      expect(new TextDecoder().decode(bytes)).toBe("payload");
+    } finally {
+      await Bun.file(hostPath).delete();
+      server.close();
+    }
   });
 });
