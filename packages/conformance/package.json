@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@hotrepl/protocol": "4.0.1",
-    "@hotrepl/sdk": "4.0.1",
+    "@hotrepl/sdk": "4.0.2",
     "@hotrepl/testing": "2.0.0"
   }
 }

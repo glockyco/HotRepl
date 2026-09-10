@@ -1,6 +1,6 @@
 {
   "name": "@hotrepl/sdk",
-  "version": "4.0.1",
+  "version": "4.0.2",
   "description": "Canonical TypeScript SDK for HotRepl v2 runtimes.",
   "keywords": [
     "hotrepl",
