@@ -37,6 +37,7 @@ internal static class UnityPngEncoder
         {
             return bytes;
         }
+#if HOTREPL_IL2CPP
         if (value is Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppStructArray<byte> il2CppBytes)
         {
             var managedBytes = new byte[il2CppBytes.Length];
@@ -46,6 +47,7 @@ internal static class UnityPngEncoder
             }
             return managedBytes;
         }
+#endif
 
         var type = value.GetType();
         var lengthProperty = type.GetProperty(
