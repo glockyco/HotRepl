@@ -29,6 +29,27 @@ public sealed class BepInExPluginSourceTests
     }
 
     [Fact]
+    public void LoadConfig_AppliesEnvironmentAfterPluginSettings()
+    {
+        var source = File.ReadAllText(FindRepoFile("src/HotRepl.BepInEx/ReplPlugin.cs"));
+        var artifactIndex = source.IndexOf(
+            "config.ArtifactDirectory = artifactDirectory.Value.Trim();",
+            StringComparison.Ordinal
+        );
+        var environmentIndex = source.IndexOf(
+            "config.ApplyEnvironmentOverrides();",
+            StringComparison.Ordinal
+        );
+        var validationIndex = source.IndexOf(
+            "ReplConfigExposurePolicy.Validate(config)",
+            StringComparison.Ordinal
+        );
+        Assert.True(artifactIndex >= 0);
+        Assert.True(environmentIndex > artifactIndex);
+        Assert.True(validationIndex > environmentIndex);
+    }
+
+    [Fact]
     public void Project_ReferencesProtocolAssemblyForRuntimeDeployment()
     {
         var project = File.ReadAllText(FindRepoFile("src/HotRepl.BepInEx/HotRepl.BepInEx.csproj"));
