@@ -23,7 +23,7 @@ internal sealed class BepInExHost : IReplHost
     private readonly ManualLogSource _logger;
 
     // Computed once at class load — reflects over the compiled UnityHelpers type.
-    private static readonly string[] _unityHelperSignatures = HelperInjector.BuildSignatures(
+    private static readonly string[] _unityHelperSignatures = HelperSignatures.For(
         typeof(UnityHelpers)
     );
 

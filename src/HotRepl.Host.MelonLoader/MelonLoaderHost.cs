@@ -16,9 +16,9 @@ internal sealed class MelonLoaderHost : IReplHost
 {
     private readonly MelonLogger.Instance _logger;
 
-    private static readonly string[] _helperSignatures = HelperInjector
-        .BuildSignatures(typeof(UnityHelpers))
-        .Concat(HelperInjector.BuildSignatures(typeof(Il2CppHelpers)))
+    private static readonly string[] _helperSignatures = HelperSignatures
+        .For(typeof(UnityHelpers))
+        .Concat(HelperSignatures.For(typeof(Il2CppHelpers)))
         .ToArray();
 
     private static readonly IReadOnlyList<Assembly> _additionalAssemblies = new[]

@@ -15,7 +15,7 @@ namespace HotRepl.Host.Lunaris;
 internal sealed class LunarisHost : IReplHost
 {
     private readonly ILog _logger;
-    private static readonly string[] _unityHelperSignatures = HelperInjector.BuildSignatures(
+    private static readonly string[] _unityHelperSignatures = HelperSignatures.For(
         typeof(UnityHelpers)
     );
     private static readonly IReadOnlyList<Assembly> _additionalAssemblies = new[]

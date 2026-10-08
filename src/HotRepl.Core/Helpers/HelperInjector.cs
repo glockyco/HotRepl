@@ -18,7 +18,7 @@ internal static class HelperInjector
     /// Signatures of public Repl methods, ready for the handshake helpers[] field.
     /// Computed once at startup from the compiled Repl type — always in sync.
     /// </summary>
-    public static readonly string[] CoreHelperSignatures = BuildSignatures(typeof(Repl));
+    public static readonly string[] CoreHelperSignatures = HelperSignatures.For(typeof(Repl));
 
     /// <summary>
     /// Injects the Core Repl class and any host-provided additional assemblies/usings
@@ -58,38 +58,5 @@ internal static class HelperInjector
         Array.Copy(CoreHelperSignatures, combined, CoreHelperSignatures.Length);
         Array.Copy(additional, 0, combined, CoreHelperSignatures.Length, additional.Length);
         return combined;
-    }
-
-    // ── Private ───────────────────────────────────────────────────────────────
-
-    internal static string[] BuildSignatures(Type type)
-    {
-        return type.GetMethods(BindingFlags.Public | BindingFlags.Static)
-            .Where(m =>
-                m.DeclaringType == type
-                && !m.IsSpecialName
-                && !m.Name.StartsWith("__", StringComparison.Ordinal)
-            )
-            .Select(FormatSignature)
-            .ToArray();
-    }
-
-    private static string FormatSignature(MethodInfo m)
-    {
-        var ps = m.GetParameters();
-        var pstr = string.Join(
-            ", ",
-            Array.ConvertAll(
-                ps,
-                p =>
-                {
-                    var part = $"{p.ParameterType.Name} {p.Name}";
-                    if (p.HasDefaultValue)
-                        part += $" = {p.DefaultValue ?? "null"}";
-                    return part;
-                }
-            )
-        );
-        return $"{m.ReturnType.Name} {m.Name}({pstr})";
     }
 }
