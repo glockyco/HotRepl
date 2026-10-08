@@ -139,6 +139,8 @@ The default security model is loopback binding plus single-client replacement.
 - Timeout enforcement is capability-driven: `hardAbort`, `cooperative`, or `unsupported`.
 - Disposing the engine closes its listener and client sockets and restores Fleck's logging hook,
   allowing a replacement engine to bind the same port during plugin reload.
+- Loader entry points release the shared Unity coroutine-host reference on unload. MelonLoader also
+  destroys its dedicated coroutine GameObject, so a subsequent load does not retain the old host.
 
 ## Embedding
 
