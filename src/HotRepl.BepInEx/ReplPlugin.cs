@@ -68,6 +68,7 @@ public sealed class ReplPlugin : BaseUnityPlugin
         var config = new ReplConfig { Port = port.Value, BindHost = bindHost.Value };
         if (!string.IsNullOrWhiteSpace(artifactDirectory.Value))
             config.ArtifactDirectory = artifactDirectory.Value.Trim();
+        config.ApplyEnvironmentOverrides();
 
         foreach (var warning in ReplConfigExposurePolicy.Validate(config).Warnings)
             Logger.LogWarning(warning);

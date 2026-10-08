@@ -94,6 +94,23 @@ public class ReplConfigTests
         Assert.Equal(18590, config.Port);
     }
 
+    [Fact]
+    public void ApplyEnvironmentOverrides_takes_precedence_over_plugin_settings()
+    {
+        using var port = new EnvironmentVariable(ReplConfig.PortVariable, "18592");
+        using var directory = new EnvironmentVariable(
+            ReplConfig.ArtifactDirectoryVariable,
+            " process-artifacts "
+        );
+        var config = new ReplConfig
+        {
+            Port = 19000,
+            ArtifactDirectory = "plugin-artifacts",
+        }.ApplyEnvironmentOverrides();
+        Assert.Equal(18592, config.Port);
+        Assert.Equal("process-artifacts", config.ArtifactDirectory);
+    }
+
     private sealed class EnvironmentVariable : IDisposable
     {
         private readonly string _name;

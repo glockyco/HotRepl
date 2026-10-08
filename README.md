@@ -22,6 +22,9 @@ contract for repeatable exports, tests, and agent workflows.
   exposes the port as a plugin configuration entry.
 - Bun 1.3.14 or Node 20+ to consume the npm packages.
 
+Per-process `HOTREPL_PORT` and `HOTREPL_ARTIFACT_DIR` override saved host configuration, so multiple
+game processes can use separate endpoints and artifact directories without editing shared settings.
+
 ## Install
 
 ```bash
