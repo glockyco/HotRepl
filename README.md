@@ -188,16 +188,10 @@ DLLs.
 1. Build the Lunaris project with the command above.
 2. Copy the contents of `src/HotRepl.Host.Lunaris/bin/Debug/netstandard2.1/plugins/HotRepl/` into
    `<game>/plugins/HotRepl/` (use `Release` instead of `Debug` for a Release build). This copy-ready
-   directory contains only:
-   - `HotRepl.Host.Lunaris.dll`
-   - `HotRepl.Core.dll`
-   - `HotRepl.Protocol.dll`
-   - `HotRepl.Evaluator.MonoCSharp.dll`
-   - `HotRepl.Helpers.Unity.dll`
-   - `HotRepl.UnityCommands.dll`
-   - `Fleck.dll`
-   - `System.ComponentModel.Annotations.dll`
-   - `mcs.dll`
+   directory holds the host, Core, Protocol, the Mono.CSharp evaluator, Unity helpers and commands,
+   their runtime dependencies (Fleck, `Microsoft.CSharp.dll` for Core's internalized
+   Namotion.Reflection, `System.ComponentModel.Annotations.dll`), and `mcs.dll`. Unity players do
+   not ship `Microsoft.CSharp`.
 3. Start the game and **enable HotRepl once in Lunaris's in-game plugin installer**. Manually
    installed plugins start disabled; the enabled state persists. No separate Unity Commands plugin
    is needed.

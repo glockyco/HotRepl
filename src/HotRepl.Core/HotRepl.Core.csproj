@@ -25,6 +25,8 @@
 
     <!-- JSON schema generation (ILRepack-internalized with its Namotion.Reflection dependency) -->
     <PackageReference Include="NJsonSchema" PrivateAssets="all" />
+    <!-- The internalized Namotion.Reflection uses dynamic; Unity players do not ship Microsoft.CSharp. -->
+    <PackageReference Include="Microsoft.CSharp" />
     <PackageReference
       Include="System.Memory"
       Condition="'$(TargetFramework)' == 'netstandard2.0'"
