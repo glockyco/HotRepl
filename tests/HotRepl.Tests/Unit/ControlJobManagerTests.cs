@@ -131,6 +131,25 @@ public class ControlJobManagerTests
     }
 
     [Fact]
+    public async Task CancelAll_StopsActiveJobsDuringHostUnload()
+    {
+        var manager = new ControlJobManager(100, TestArtifacts.Directory());
+        var job = manager.StartJob(
+            "reload",
+            async (_, token) =>
+            {
+                await Task.Delay(TimeSpan.FromSeconds(30), token);
+                return CompiledCommandResult.Empty;
+            }
+        );
+        var run = manager.RunAsync(job.JobId).AsTask();
+        manager.CancelAll();
+        manager.CancelAll();
+        await run;
+        Assert.Equal("cancelled", manager.GetStatus(job.JobId).State);
+    }
+
+    [Fact]
     public async Task EventsAfter_ReturnsEventsAfterRequestedSequence()
     {
         var manager = new ControlJobManager(

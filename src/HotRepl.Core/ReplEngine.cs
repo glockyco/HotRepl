@@ -221,6 +221,8 @@ public sealed class ReplEngine : IDisposable
         _disposed = true;
 
         _wsServer?.Dispose();
+        _controlJobs?.CancelAll();
+        _subscriptions?.CancelAll();
         _instanceDocument?.Dispose();
         _evaluator?.Dispose();
     }

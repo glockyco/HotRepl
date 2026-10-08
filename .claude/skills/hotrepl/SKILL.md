@@ -2,7 +2,7 @@
 name: hotrepl
 description: >
   Guide for connecting to and interacting with a HotRepl server embedded in a running
-  Unity game through a supported host (BepInEx or MelonLoader). Use this skill when
+  Unity game through a supported host (BepInEx, Lunaris, or MelonLoader). Use this skill when
   you need to evaluate C# code in a live game, inspect game objects or components,
   types and scene structure. HotRepl is a WebSocket REPL that accepts C# and returns
   structured JSON.
@@ -12,9 +12,9 @@ version: 2.0.0
 
 # HotRepl Usage Guide
 
-HotRepl embeds a WebSocket server in a running Unity game through BepInEx or MelonLoader. You send
-C# code or typed command calls; work executes on the game's main thread and returns structured JSON.
-State persistence, completion, and timeout behavior are reported by the handshake.
+HotRepl embeds a WebSocket server in a running Unity game through BepInEx, Lunaris, or MelonLoader.
+You send C# code or typed command calls; work executes on the game's main thread and returns
+structured JSON. State persistence, completion, and timeout behavior are reported by the handshake.
 
 ## Verify the server is running
 
@@ -28,7 +28,13 @@ unavailable, connect with any WebSocket client and read the initial `handshake` 
 requests.
 
 The host reads `HOTREPL_PORT` from its process environment, which is how two instances of one game
-serve at once. BepInEx also exposes the port as a plugin configuration entry.
+serve at once. BepInEx and Lunaris also expose the port as a plugin configuration entry.
+
+For Lunaris, copy the host's copy-ready `plugins/HotRepl/` output into `<game>/plugins/HotRepl/` and
+enable HotRepl once in Lunaris's in-game plugin installer. That one plugin includes the Unity
+commands. Confirm `host.name` is `Lunaris` and `evaluator.name` is `Mono.CSharp`; Roslyn is not
+shipped because Lunaris eagerly loads plugin-directory libraries and its BCL facades can conflict
+with Unity Mono. Disabling or replacing the plugin closes the endpoint until it is enabled again.
 
 ## Handshake
 

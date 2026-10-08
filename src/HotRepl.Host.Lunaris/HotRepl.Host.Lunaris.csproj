@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AnalysisMode>Recommended</AnalysisMode>
+    <RootNamespace>HotRepl.Host.Lunaris</RootNamespace>
+    <AssemblyName>HotRepl.Host.Lunaris</AssemblyName>
+    <Version>3.0.0</Version>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <LunarisPath Condition="'$(LunarisPath)' == ''"
+      >$(MSBuildProjectDirectory)/lib/Lunaris.dll</LunarisPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../HotRepl.Core/HotRepl.Core.csproj" />
+    <ProjectReference Include="../HotRepl.Evaluator.MonoCSharp/HotRepl.Evaluator.MonoCSharp.csproj" />
+    <ProjectReference Include="../HotRepl.Helpers.Unity/HotRepl.Helpers.Unity.csproj" />
+    <ProjectReference Include="../HotRepl.UnityCommands/HotRepl.UnityCommands.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="Lunaris">
+      <HintPath>$(LunarisPath)</HintPath>
+      <Private>false</Private>
+      <!-- Lunaris resolves its own loader dependencies; only its public API is a compile input. -->
+      <ExternallyResolved>true</ExternallyResolved>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>../HotRepl.BepInEx/lib/UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+  <Target Name="ValidateLunarisReference" BeforeTargets="ResolveReferences">
+    <Error
+      Condition="!Exists('$(LunarisPath)')"
+      Text="Lunaris.dll is required for this optional host. Set -p:LunarisPath=/path/to/Lunaris.dll or copy it into this project's lib/ directory."
+    />
+  </Target>
+  <Target Name="PackageLunarisPlugin" AfterTargets="Build">
+    <PropertyGroup>
+      <LunarisDeployDirectory>$(TargetDir)plugins/HotRepl/</LunarisDeployDirectory>
+    </PropertyGroup>
+    <ItemGroup>
+      <_LunarisDeploy Include="$(TargetDir)HotRepl.*.dll;$(TargetDir)Fleck.dll;$(TargetDir)System.ComponentModel.Annotations.dll;$(MSBuildProjectDirectory)/../../lib/mcs.dll" />
+    </ItemGroup>
+    <!-- Build outputs stay outside this copy-ready directory. Never ship loader/runtime DLLs. -->
+    <RemoveDir Directories="$(LunarisDeployDirectory)" />
+    <Copy SourceFiles="@(_LunarisDeploy)" DestinationFolder="$(LunarisDeployDirectory)" />
+  </Target>
+</Project>

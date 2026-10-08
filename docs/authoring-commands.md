@@ -3,7 +3,8 @@
 Typed commands are the stable automation surface for HotRepl. They expose JSON-schema-validated
 arguments, typed outputs, job status, and artifact references over the existing v2 control protocol.
 The canonical reference implementation lives in `src/HotRepl.UnityCommands/Commands/`; the BepInEx
-and MelonLoader sample projects show how to package the same command catalog for Unity loaders.
+and MelonLoader samples and integrated Lunaris host package the same command catalog for Unity
+loaders.
 
 ## Command handler shape
 
@@ -219,4 +220,7 @@ The shared command implementations are in `src/HotRepl.UnityCommands/Commands/`:
 
 `src/HotRepl.UnityCommands.BepInEx` and `src/HotRepl.UnityCommands.MelonLoader` are the canonical
 sample packaging projects. They compile the shared command catalog into loader-specific assemblies
-without duplicating command logic.
+without duplicating command logic. The Lunaris host references the standalone
+`HotRepl.UnityCommands` assembly and registers the catalog inside its single plugin. All three entry
+points use `UnityCommandCatalog.Register`, whose returned registration set must be disposed when the
+loader unloads the plugin.

@@ -1,8 +1,8 @@
 # Agent Instructions
 
 HotRepl: runtime C# REPL and typed command bridge over WebSocket for Unity games through
-BepInEx/Mono or MelonLoader/IL2CPP. This file is for agents working **on** this repo. For agents
-using HotRepl to inspect a running game, see `.claude/skills/hotrepl/SKILL.md`.
+BepInEx/Mono, Lunaris/Mono, or MelonLoader/IL2CPP. This file is for agents working **on** this repo.
+For agents using HotRepl to inspect a running game, see `.claude/skills/hotrepl/SKILL.md`.
 
 ## Commands
 
@@ -57,6 +57,8 @@ dotnet build src/HotRepl.BepInEx/ --nologo -v q     # requires Unity DLLs in lib
 dotnet build src/HotRepl.Host.MelonLoader/HotRepl.Host.MelonLoader.csproj \
   -p:MelonLoaderPath="/path/to/Game/MelonLoader" \
   -p:Il2CppAssembliesPath="/path/to/Game/MelonLoader/Il2CppAssemblies"
+dotnet build src/HotRepl.Host.Lunaris/HotRepl.Host.Lunaris.csproj --nologo -v q \
+  -p:LunarisPath="/path/to/Lunaris.dll"
 dotnet test tests/HotRepl.Tests/ --nologo -v q
 dotnet test tests/HotRepl.Sdk.Tests/ --nologo -v q
 dotnet test tests/HotRepl.Testing.Tests/ --nologo -v q
@@ -99,8 +101,8 @@ for deterministic SDK, CLI, MCP, and consumer-facade coverage.
 
 Use [`docs/authoring-commands.md`](docs/authoring-commands.md) when adding or changing typed control
 commands. The canonical sample catalog is `src/HotRepl.UnityCommands/Commands/`, packaged by
-`src/HotRepl.UnityCommands.BepInEx` and `src/HotRepl.UnityCommands.MelonLoader`; update those
-samples when the command-authoring API changes.
+`src/HotRepl.UnityCommands.BepInEx`, `src/HotRepl.UnityCommands.MelonLoader`, and the integrated
+`src/HotRepl.Host.Lunaris` entry point; update those samples when the command-authoring API changes.
 
 ## Architecture Invariants
 
@@ -108,8 +110,8 @@ These are non-discoverable requirements; do not "simplify" them away:
 
 - Fleck/WebSocket callbacks enqueue only. The main thread `Tick()` is the sole executor.
 - Tick drain order is fixed: cancels, command queue, at most one eval, subscriptions.
-- `IReplHost` is the only platform boundary. Core must not import BepInEx, UnityEngine, MelonLoader,
-  Il2CppInterop, game-specific types, `mcs.dll`, or Roslyn packages.
+- `IReplHost` is the only platform boundary. Core must not import BepInEx, Lunaris, UnityEngine,
+  MelonLoader, Il2CppInterop, game-specific types, `mcs.dll`, or Roslyn packages.
 - Control handlers execute through the main-thread tick path, never directly from WebSocket
   callbacks.
 - v2 has no auth/lease protocol. Loopback plus single-client replacement is the authority boundary.
@@ -118,6 +120,10 @@ These are non-discoverable requirements; do not "simplify" them away:
 - Artifacts are references (`uri`, `path`, `sha256`, `byteSize`, `finalized`), not bulk payloads.
 - BepInEx ships `HotRepl.Core.dll` and Core dependencies side-by-side; do not ILRepack/internalize
   Core, Fleck, or Newtonsoft.Json into `HotRepl.BepInEx.dll`.
+- Lunaris ships only the copy-ready `bin/<Configuration>/netstandard2.1/plugins/HotRepl/` directory.
+  Never ship Roslyn/BCL facades or loader-provided Newtonsoft.Json, Harmony, Unity, or Lunaris DLLs:
+  Lunaris eagerly loads non-plugin DLLs as permanent libraries. OnDestroy must remove registrations,
+  static host references, and logging hooks as well as disposing the engine.
 - Evaluator timeout is capability-driven. `HardAbort` may abort the main thread; `Cooperative`
   cannot preempt every runtime loop.
 - Mono.CSharp evaluates user code as C# 7.x. Do not raise this without replacing the evaluator.

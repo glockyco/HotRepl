@@ -22,16 +22,23 @@ public static class UnityHelpers
     // Cached reflection target — resolved once on first use.
     private static readonly Lazy<MethodInfo> _encodeToPng = new(ResolveEncodeToPng);
 
-    // MonoBehaviour host for coroutine execution. Set by ReplPlugin.Awake().
+    // MonoBehaviour host for coroutine execution. Owned by the loader entry point.
     private static MonoBehaviour? _coroutineHost;
 
     /// <summary>
     /// Provide the MonoBehaviour host for coroutine-based screenshot capture.
-    /// Called once from ReplPlugin.Awake().
+    /// The host must call <see cref="Release"/> when it unloads.
     /// </summary>
     public static void Initialize(MonoBehaviour host)
     {
         _coroutineHost = host;
+    }
+
+    /// <summary>Removes the coroutine host reference when its loader plugin unloads.</summary>
+    public static void Release(MonoBehaviour host)
+    {
+        if (ReferenceEquals(_coroutineHost, host))
+            _coroutineHost = null;
     }
 
     // ── Public helpers ────────────────────────────────────────────────────────

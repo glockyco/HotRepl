@@ -7,8 +7,8 @@
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 HotRepl is a runtime C# REPL and typed command bridge for Unity games. It embeds in a game through
-BepInEx/Mono or MelonLoader/IL2CPP, runs work on Unity's main thread, and exposes a local WebSocket
-protocol for coding agents, CLIs, and MCP tools.
+BepInEx/Mono, Lunaris/Mono, or MelonLoader/IL2CPP, runs work on Unity's main thread, and exposes a
+local WebSocket protocol for coding agents, CLIs, and MCP tools.
 
 Use HotRepl when you need to inspect or automate a running Unity game without building a one-off
 debug menu for every task. Raw eval is useful for exploration; typed commands are the stable
@@ -16,10 +16,10 @@ contract for repeatable exports, tests, and agent workflows.
 
 ## Requirements
 
-- A Unity game running the BepInEx plugin (`HotRepl.BepInEx.dll`) or the MelonLoader mod
-  (`HotRepl.Host.MelonLoader.dll`). The plugin opens `ws://127.0.0.1:18590` by default. Set
-  `HOTREPL_PORT` in a process's environment to move that process to another port. BepInEx also
-  exposes the port as a plugin configuration entry.
+- A Unity game running the BepInEx plugin (`HotRepl.BepInEx.dll`), Lunaris plugin
+  (`HotRepl.Host.Lunaris.dll`), or MelonLoader mod (`HotRepl.Host.MelonLoader.dll`). The host opens
+  `ws://127.0.0.1:18590` by default. Set `HOTREPL_PORT` in a process's environment to move that
+  process to another port. BepInEx and Lunaris also expose the port as a plugin configuration entry.
 - Bun 1.3.14 or Node 20+ to consume the npm packages.
 
 Per-process `HOTREPL_PORT` and `HOTREPL_ARTIFACT_DIR` override saved host configuration, so multiple
@@ -93,8 +93,9 @@ Set `HOTREPL_URL` (or pass `url:` to `connect`) to point at a non-default host.
 Use [`docs/authoring-commands.md`](docs/authoring-commands.md) when adding typed commands. The
 canonical sample command catalog lives in `src/HotRepl.UnityCommands/Commands/`; the
 `src/HotRepl.UnityCommands.BepInEx` and `src/HotRepl.UnityCommands.MelonLoader` projects package it
-for the two supported Unity loader paths. `src/HotRepl.Sdk` and `src/HotRepl.Testing` are the
-first-party C# client and test harness for driving and exercising typed commands from .NET.
+as loader-specific plugins. The Lunaris host includes the catalog directly, so only one plugin needs
+enabling. `src/HotRepl.Sdk` and `src/HotRepl.Testing` are the first-party C# client and test harness
+for driving and exercising typed commands from .NET.
 
 ## Protocol
 
@@ -154,8 +155,8 @@ engine.Tick();
 engine.Dispose();
 ```
 
-`IReplHost` is the only platform boundary. Core stays free of BepInEx, UnityEngine, MelonLoader,
-Il2CppInterop, game-specific types, `mcs.dll`, and Roslyn packages.
+`IReplHost` is the only platform boundary. Core stays free of BepInEx, Lunaris, UnityEngine,
+MelonLoader, Il2CppInterop, game-specific types, `mcs.dll`, and Roslyn packages.
 
 ## Building host adapters
 
@@ -165,11 +166,58 @@ dotnet build src/HotRepl.BepInEx/ --nologo -v q
 dotnet build src/HotRepl.Host.MelonLoader/HotRepl.Host.MelonLoader.csproj \
   -p:MelonLoaderPath="/path/to/Game/MelonLoader" \
   -p:Il2CppAssembliesPath="/path/to/Game/MelonLoader/Il2CppAssemblies"
+
+dotnet build src/HotRepl.Host.Lunaris/HotRepl.Host.Lunaris.csproj --nologo -v q \
+  -p:LunarisPath="/path/to/Lunaris.dll"
 ```
 
 BepInEx deploys `HotRepl.BepInEx.dll`, `HotRepl.Core.dll`, `HotRepl.Protocol.dll`, Fleck,
 Newtonsoft.Json, and `mcs.dll` side-by-side. MelonLoader deploys the host, Core, Protocol, Roslyn
 evaluator, Unity helpers, Fleck, Newtonsoft.Json, and Roslyn dependencies in `Mods/`.
+
+Lunaris and MelonLoader builds are opt-in: the normal CI and `nix run .#check` gate build Core and
+tests without requiring either loader. Lunaris uses the same Unity references in
+`src/HotRepl.BepInEx/lib/` and `lib/mcs.dll` as BepInEx. Pass the path to the loader's actual
+`Lunaris.dll`, or copy it to `src/HotRepl.Host.Lunaris/lib/Lunaris.dll`; never commit game/loader
+DLLs.
+
+### Install the Lunaris host
+
+1. Build the Lunaris project with the command above.
+2. Copy the contents of `src/HotRepl.Host.Lunaris/bin/Debug/netstandard2.1/plugins/HotRepl/` into
+   `<game>/plugins/HotRepl/` (use `Release` instead of `Debug` for a Release build). This copy-ready
+   directory contains only:
+   - `HotRepl.Host.Lunaris.dll`
+   - `HotRepl.Core.dll`
+   - `HotRepl.Protocol.dll`
+   - `HotRepl.Evaluator.MonoCSharp.dll`
+   - `HotRepl.Helpers.Unity.dll`
+   - `HotRepl.UnityCommands.dll`
+   - `Fleck.dll`
+   - `System.ComponentModel.Annotations.dll`
+   - `mcs.dll`
+3. Start the game and **enable HotRepl once in Lunaris's in-game plugin installer**. Manually
+   installed plugins start disabled; the enabled state persists. No separate Unity Commands plugin
+   is needed.
+4. Connect with `hotrepl info` and confirm the host is `Lunaris` and evaluator is `Mono.CSharp`.
+
+The Lunaris configuration exposes `Server.Port` (18590), `Server.BindHost` (127.0.0.1), and
+`Server.ArtifactDirectory` (empty uses the per-user state directory). `General.Enabled` controls the
+Unity command catalog, not the REPL server; `Commands.Disabled` is a comma-separated command skip
+list. Changes apply on next plugin enable or reload. Non-loopback binds log the same
+unauthenticated-exposure warnings as the other hosts.
+
+Lunaris supports only the default Mono.CSharp evaluator (C# 7.x). Do **not** copy Roslyn
+dependencies or BCL facades from the BepInEx/MelonLoader output: Lunaris eagerly loads every
+non-plugin DLL under `plugins/` as a shared library, and Roslyn's BCL facade set risks conflicts
+with Unity Mono. Lunaris supplies Newtonsoft.Json, Harmony, and its own dependencies; the copy-ready
+directory deliberately excludes those and Unity/Lunaris DLLs.
+
+Disabling or replacing the Lunaris plugin stops the server, cancels active jobs and subscriptions,
+removes command registrations, releases the Unity coroutine host, and disposes the evaluator's
+assembly-load hook. Re-enabling creates a fresh engine on the same configured port. The non-Unity
+reload path has automated coverage; actual plugin enable/disable, C# evaluation, and screenshots
+still require validation in a running game.
 
 ## Troubleshooting
 

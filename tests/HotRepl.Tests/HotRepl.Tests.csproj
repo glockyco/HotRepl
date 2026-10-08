@@ -35,6 +35,10 @@
       Include="../../src/HotRepl.UnityCommands/UnityCommandCatalogMetadataEntry.cs"
       LinkBase="ImportedCatalog"
     />
+    <Compile
+      Include="../../src/HotRepl.UnityCommands/UnityCommandRegistrationSet.cs"
+      LinkBase="ImportedCatalog"
+    />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="mcs">

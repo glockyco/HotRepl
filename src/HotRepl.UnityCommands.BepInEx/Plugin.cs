@@ -1,8 +1,6 @@
 using System;
-using System.Collections.Generic;
 using BepInEx;
 using HotRepl.Control;
-using HotRepl.UnityCommands.Screenshots;
 
 namespace HotRepl.UnityCommands.BepInEx;
 
@@ -21,7 +19,7 @@ public sealed class Plugin : BaseUnityPlugin
 
     private const string Version = "3.0.0";
 
-    private readonly List<IDisposable> _registrations = new();
+    private IDisposable? _registrations;
 
     private void Awake()
     {
@@ -38,65 +36,21 @@ public sealed class Plugin : BaseUnityPlugin
             "Comma-separated command names to skip, e.g. 'unity.time.set_scale, unity.screenshot.capture'. Changes apply on next game start."
         );
 
-        if (!enabledEntry.Value)
-        {
-            Logger.LogInfo("HotRepl.UnityCommands disabled via config; skipping registration.");
-            return;
-        }
-
-        RegisterEnabledCommands(ParseCsv(disabledEntry.Value));
+        _registrations = UnityCommandCatalog.Register(
+            GlobalControlCommandRegistry.Instance,
+            routine =>
+            {
+                StartCoroutine(routine);
+            },
+            enabledEntry.Value,
+            disabledEntry.Value,
+            message => Logger.LogInfo(message)
+        );
     }
 
     private void OnDestroy()
     {
-        foreach (var registration in _registrations)
-        {
-            registration.Dispose();
-        }
-
-        _registrations.Clear();
-    }
-
-    private void RegisterEnabledCommands(HashSet<string> disabled)
-    {
-        var factories = UnityCommandCatalog.Build(
-            new EndOfFrameUnityScreenshotCapturer(routine =>
-            {
-                StartCoroutine(routine);
-            })
-        );
-        var names = UnityCommandCatalog.Names;
-        for (var i = 0; i < factories.Count; i++)
-        {
-            var commandName = names[i];
-            if (disabled.Contains(commandName))
-            {
-                Logger.LogInfo($"Skipping disabled command: {commandName}");
-                continue;
-            }
-
-            _registrations.Add(factories[i](GlobalControlCommandRegistry.Instance));
-            Logger.LogInfo($"Registered command: {commandName}");
-        }
-    }
-
-    private static HashSet<string> ParseCsv(string csv)
-    {
-        var set = new HashSet<string>(StringComparer.Ordinal);
-        if (string.IsNullOrWhiteSpace(csv))
-        {
-            return set;
-        }
-
-        foreach (var raw in csv.Split(','))
-        {
-            var trimmed = raw.Trim();
-            if (trimmed.Length > 0)
-            {
-                set.Add(trimmed);
-            }
-        }
-
-        return set;
+        _registrations?.Dispose();
+        _registrations = null;
     }
 }
