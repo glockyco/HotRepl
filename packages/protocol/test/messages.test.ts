@@ -313,6 +313,17 @@ describe("server message schemas", () => {
     ).toBe(true);
   });
 
+  test("job_cancel_result requires jobId", () => {
+    expect(
+      Value.Check(JobCancelResultMessageSchema, {
+        type: MESSAGE_TYPES.jobCancelResult,
+        id: "jc1",
+        accepted: true,
+        state: "running",
+      }),
+    ).toBe(false);
+  });
+
   test("journal_query_result", () => {
     expect(
       Value.Check(JournalQueryResultMessageSchema, {

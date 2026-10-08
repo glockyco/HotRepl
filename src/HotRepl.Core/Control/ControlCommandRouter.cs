@@ -297,6 +297,7 @@ internal sealed class ControlCommandRouter
         return new JobCancelResultMessage
         {
             Id = message.Id,
+            JobId = message.JobId,
             Accepted = accepted,
             State = status.State,
         };

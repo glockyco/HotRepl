@@ -306,6 +306,7 @@ public class ControlRoutingTests
 
         Assert.Equal(MessageType.JobCancelResult, result.Type);
         Assert.Equal("cancel-1", result.Id);
+        Assert.Equal(accepted.JobId, result.JobId);
         Assert.True(result.Accepted);
         Assert.Equal("running", result.State);
     }
