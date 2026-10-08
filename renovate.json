@@ -26,6 +26,11 @@
       "description": "NJsonSchema 11 runtime dependencies conflict with ILRepack and net6",
       "matchPackageNames": ["NJsonSchema"],
       "allowedVersions": "<11"
+    },
+    {
+      "description": "Lunaris loads Newtonsoft.Json 13.0.3 for every plugin; newer APIs fail at runtime",
+      "matchPackageNames": ["Newtonsoft.Json"],
+      "allowedVersions": "<=13.0.3"
     }
   ]
 }
