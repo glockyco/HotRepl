@@ -133,6 +133,8 @@ The default security model is loopback binding plus single-client replacement.
 - A new WebSocket connection replaces the previous client and emits `session_evicted`.
 - Mono.CSharp evaluates C# 7.x; Roslyn evaluators report `latest`.
 - Timeout enforcement is capability-driven: `hardAbort`, `cooperative`, or `unsupported`.
+- Disposing the engine closes its listener and client sockets and restores Fleck's logging hook,
+  allowing a replacement engine to bind the same port during plugin reload.
 
 ## Embedding
 

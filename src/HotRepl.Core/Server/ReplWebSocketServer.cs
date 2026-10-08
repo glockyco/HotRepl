@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
 using Fleck;
@@ -14,6 +15,10 @@ internal sealed class ReplWebSocketServer : IDisposable
 {
     private readonly Action<string> _log;
     private Fleck.WebSocketServer? _server;
+    private readonly ConcurrentDictionary<Guid, IWebSocketConnection> _connections = new();
+    private Action<LogLevel, string, Exception>? _previousLogAction;
+    private Action<LogLevel, string, Exception>? _logAction;
+    private volatile bool _disposed;
 
     /// <summary>Fires on Fleck thread when a client successfully opens a connection.</summary>
     public event EventHandler<ClientConnectedEventArgs>? ClientConnected;
@@ -35,12 +40,14 @@ internal sealed class ReplWebSocketServer : IDisposable
         // Redirect Fleck's internal logger through our host logger
         // instead of letting it hit Console.WriteLine (which BepInEx intercepts).
         // Debug-level Fleck output is suppressed — it's high-volume startup noise.
-        Fleck.FleckLog.LogAction = (level, msg, ex) =>
+        _previousLogAction = FleckLog.LogAction;
+        _logAction = (level, msg, ex) =>
         {
             if (level == LogLevel.Debug)
                 return;
             _log($"[Fleck:{level}] {msg}{(ex == null ? "" : " -- " + ex.Message)}");
         };
+        FleckLog.LogAction = _logAction;
 
         _server = new Fleck.WebSocketServer(location);
         _log($"[HotRepl] Calling Fleck Start()...");
@@ -80,20 +87,61 @@ internal sealed class ReplWebSocketServer : IDisposable
         );
     }
 
-    public void Dispose() => _server?.Dispose();
+    public void Dispose()
+    {
+        if (_disposed)
+            return;
+        _disposed = true;
+
+        try
+        {
+            _server?.Dispose();
+            foreach (var connection in _connections.Values)
+                connection.Close();
+            _connections.Clear();
+        }
+        finally
+        {
+            // Fleck lives in a shared library across plugin reloads. Do not retain
+            // the unloaded host through its process-wide logging delegate.
+            if (ReferenceEquals(FleckLog.LogAction, _logAction))
+                FleckLog.LogAction = _previousLogAction;
+            _logAction = null;
+            _previousLogAction = null;
+            ClientConnected = null;
+            ClientDisconnected = null;
+            MessageReceived = null;
+        }
+    }
 
     // ── Private ───────────────────────────────────────────────────────────────
 
     private void ConfigureSocket(IWebSocketConnection socket)
     {
         var id = socket.ConnectionInfo.Id;
+        _connections[id] = socket;
+        if (_disposed)
+        {
+            _connections.TryRemove(id, out _);
+            socket.Close();
+            return;
+        }
 
         socket.OnOpen = () =>
-            ClientConnected?.Invoke(this, new ClientConnectedEventArgs(id, socket));
+        {
+            if (!_disposed)
+                ClientConnected?.Invoke(this, new ClientConnectedEventArgs(id, socket));
+        };
         socket.OnClose = () =>
+        {
+            _connections.TryRemove(id, out _);
             ClientDisconnected?.Invoke(this, new ClientDisconnectedEventArgs(id));
+        };
         socket.OnMessage = raw =>
-            MessageReceived?.Invoke(this, new MessageReceivedEventArgs(id, raw));
+        {
+            if (!_disposed)
+                MessageReceived?.Invoke(this, new MessageReceivedEventArgs(id, raw));
+        };
         socket.OnError = ex =>
         {
             _log($"[HotRepl] Socket error ({id}): {ex.Message}");

@@ -33,6 +33,9 @@ public class GlobalControlCommandRegistryTests
         registration.Dispose();
 
         Assert.False(((ICompiledRegistry)registry).TryGet("archive.info", out _));
+
+        using var replacement = registry.Register(new Handler("archive.info"));
+        Assert.True(((ICompiledRegistry)registry).TryGet("archive.info", out _));
     }
 
     [Fact]
