@@ -38,7 +38,12 @@
       <LunarisDeployDirectory>$(TargetDir)plugins/HotRepl/</LunarisDeployDirectory>
     </PropertyGroup>
     <ItemGroup>
-      <_LunarisDeploy Include="$(TargetDir)HotRepl.*.dll;$(TargetDir)Fleck.dll;$(TargetDir)System.ComponentModel.Annotations.dll;$(MSBuildProjectDirectory)/../../lib/mcs.dll" />
+      <!-- Lunaris loads these for every plugin; a second copy would conflict. -->
+      <_LunarisProvided Include="Newtonsoft.Json;0Harmony;ImGui.NET;Mono.Cecil;Mono.Cecil.Mdb;Mono.Cecil.Pdb;Mono.Cecil.Rocks;MonoMod.Backports;MonoMod.Core;MonoMod.Iced;MonoMod.ILHelpers;MonoMod.RuntimeDetour;MonoMod.Utils;System.Numerics.Vectors;System.Runtime.CompilerServices.Unsafe;System.ValueTuple" />
+      <_LunarisDeploy
+        Include="$(TargetDir)*.dll;$(MSBuildProjectDirectory)/../../lib/mcs.dll"
+        Exclude="@(_LunarisProvided->'$(TargetDir)%(Identity).dll')"
+      />
     </ItemGroup>
     <!-- Build outputs stay outside this copy-ready directory. Never ship loader/runtime DLLs. -->
     <RemoveDir Directories="$(LunarisDeployDirectory)" />
