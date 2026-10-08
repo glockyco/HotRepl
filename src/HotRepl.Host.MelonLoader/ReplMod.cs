@@ -66,10 +66,21 @@ public sealed class ReplMod : MelonMod
 
     public override void OnDeinitializeMelon()
     {
-        _engine?.Dispose();
-        _engine = null;
-        _host = null;
-        _coroutineHost = null;
+        try
+        {
+            _engine?.Dispose();
+        }
+        finally
+        {
+            _engine = null;
+            _host = null;
+            if (_coroutineHost != null)
+            {
+                UnityHelpers.Release(_coroutineHost);
+                UnityEngine.Object.Destroy(_coroutineHost.gameObject);
+                _coroutineHost = null;
+            }
+        }
     }
 
     private void EnsureCoroutineHost()

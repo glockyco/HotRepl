@@ -11,7 +11,7 @@ namespace HotRepl.BepInEx;
 /// BepInEx 5.x plugin entry point.
 /// Wires the Core ReplEngine to Unity's MonoBehaviour lifecycle.
 ///
-/// Awake()  — fast: installs stdout capture, binds the WebSocket port.
+/// Awake()  — fast: binds the WebSocket port.
 ///            Zero C# compilation.
 /// Update() — calls Tick() once per frame; initializes the evaluator on the
 ///            very first call (deferred from Awake for startup speed).
@@ -100,7 +100,14 @@ public sealed class ReplPlugin : BaseUnityPlugin
 
     private void OnDestroy()
     {
-        _engine?.Dispose();
-        _engine = null;
+        try
+        {
+            _engine?.Dispose();
+        }
+        finally
+        {
+            _engine = null;
+            UnityHelpers.Release(this);
+        }
     }
 }

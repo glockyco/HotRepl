@@ -49,6 +49,15 @@ public sealed class BepInExPluginSourceTests
         Assert.True(validationIndex > environmentIndex);
     }
 
+    [Theory]
+    [InlineData("src/HotRepl.BepInEx/ReplPlugin.cs", "UnityHelpers.Release(this);")]
+    [InlineData("src/HotRepl.Host.MelonLoader/ReplMod.cs", "UnityHelpers.Release(_coroutineHost);")]
+    public void LoaderUnload_ReleasesUnityCoroutineHost(string relativePath, string releaseCall)
+    {
+        var source = File.ReadAllText(FindRepoFile(relativePath));
+        Assert.Contains(releaseCall, source, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void Project_ReferencesProtocolAssemblyForRuntimeDeployment()
     {
