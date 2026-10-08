@@ -15,6 +15,7 @@ using Xunit;
 
 namespace HotRepl.Tests.Integration;
 
+[Collection("Engine reload")]
 public sealed class EngineReloadTests
 {
     [Fact]

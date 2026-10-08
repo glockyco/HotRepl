@@ -1,7 +1,5 @@
 using System;
-using System.Collections.Generic;
 using HotRepl.Control;
-using HotRepl.UnityCommands.Screenshots;
 using MelonLoader;
 
 [assembly: MelonInfo(
@@ -21,7 +19,7 @@ namespace HotRepl.UnityCommands.MelonLoader;
 )]
 public sealed class UnityCommandsMod : MelonMod
 {
-    private readonly List<IDisposable> _registrations = new();
+    private IDisposable _registrations;
     private MelonPreferences_Entry<bool> _enabled = null!;
     private MelonPreferences_Entry<string> _disabled = null!;
 
@@ -44,66 +42,22 @@ public sealed class UnityCommandsMod : MelonMod
     /// <inheritdoc />
     public override void OnLateInitializeMelon()
     {
-        if (!_enabled.Value)
-        {
-            LoggerInstance.Msg("HotRepl.UnityCommands disabled via config; skipping registration.");
-            return;
-        }
-
-        RegisterEnabledCommands(ParseCsv(_disabled.Value));
+        _registrations = UnityCommandCatalog.Register(
+            GlobalControlCommandRegistry.Instance,
+            routine =>
+            {
+                MelonCoroutines.Start(routine);
+            },
+            _enabled.Value,
+            _disabled.Value,
+            message => LoggerInstance.Msg(message)
+        );
     }
 
     /// <inheritdoc />
     public override void OnDeinitializeMelon()
     {
-        foreach (var registration in _registrations)
-        {
-            registration.Dispose();
-        }
-
-        _registrations.Clear();
-    }
-
-    private void RegisterEnabledCommands(HashSet<string> disabled)
-    {
-        var factories = UnityCommandCatalog.Build(
-            new EndOfFrameUnityScreenshotCapturer(routine =>
-            {
-                MelonCoroutines.Start(routine);
-            })
-        );
-        var names = UnityCommandCatalog.Names;
-        for (var i = 0; i < factories.Count; i++)
-        {
-            var name = names[i];
-            if (disabled.Contains(name))
-            {
-                LoggerInstance.Msg($"Skipping disabled command: {name}");
-                continue;
-            }
-
-            _registrations.Add(factories[i](GlobalControlCommandRegistry.Instance));
-            LoggerInstance.Msg($"Registered command: {name}");
-        }
-    }
-
-    private static HashSet<string> ParseCsv(string csv)
-    {
-        var set = new HashSet<string>(StringComparer.Ordinal);
-        if (string.IsNullOrWhiteSpace(csv))
-        {
-            return set;
-        }
-
-        foreach (var raw in csv.Split(','))
-        {
-            var trimmed = raw.Trim();
-            if (trimmed.Length > 0)
-            {
-                set.Add(trimmed);
-            }
-        }
-
-        return set;
+        _registrations?.Dispose();
+        _registrations = null;
     }
 }

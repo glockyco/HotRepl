@@ -154,6 +154,18 @@ internal sealed class ControlJobManager
         }
     }
 
+    public void CancelAll()
+    {
+        lock (_sync)
+        {
+            foreach (var state in _jobs.Values)
+            {
+                if (!IsTerminal(state.State))
+                    state.Cancellation.Cancel();
+            }
+        }
+    }
+
     public ControlJobStatus GetStatus(string jobId)
     {
         lock (_sync)
