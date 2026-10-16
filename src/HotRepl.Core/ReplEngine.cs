@@ -76,7 +76,17 @@ public sealed class ReplEngine : IDisposable
     private bool _evaluatorReady;
     private bool _disposed;
 
-    public ReplEngine(IReplHost host) => _host = host;
+    // Created once because Tick runs every frame, and a lambda that captures the engine allocates
+    // a new delegate on every call.
+    private readonly Func<string, string, int, EvalOutcome> _guardedEvaluate;
+    private readonly Action<Guid, string> _sendToClient;
+
+    public ReplEngine(IReplHost host)
+    {
+        _host = host;
+        _guardedEvaluate = GuardedEvaluate;
+        _sendToClient = SendToClient;
+    }
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
@@ -190,10 +200,7 @@ public sealed class ReplEngine : IDisposable
         }
 
         // 4. Subscriptions.
-        _subscriptions!.Tick(
-            (id, code, timeoutMs) => GuardedEvaluate(id, code, timeoutMs),
-            (connId, json) => _clients!.SendTo(connId, json)
-        );
+        _subscriptions!.Tick(_guardedEvaluate, _sendToClient);
 
         // 5. Drain stale cancel IDs. Any cancel received during this Tick has
         //    already preempted a queued eval or aborted the running one.
@@ -327,6 +334,9 @@ public sealed class ReplEngine : IDisposable
         using var cancellation = new CancellationTokenSource();
         return RunGuarded(id, code, timeoutMs, cancellation);
     }
+
+    private void SendToClient(Guid connectionId, string json) =>
+        _clients!.SendTo(connectionId, json);
 
     private EvalOutcome RunGuarded(
         string id,
