@@ -137,8 +137,12 @@ The default security model is loopback binding plus single-client replacement.
 - A new WebSocket connection replaces the previous client and emits `session_evicted`.
 - Mono.CSharp evaluates C# 7.x; Roslyn evaluators report `latest`.
 - Timeout enforcement is capability-driven: `hardAbort`, `cooperative`, or `unsupported`.
-- Disposing the engine closes its listener and client sockets and restores Fleck's logging hook,
-  allowing a replacement engine to bind the same port during plugin reload.
+- An evaluation's console output is returned as `stdout` and still reaches the host's console. Under
+  BepInEx 5, `stdout` holds one line per string written, because BepInEx logs each console write as
+  one entry and does not log character writes.
+- Disposing the engine closes its listener and client sockets, restores Fleck's logging hook, and
+  removes its console capture, allowing a replacement engine to bind the same port during plugin
+  reload.
 - Loader entry points release the shared Unity coroutine-host reference on unload. MelonLoader also
   destroys its dedicated coroutine GameObject, so a subsequent load does not retain the old host.
 
@@ -159,6 +163,11 @@ engine.Dispose();
 
 `IReplHost` is the only platform boundary. Core stays free of BepInEx, Lunaris, UnityEngine,
 MelonLoader, Il2CppInterop, game-specific types, `mcs.dll`, and Roslyn packages.
+
+The engine asks the host for a `ConsoleCapture` when it starts. `ConsoleRedirectCapture` installs a
+forwarding writer on `Console.Out` and suits hosts where `Console.SetOut` replaces the console
+writer. BepInEx 5 intercepts `Console.SetOut` by default, so its host listens to BepInEx's `Console`
+log source instead (`src/HotRepl.BepInEx/BepInExConsoleCapture.cs`).
 
 ## Building host adapters
 

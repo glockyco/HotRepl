@@ -62,6 +62,9 @@ internal sealed class MelonLoaderHost : IReplHost
     public ICodeEvaluator CreateEvaluator(string evaluatorName) =>
         RoslynEvaluatorFactory.Create(evaluatorName, this);
 
+    // MelonLoader leaves Console.SetOut alone, so replacing the console writer is safe.
+    public ConsoleCapture CreateConsoleCapture() => new ConsoleRedirectCapture();
+
     public IReadOnlyList<Assembly> AdditionalAssemblies => _additionalAssemblies;
     public IReadOnlyList<string> AdditionalUsings => _additionalUsings;
     public string[] AdditionalHelperSignatures => _helperSignatures;

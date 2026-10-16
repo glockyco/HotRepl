@@ -89,6 +89,8 @@ public sealed class EngineReloadTests
         public ICodeEvaluator CreateEvaluator(string evaluatorName) =>
             new MonoCSharpEvaluator(this);
 
+        public ConsoleCapture CreateConsoleCapture() => new ConsoleRedirectCapture();
+
         public void LogInfo(string message) { }
 
         public void LogDebug(string message) { }

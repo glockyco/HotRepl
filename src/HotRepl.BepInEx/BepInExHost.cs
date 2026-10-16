@@ -93,6 +93,8 @@ internal sealed class BepInExHost : IReplHost
         );
     }
 
+    public ConsoleCapture CreateConsoleCapture() => BepInExConsoleCapture.Create();
+
     public void LogInfo(string message) => _logger.LogInfo(message);
 
     public void LogDebug(string message) => _logger.LogDebug(message);

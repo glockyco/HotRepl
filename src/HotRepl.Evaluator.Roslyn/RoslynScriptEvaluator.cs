@@ -1,6 +1,5 @@
 using System;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
@@ -56,10 +55,6 @@ public sealed class RoslynScriptEvaluator : ICodeEvaluator
     {
         EnsureInitialized();
         var sw = Stopwatch.StartNew();
-        var previousOut = Console.Out;
-        using var capture = new StringWriter();
-        Console.SetOut(capture);
-
         try
         {
             _state =
@@ -76,20 +71,14 @@ public sealed class RoslynScriptEvaluator : ICodeEvaluator
             sw.Stop();
             var value = _state.ReturnValue;
             return value != null
-                ? EvalOutcome.Ok(
-                    value,
-                    value.GetType().FullName,
-                    Stdout(capture),
-                    sw.ElapsedMilliseconds
-                )
-                : EvalOutcome.OkVoid(Stdout(capture), sw.ElapsedMilliseconds);
+                ? EvalOutcome.Ok(value, value.GetType().FullName, sw.ElapsedMilliseconds)
+                : EvalOutcome.OkVoid(sw.ElapsedMilliseconds);
         }
         catch (CompilationErrorException ex)
         {
             sw.Stop();
             return EvalOutcome.CompileError(
                 string.Join(Environment.NewLine, ex.Diagnostics),
-                Stdout(capture),
                 sw.ElapsedMilliseconds
             );
         }
@@ -101,16 +90,7 @@ public sealed class RoslynScriptEvaluator : ICodeEvaluator
         catch (Exception ex)
         {
             sw.Stop();
-            return EvalOutcome.RuntimeError(
-                ex.Message,
-                ex.StackTrace,
-                Stdout(capture),
-                sw.ElapsedMilliseconds
-            );
-        }
-        finally
-        {
-            Console.SetOut(previousOut);
+            return EvalOutcome.RuntimeError(ex.Message, ex.StackTrace, sw.ElapsedMilliseconds);
         }
     }
 
@@ -186,11 +166,5 @@ public sealed class RoslynScriptEvaluator : ICodeEvaluator
         {
             return false;
         }
-    }
-
-    private static string? Stdout(StringWriter writer)
-    {
-        var value = writer.ToString();
-        return value.Length > 0 ? value : null;
     }
 }
