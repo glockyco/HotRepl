@@ -47,6 +47,7 @@ public sealed class ReplEngine : IDisposable
     private ClientRegistry? _clients;
     private MessageRouter? _router;
     private ICodeEvaluator? _evaluator;
+    private ConsoleCapture? _consoleCapture;
     private SubscriptionManager? _subscriptions;
     private HistoryTracker? _history;
     private ControlCommandRouter? _controlRouter;
@@ -82,11 +83,26 @@ public sealed class ReplEngine : IDisposable
     /// <summary>
     /// Wires subsystems and starts the WebSocket server.
     /// Must be called from the main thread (captures Thread.CurrentThread for abort).
-    /// Awake() calls this directly.
+    /// Awake() calls this directly. A failed start releases what it created, so the
+    /// host's console and the port stay as they were.
     /// </summary>
     public void Start()
     {
+        try
+        {
+            StartSubsystems();
+        }
+        catch
+        {
+            Dispose();
+            throw;
+        }
+    }
+
+    private void StartSubsystems()
+    {
         _mainThread = Thread.CurrentThread;
+        _consoleCapture = _host.CreateConsoleCapture();
 
         _history = new HistoryTracker();
         _subscriptions = new SubscriptionManager(_host.Config);
@@ -225,6 +241,7 @@ public sealed class ReplEngine : IDisposable
         _subscriptions?.CancelAll();
         _instanceDocument?.Dispose();
         _evaluator?.Dispose();
+        _consoleCapture?.Dispose();
     }
 
     // ── Public API for MessageRouter (called from Fleck threads) ─────────────
@@ -330,6 +347,7 @@ public sealed class ReplEngine : IDisposable
 
         var sw = Stopwatch.StartNew();
         using var watchdog = StartTimeoutWatchdog(timeoutMs, gen, cancellation);
+        using var console = _consoleCapture!.Begin();
 
         try
         {
@@ -340,17 +358,17 @@ public sealed class ReplEngine : IDisposable
             if (ReferenceEquals(outcome, EvalOutcome.Aborted))
             {
                 sw.Stop();
-                return _timedOut
+                outcome = _timedOut
                     ? EvalOutcome.Timeout(sw.ElapsedMilliseconds)
                     : EvalOutcome.Cancelled(sw.ElapsedMilliseconds);
             }
 
-            return outcome;
+            return outcome.WithStdout(console.Text);
         }
         finally
         {
-            // The `using var watchdog` above disposes before we enter this block,
-            // so a late-firing timer cannot race with a subsequent eval's setup.
+            // The using declarations above dispose after this block. A watchdog that fires in
+            // between finds no eval in progress for its generation and does nothing.
             lock (_abortLock)
             {
                 _evalInProgress = false;

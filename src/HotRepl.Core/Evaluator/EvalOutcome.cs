@@ -10,7 +10,13 @@ public sealed class EvalOutcome
     public bool HasValue { get; private init; }
     public object? Value { get; private init; }
     public string? ValueType { get; private init; }
+
+    /// <summary>
+    /// Console output that the engine collected during the evaluation, or null when there was none.
+    /// Evaluators leave it unset, and the engine attaches it with <see cref="WithStdout"/>.
+    /// </summary>
     public string? Stdout { get; private init; }
+
     public long DurationMs { get; private init; }
     public string? ErrorKind { get; private init; }
     public string? ErrorMessage { get; private init; }
@@ -18,58 +24,44 @@ public sealed class EvalOutcome
 
     private EvalOutcome() { }
 
-    public static EvalOutcome Ok(
-        object? value,
-        string? valueType,
-        string? stdout,
-        long durationMs
-    ) =>
+    public static EvalOutcome Ok(object? value, string? valueType, long durationMs) =>
         new()
         {
             Success = true,
             HasValue = value != null,
             Value = value,
             ValueType = valueType,
-            Stdout = stdout,
             DurationMs = durationMs,
         };
 
-    public static EvalOutcome OkVoid(string? stdout, long durationMs) =>
+    public static EvalOutcome OkVoid(long durationMs) =>
         new()
         {
             Success = true,
             HasValue = false,
-            Stdout = stdout,
             DurationMs = durationMs,
         };
 
-    public static EvalOutcome CompileError(string message, string? stdout, long durationMs) =>
+    public static EvalOutcome CompileError(string message, long durationMs) =>
         new()
         {
             Success = false,
             ErrorKind = Protocol.ErrorKind.ValidationFailed,
             ErrorMessage = message,
-            Stdout = stdout,
             DurationMs = durationMs,
         };
 
-    public static EvalOutcome RuntimeError(
-        string message,
-        string? stackTrace,
-        string? stdout,
-        long durationMs
-    ) =>
+    public static EvalOutcome RuntimeError(string message, string? stackTrace, long durationMs) =>
         new()
         {
             Success = false,
             ErrorKind = Protocol.ErrorKind.Internal,
             ErrorMessage = message,
             StackTrace = stackTrace,
-            Stdout = stdout,
             DurationMs = durationMs,
         };
 
-    /// <summary>Produced by the engine when the watchdog fires. No stdout — TAE interrupted the capture.</summary>
+    /// <summary>Produced by the engine when the watchdog fires.</summary>
     public static EvalOutcome Timeout(long durationMs) =>
         new()
         {
@@ -79,7 +71,7 @@ public sealed class EvalOutcome
             DurationMs = durationMs,
         };
 
-    /// <summary>Produced by the engine when a cancel request matched. No stdout — TAE interrupted the capture.</summary>
+    /// <summary>Produced by the engine when a cancel request matched.</summary>
     public static EvalOutcome Cancelled(long durationMs) =>
         new()
         {
@@ -96,4 +88,19 @@ public sealed class EvalOutcome
     /// Never sent to the client directly.
     /// </summary>
     public static readonly EvalOutcome Aborted = new() { Success = false, ErrorKind = "aborted" };
+
+    /// <summary>Returns a copy of this outcome that carries the given console output.</summary>
+    public EvalOutcome WithStdout(string? stdout) =>
+        new()
+        {
+            Success = Success,
+            HasValue = HasValue,
+            Value = Value,
+            ValueType = ValueType,
+            Stdout = stdout,
+            DurationMs = DurationMs,
+            ErrorKind = ErrorKind,
+            ErrorMessage = ErrorMessage,
+            StackTrace = StackTrace,
+        };
 }

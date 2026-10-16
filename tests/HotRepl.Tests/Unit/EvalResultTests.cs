@@ -9,20 +9,19 @@ public class EvalResultTests
     [Fact]
     public void Ok_SetsAllProperties()
     {
-        var result = EvalOutcome.Ok(42, "System.Int32", null, 5);
+        var result = EvalOutcome.Ok(42, "System.Int32", 5);
 
         Assert.True(result.Success);
         Assert.True(result.HasValue);
         Assert.Equal(42, result.Value);
         Assert.Equal("System.Int32", result.ValueType);
-        Assert.Null(result.Stdout);
         Assert.Equal(5, result.DurationMs);
     }
 
     [Fact]
     public void Ok_NullValue_HasValueFalse()
     {
-        var result = EvalOutcome.Ok(null, null, null, 1);
+        var result = EvalOutcome.Ok(null, null, 1);
 
         Assert.True(result.Success);
         Assert.False(result.HasValue);
@@ -32,7 +31,7 @@ public class EvalResultTests
     [Fact]
     public void OkVoid_NoValue()
     {
-        var result = EvalOutcome.OkVoid(null, 3);
+        var result = EvalOutcome.OkVoid(3);
 
         Assert.True(result.Success);
         Assert.False(result.HasValue);
@@ -40,17 +39,9 @@ public class EvalResultTests
     }
 
     [Fact]
-    public void OkVoid_CapturesStdout()
-    {
-        var result = EvalOutcome.OkVoid("hello", 1);
-
-        Assert.Equal("hello", result.Stdout);
-    }
-
-    [Fact]
     public void CompileError_SetsErrorKind()
     {
-        var result = EvalOutcome.CompileError("CS0001: syntax error", null, 2);
+        var result = EvalOutcome.CompileError("CS0001: syntax error", 2);
 
         Assert.False(result.Success);
         Assert.Equal("validation_failed", result.ErrorKind);
@@ -61,7 +52,7 @@ public class EvalResultTests
     [Fact]
     public void RuntimeError_IncludesStackTrace()
     {
-        var result = EvalOutcome.RuntimeError("NullRef", "at Foo.Bar()", null, 10);
+        var result = EvalOutcome.RuntimeError("NullRef", "at Foo.Bar()", 10);
 
         Assert.False(result.Success);
         Assert.Equal("internal", result.ErrorKind);

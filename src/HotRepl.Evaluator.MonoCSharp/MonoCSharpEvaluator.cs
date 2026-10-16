@@ -111,65 +111,30 @@ public sealed class MonoCSharpEvaluator : ICodeEvaluator, IDisposable
         _ = cancellationToken;
         _diagnostics!.GetStringBuilder().Clear();
         var sw = Stopwatch.StartNew();
-
-        // Temporarily replace Console.Out so we capture stdout produced by eval
-        // code (e.g. Console.WriteLine) without routing it back through BepInEx's
-        // log pipeline. The TeeWriter approach creates a feedback loop: BepInEx's
-        // log listener writes to Console.Out, which is the TeeWriter, which writes
-        // back to BepInEx's listener, ad infinitum.
-        var previousOut = Console.Out;
-        var capture = new System.IO.StringWriter();
-        Console.SetOut(capture);
         try
         {
-            return EvaluateCaptured(code, capture, sw);
+            return CompileAndRun(code, sw);
         }
         catch (ThreadAbortException)
         {
-            // Call ResetAbort immediately — before the finally block runs — so that
-            // Console.SetOut() in the finally executes in a normal (non-abort) context.
-            // Delaying ResetAbort until the caller (RunGuarded) causes Mono to run
-            // Console.SetOut() under a pending abort, which stalls for seconds.
-            // Return a sentinel so RunGuarded knows the eval was aborted.
+            // The engine's watchdog aborted the main thread. Reset the abort so the
+            // engine can resolve the sentinel into Timeout or Cancelled.
             Thread.ResetAbort();
-            sw.Stop();
-            Console.SetOut(previousOut);
-            capture.Dispose();
             return EvalOutcome.Aborted;
         }
         catch (Exception ex)
         {
             sw.Stop();
-            return EvalOutcome.RuntimeError(
-                ex.Message,
-                ex.StackTrace,
-                Stdout(capture),
-                sw.ElapsedMilliseconds
-            );
-        }
-        finally
-        {
-            // Safe to call again after the TAE catch block already did this:
-            // StringWriter.Dispose() is idempotent and Console.SetOut() is harmless
-            // when called twice with the same writer. The finally ensures cleanup on
-            // all non-abort exit paths (success, compile error, runtime error).
-            Console.SetOut(previousOut);
-            capture.Dispose();
+            return EvalOutcome.RuntimeError(ex.Message, ex.StackTrace, sw.ElapsedMilliseconds);
         }
     }
 
-    private EvalOutcome EvaluateCaptured(string code, System.IO.StringWriter capture, Stopwatch sw)
+    private EvalOutcome CompileAndRun(string code, Stopwatch sw)
     {
         CompiledMethod? compiled = _evaluator!.Compile(code);
 
         if (_diagnostics!.GetStringBuilder().Length > 0)
-        {
-            return EvalOutcome.CompileError(
-                _diagnostics.ToString().Trim(),
-                Stdout(capture),
-                sw.ElapsedMilliseconds
-            );
-        }
+            return EvalOutcome.CompileError(_diagnostics.ToString().Trim(), sw.ElapsedMilliseconds);
 
         if (compiled != null)
         {
@@ -177,22 +142,11 @@ public sealed class MonoCSharpEvaluator : ICodeEvaluator, IDisposable
             compiled.Invoke(ref result);
             sw.Stop();
             return result != null
-                ? EvalOutcome.Ok(
-                    result,
-                    result.GetType().FullName,
-                    Stdout(capture),
-                    sw.ElapsedMilliseconds
-                )
-                : EvalOutcome.OkVoid(Stdout(capture), sw.ElapsedMilliseconds);
+                ? EvalOutcome.Ok(result, result.GetType().FullName, sw.ElapsedMilliseconds)
+                : EvalOutcome.OkVoid(sw.ElapsedMilliseconds);
         }
 
-        return EvalOutcome.OkVoid(Stdout(capture), sw.ElapsedMilliseconds);
-    }
-
-    private static string? Stdout(System.IO.StringWriter w)
-    {
-        var s = w.ToString();
-        return s.Length > 0 ? s : null;
+        return EvalOutcome.OkVoid(sw.ElapsedMilliseconds);
     }
 
     public CompletionResult Complete(string code, int cursorPos)

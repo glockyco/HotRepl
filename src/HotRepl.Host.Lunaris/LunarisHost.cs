@@ -58,6 +58,9 @@ internal sealed class LunarisHost : IReplHost
         );
     }
 
+    // Lunaris leaves Console.SetOut alone, so replacing the console writer is safe.
+    public ConsoleCapture CreateConsoleCapture() => new ConsoleRedirectCapture();
+
     public void LogInfo(string message) => _logger.LogInfo(message);
 
     public void LogDebug(string message) => _logger.LogDebug(message);

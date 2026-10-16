@@ -31,6 +31,8 @@ public class RoslynIsolatedEvaluatorTests
         public ICodeEvaluator CreateEvaluator(string evaluatorName) =>
             RoslynEvaluatorFactory.Create(evaluatorName, this);
 
+        public ConsoleCapture CreateConsoleCapture() => throw new NotSupportedException();
+
         public IReadOnlyList<Assembly> AdditionalAssemblies { get; } = Array.Empty<Assembly>();
         public IReadOnlyList<string> AdditionalUsings { get; } = Array.Empty<string>();
         public string[] AdditionalHelperSignatures { get; } = Array.Empty<string>();

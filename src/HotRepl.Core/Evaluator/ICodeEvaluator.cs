@@ -38,6 +38,8 @@ public interface ICodeEvaluator : System.IDisposable
     /// Returns an EvalOutcome for compile errors, runtime exceptions, and void/value results.
     /// Cooperative evaluators observe <paramref name="cancellationToken"/> where possible.
     /// All other exceptions are folded into the returned outcome.
+    /// The engine collects console output around this call, so evaluators must not replace
+    /// <see cref="System.Console.Out"/>.
     /// </summary>
     EvalOutcome Evaluate(string code, CancellationToken cancellationToken);
 

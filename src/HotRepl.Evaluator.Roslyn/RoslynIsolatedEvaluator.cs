@@ -50,22 +50,13 @@ public sealed class RoslynIsolatedEvaluator : ICodeEvaluator
     public EvalOutcome Evaluate(string code, CancellationToken cancellationToken)
     {
         var sw = Stopwatch.StartNew();
-        var previousOut = Console.Out;
-        using var capture = new StringWriter();
-        Console.SetOut(capture);
-
         try
         {
             var result = CompileAndRun(code, cancellationToken);
             sw.Stop();
             return result != null
-                ? EvalOutcome.Ok(
-                    result,
-                    result.GetType().FullName,
-                    Stdout(capture),
-                    sw.ElapsedMilliseconds
-                )
-                : EvalOutcome.OkVoid(Stdout(capture), sw.ElapsedMilliseconds);
+                ? EvalOutcome.Ok(result, result.GetType().FullName, sw.ElapsedMilliseconds)
+                : EvalOutcome.OkVoid(sw.ElapsedMilliseconds);
         }
         catch (OperationCanceledException)
         {
@@ -75,21 +66,12 @@ public sealed class RoslynIsolatedEvaluator : ICodeEvaluator
         catch (CompilationFailedException ex)
         {
             sw.Stop();
-            return EvalOutcome.CompileError(ex.Message, Stdout(capture), sw.ElapsedMilliseconds);
+            return EvalOutcome.CompileError(ex.Message, sw.ElapsedMilliseconds);
         }
         catch (Exception ex)
         {
             sw.Stop();
-            return EvalOutcome.RuntimeError(
-                ex.Message,
-                ex.StackTrace,
-                Stdout(capture),
-                sw.ElapsedMilliseconds
-            );
-        }
-        finally
-        {
-            Console.SetOut(previousOut);
+            return EvalOutcome.RuntimeError(ex.Message, ex.StackTrace, sw.ElapsedMilliseconds);
         }
     }
 
@@ -184,12 +166,6 @@ public sealed class RoslynIsolatedEvaluator : ICodeEvaluator
         {
             return null;
         }
-    }
-
-    private static string? Stdout(StringWriter writer)
-    {
-        var value = writer.ToString();
-        return value.Length > 0 ? value : null;
     }
 
     private sealed class CompilationFailedException : Exception

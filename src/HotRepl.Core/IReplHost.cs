@@ -31,6 +31,15 @@ public interface IReplHost
     /// <summary>Create a fresh evaluator instance by capability name.</summary>
     ICodeEvaluator CreateEvaluator(string evaluatorName);
 
+    /// <summary>
+    /// Create the capture that collects what evaluations write to the console. The engine calls
+    /// this once on the main thread when it starts and disposes the capture when it stops.
+    /// Return <see cref="ConsoleRedirectCapture"/> when <see cref="System.Console.SetOut"/>
+    /// replaces <see cref="System.Console.Out"/>. A loader that intercepts SetOut, as BepInEx 5
+    /// does by default, needs a capture that observes the loader's console handling instead.
+    /// </summary>
+    ConsoleCapture CreateConsoleCapture();
+
     void LogInfo(string message);
     void LogDebug(string message);
     void LogWarning(string message);

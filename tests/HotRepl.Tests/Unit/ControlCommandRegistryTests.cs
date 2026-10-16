@@ -89,6 +89,8 @@ public class ControlCommandRegistryTests
         public ICodeEvaluator CreateEvaluator(string evaluatorName) =>
             throw new NotSupportedException();
 
+        public ConsoleCapture CreateConsoleCapture() => throw new NotSupportedException();
+
         public void LogInfo(string message) { }
 
         public void LogDebug(string message) { }
