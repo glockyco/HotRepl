@@ -131,7 +131,18 @@ public sealed class MonoCSharpEvaluator : ICodeEvaluator, IDisposable
 
     private EvalOutcome CompileAndRun(string code, Stopwatch sw)
     {
-        CompiledMethod? compiled = _evaluator!.Compile(code);
+        CompiledMethod? compiled;
+        try
+        {
+            compiled = _evaluator!.Compile(code);
+        }
+        catch (Exception ex) when (ex is not ThreadAbortException)
+        {
+            // Ordinary compile errors reach the report printer. An exception from Compile means
+            // the compiler itself failed, for example while emitting an anonymous method.
+            sw.Stop();
+            return EvalOutcome.CompileError(DescribeCompilerFailure(ex), sw.ElapsedMilliseconds);
+        }
 
         if (_diagnostics!.GetStringBuilder().Length > 0)
             return EvalOutcome.CompileError(_diagnostics.ToString().Trim(), sw.ElapsedMilliseconds);
@@ -147,6 +158,24 @@ public sealed class MonoCSharpEvaluator : ICodeEvaluator, IDisposable
         }
 
         return EvalOutcome.OkVoid(sw.ElapsedMilliseconds);
+    }
+
+    /// <summary>
+    /// Mono.CSharp wraps code-generation failures in <see cref="InternalErrorException"/>, whose
+    /// message names only the source location and the member being emitted. The cause is in the
+    /// inner exceptions, so the description lists the whole chain.
+    /// </summary>
+    private static string DescribeCompilerFailure(Exception failure)
+    {
+        var text = new System.Text.StringBuilder("Internal compiler error");
+        for (Exception? e = failure; e != null; e = e.InnerException)
+        {
+            text.Append(Environment.NewLine);
+            text.Append(
+                e is InternalErrorException ? e.Message : e.GetType().FullName + ": " + e.Message
+            );
+        }
+        return text.ToString();
     }
 
     public CompletionResult Complete(string code, int cursorPos)
