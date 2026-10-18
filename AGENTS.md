@@ -141,7 +141,8 @@ These are non-discoverable requirements; do not "simplify" them away:
   reclaimed until process exit. `reset` recreates the evaluator state but is not a full assembly
   unload boundary; use `Roslyn.Isolated` for stateless .NET 6 audit snippets.
 - **Single client**: only one WebSocket connection is active at a time. A new connection replaces
-  the prior session and cancels all subscriptions.
+  the prior session. Requests that session left queued are dropped, except its job cancellations,
+  and its subscriptions stop. An eval it already started finishes without a recipient.
 
 ## Adding Protocol Messages
 

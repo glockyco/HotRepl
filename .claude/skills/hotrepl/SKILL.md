@@ -225,6 +225,6 @@ hotrepl journal --limit 20                       # recent eval/command entries
 | C# version depends on evaluator   | Mono.CSharp is C# 7.x; Roslyn evaluators report `latest`                                                                                                  |
 | `varName * expr` parser bug       | `player * 2` is parsed as a pointer type if `player` was defined in a prior eval. Use `2 * player` instead. Affects `*` only                              |
 | Timeout mode depends on evaluator | Mono.CSharp reports `hardAbort`; Roslyn reports `cooperative`, so runaway runtime loops may still require restarting the game                             |
-| One client at a time              | Reconnecting replaces the session and cancels all subscriptions                                                                                           |
+| One client at a time              | Reconnecting replaces the session, drops its queued requests and stops its subscriptions                                                                  |
 | IL2CPP requires MelonLoader host  | Use `hotrepl info` to verify host/evaluator metadata before IL2CPP audits                                                                                 |
 | Type definitions leak memory      | Persistent evaluator sessions can emit assemblies that are not reclaimed until process exit; use `Roslyn.Isolated` for stateless snippets on .NET 6 hosts |

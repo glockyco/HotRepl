@@ -63,6 +63,24 @@ public class ClientEvictionTests
         Assert.Empty(events);
     }
 
+    [Fact]
+    public void ClientRegistry_DeregistersDisplacedSessionBeforeItsCloseIsReported()
+    {
+        var registry = new ClientRegistry((_, _) => { }, _ => { });
+        var events = new List<string>();
+        var firstId = Guid.NewGuid();
+        var secondId = Guid.NewGuid();
+        registry.OnConnected(firstId, new FakeSocket(firstId, events));
+        registry.OnConnected(secondId, new FakeSocket(secondId, events));
+
+        Assert.False(registry.IsConnected(firstId));
+
+        // Fleck reports the displaced socket's close later.
+        registry.OnDisconnected(firstId);
+
+        Assert.True(registry.IsConnected(secondId));
+    }
+
     private sealed class FakeSocket : IWebSocketConnection
     {
         private readonly List<string> _events;

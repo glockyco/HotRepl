@@ -61,13 +61,15 @@ internal sealed class SubscriptionManager
     // ── Per-frame processing ──────────────────────────────────────────────────
 
     /// <summary>
-    /// Evaluates all due subscriptions.
+    /// Evaluates all due subscriptions and removes those whose connection is gone.
     /// <paramref name="guardedEvaluate"/> is the engine's watchdog-wrapped eval delegate;
-    /// <paramref name="send"/> routes a serialized response back to the right client.
+    /// <paramref name="send"/> routes a serialized response back to the right client;
+    /// <paramref name="isConnected"/> reports whether a subscription's session still exists.
     /// </summary>
     public void Tick(
         Func<string, string, int, EvalOutcome> guardedEvaluate,
-        Action<Guid, string> send
+        Action<Guid, string> send,
+        Func<Guid, bool> isConnected
     )
     {
         if (_subscriptions.Count == 0)
@@ -77,6 +79,13 @@ internal sealed class SubscriptionManager
 
         foreach (var kvp in _subscriptions)
         {
+            // A displaced or closed session can no longer receive values, so its
+            // subscriptions stop instead of evaluating for nobody.
+            if (!isConnected(kvp.Value.ConnectionId))
+            {
+                (toRemove ??= new List<string>()).Add(kvp.Value.Id);
+                continue;
+            }
             if (!ShouldRunThisTick(kvp.Value))
                 continue;
             if (TickOne(kvp.Value, guardedEvaluate, send))
