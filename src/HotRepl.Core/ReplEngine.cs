@@ -282,7 +282,7 @@ public sealed class ReplEngine : IDisposable
     internal int QueuedCommandCount => _commandQueue.Count + _evalQueue.Count;
 
     internal void SendProtocolError(Guid connectionId, string json) =>
-        _clients?.SendControlTo(connectionId, json);
+        _clients?.SendTo(connectionId, json);
 
     private ICodeEvaluator CreateEvaluator(string evaluatorName)
     {
@@ -436,10 +436,10 @@ public sealed class ReplEngine : IDisposable
                 HandleSelectEvaluator(s);
                 break;
             case CommandsListCmd c:
-                _clients!.SendControlTo(c.ConnectionId, Serialize(_controlRouter!.List(c.Id)));
+                _clients!.SendTo(c.ConnectionId, Serialize(_controlRouter!.List(c.Id)));
                 break;
             case CommandDescribeCmd c:
-                _clients!.SendControlTo(
+                _clients!.SendTo(
                     c.ConnectionId,
                     Serialize(
                         _controlRouter!.Describe(
@@ -451,7 +451,7 @@ public sealed class ReplEngine : IDisposable
             case CommandCallCmd c:
             {
                 var response = _controlRouter!.Execute(c.Message, c.ConnectionId);
-                _clients!.SendControlTo(c.ConnectionId, Serialize(response));
+                _clients!.SendTo(c.ConnectionId, Serialize(response));
                 if (response is JobAcceptedMessage accepted)
                     _jobRunQueue.Enqueue(accepted.JobId);
                 break;
@@ -471,20 +471,20 @@ public sealed class ReplEngine : IDisposable
     private void HandleJobStatus(JobStatusCmd cmd)
     {
         var response = _controlRouter!.GetJobStatus(cmd.Message, cmd.ConnectionId);
-        _clients!.SendControlTo(cmd.ConnectionId, Serialize(response));
+        _clients!.SendTo(cmd.ConnectionId, Serialize(response));
     }
 
     private void HandleJobCancel(JobCancelCmd cmd)
     {
         var response = _controlRouter!.CancelJob(cmd.Message, cmd.ConnectionId);
-        _clients!.SendControlTo(cmd.ConnectionId, Serialize(response));
+        _clients!.SendTo(cmd.ConnectionId, Serialize(response));
     }
 
     private void HandleJournalQuery(JournalQueryCmd cmd)
     {
         var limit = cmd.Limit.GetValueOrDefault(100);
         var entries = _journal!.Query(cmd.Kind, limit).Select(ToMessage).ToArray();
-        _clients!.SendControlTo(
+        _clients!.SendTo(
             cmd.ConnectionId,
             Serialize(new JournalQueryResultMessage { Id = cmd.Id, Entries = entries })
         );
