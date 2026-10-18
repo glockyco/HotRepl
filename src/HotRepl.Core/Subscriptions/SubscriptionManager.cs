@@ -48,7 +48,12 @@ internal sealed class SubscriptionManager
         return true;
     }
 
-    public void Cancel(string id) => _subscriptions.Remove(id);
+    /// <summary>Removes the connection's subscription with this id, if it has one.</summary>
+    public void Cancel(Guid connectionId, string id)
+    {
+        if (_subscriptions.TryGetValue(id, out var sub) && sub.ConnectionId == connectionId)
+            _subscriptions.Remove(id);
+    }
 
     public void CancelAll() => _subscriptions.Clear();
 
@@ -67,7 +72,7 @@ internal sealed class SubscriptionManager
     /// <paramref name="isConnected"/> reports whether a subscription's session still exists.
     /// </summary>
     public void Tick(
-        Func<string, string, int, EvalOutcome> guardedEvaluate,
+        Func<Guid, string, string, int, EvalOutcome> guardedEvaluate,
         Action<Guid, string> send,
         Func<Guid, bool> isConnected
     )
@@ -111,11 +116,11 @@ internal sealed class SubscriptionManager
     /// <summary>Returns true when the subscription has terminated and should be removed.</summary>
     private bool TickOne(
         SubscriptionState sub,
-        Func<string, string, int, EvalOutcome> guardedEvaluate,
+        Func<Guid, string, string, int, EvalOutcome> guardedEvaluate,
         Action<Guid, string> send
     )
     {
-        var outcome = guardedEvaluate(sub.Id, sub.Code, sub.TimeoutMs);
+        var outcome = guardedEvaluate(sub.ConnectionId, sub.Id, sub.Code, sub.TimeoutMs);
         return outcome.Success
             ? DeliverValue(sub, outcome, send)
             : DeliverError(sub, outcome, send);

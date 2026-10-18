@@ -246,9 +246,11 @@ Sent by the server when a game assembly is hot-reloaded. The SDK surfaces this v
 
 ### Cancel
 
-Cancel an active eval or subscription by its original request `id`. The SDK sends this via
-`Session.cancel(targetId)`, and automatically when a `watch()` iterator stops before `final`. A
-final value or error frame completes the subscription without sending `cancel`.
+Cancel an active eval or subscription by its original request `id`. A cancel affects only requests
+from the connection that sends it. A queued eval stays cancelled until the runtime answers it with
+`evalCancelled`. The SDK sends this via `Session.cancel(targetId)`, and automatically when a
+`watch()` iterator stops before `final`. A final value or error frame completes the subscription
+without sending `cancel`.
 
 ```json
 { "type": "cancel", "id": "cancel-1", "targetId": "watch-1" }
