@@ -21,7 +21,7 @@ internal sealed class MessageRouter
 
     private readonly Action<IEngineCommand> _enqueueCommand;
     private readonly Action<EvalJob> _enqueueEval;
-    private readonly Action<string> _cancelEval;
+    private readonly Action<Guid, string> _cancelEval;
     private readonly Action<Guid, string> _sendProtocolError;
     private readonly ReplConfig _config;
     private readonly Func<int> _queuedCommandCount;
@@ -41,7 +41,7 @@ internal sealed class MessageRouter
     private MessageRouter(
         Action<IEngineCommand> enqueueCommand,
         Action<EvalJob> enqueueEval,
-        Action<string> cancelEval,
+        Action<Guid, string> cancelEval,
         Action<Guid, string> sendProtocolError,
         ReplConfig config,
         Func<int> queuedCommandCount,
@@ -60,7 +60,7 @@ internal sealed class MessageRouter
     internal static MessageRouter CreateForTests(
         Action<IEngineCommand> enqueueCommand,
         Action<EvalJob> enqueueEval,
-        Action<string> cancelEval,
+        Action<Guid, string> cancelEval,
         Action<Guid, string> sendProtocolError,
         ReplConfig config,
         Func<int> queuedCommandCount
@@ -212,7 +212,7 @@ internal sealed class MessageRouter
                 EnqueueEval(connectionId, rawJson);
                 return null;
             case MessageType.Cancel:
-                CancelEval(rawJson);
+                CancelEval(connectionId, rawJson);
                 return null;
             case MessageType.Reset:
                 return new ResetCmd(De<ResetMessage>(rawJson).Id, connectionId);
@@ -257,10 +257,10 @@ internal sealed class MessageRouter
         _enqueueEval(new EvalJob(msg.Id, msg.Code, timeoutMs, connectionId));
     }
 
-    private void CancelEval(string rawJson)
+    private void CancelEval(Guid connectionId, string rawJson)
     {
         // Cancel is time-sensitive: skip the queue and abort directly.
-        _cancelEval(De<CancelMessage>(rawJson).TargetId);
+        _cancelEval(connectionId, De<CancelMessage>(rawJson).TargetId);
     }
 
     private SubscribeCmd BuildSubscribeCmd(Guid connectionId, SubscribeMessage msg) =>

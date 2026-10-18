@@ -16,7 +16,7 @@ public class MessageRouterV2Tests
         var router = MessageRouter.CreateForTests(
             _ => throw new InvalidOperationException("Legacy message must not enqueue."),
             _ => throw new InvalidOperationException("Legacy message must not enqueue eval."),
-            _ => throw new InvalidOperationException("Legacy message must not cancel."),
+            (_, _) => throw new InvalidOperationException("Legacy message must not cancel."),
             (_, json) => sent.Add(json),
             new ReplConfig(),
             () => 0
@@ -36,7 +36,7 @@ public class MessageRouterV2Tests
         var router = MessageRouter.CreateForTests(
             _ => throw new InvalidOperationException("Legacy message must not enqueue."),
             _ => throw new InvalidOperationException("Legacy message must not enqueue eval."),
-            _ => throw new InvalidOperationException("Legacy message must not cancel."),
+            (_, _) => throw new InvalidOperationException("Legacy message must not cancel."),
             (_, json) => sent.Add(json),
             new ReplConfig(),
             () => 0
@@ -56,7 +56,7 @@ public class MessageRouterV2Tests
         var router = MessageRouter.CreateForTests(
             queued.Add,
             _ => throw new InvalidOperationException("commands_list must not enqueue eval."),
-            _ => throw new InvalidOperationException("commands_list must not cancel."),
+            (_, _) => throw new InvalidOperationException("commands_list must not cancel."),
             (_, _) => throw new InvalidOperationException("commands_list must not send error."),
             new ReplConfig(),
             () => 0
@@ -75,7 +75,7 @@ public class MessageRouterV2Tests
         var router = MessageRouter.CreateForTests(
             queued.Add,
             _ => throw new InvalidOperationException("journal_query must not enqueue eval."),
-            _ => throw new InvalidOperationException("journal_query must not cancel."),
+            (_, _) => throw new InvalidOperationException("journal_query must not cancel."),
             (_, _) => throw new InvalidOperationException("journal_query must not send error."),
             new ReplConfig(),
             () => 0

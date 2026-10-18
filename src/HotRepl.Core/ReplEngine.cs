@@ -30,11 +30,15 @@ namespace HotRepl;
 ///                    control commands, and control jobs
 ///   Watchdog timer → may call Thread.Abort on the main thread
 ///
+/// Cancel requests take effect on the Fleck thread. They cancel the token of the
+/// requesting connection's queued, taken or running eval, abort a running eval in
+/// hard-abort mode, and queue a subscription cancel for Tick.
+///
 /// Tick() drain order (invariant):
-///   1. Process cancel requests — populate _cancelledIds, abort if matching eval running
-///   2. Drain command queue — reset, complete, subscribe, typed commands
-///   3. Start at most one queued control job
-///   4. Execute at most one eval
+///   1. Drain command queue — reset, complete, subscribe, typed commands
+///   2. Start at most one queued control job
+///   3. Execute at most one eval, answering cancelled ones without running them
+///   4. Apply subscription cancels
 ///   5. Tick subscriptions
 ///
 /// Work queued by a connection that is no longer registered is dropped when it is
@@ -65,25 +69,30 @@ public sealed class ReplEngine : IDisposable
     private readonly ConcurrentQueue<IEngineCommand> _commandQueue = new();
     private readonly ConcurrentQueue<string> _jobRunQueue = new();
 
-    // Cancel: populated by Fleck threads via CancelEval(); checked by Tick().
-    // ConcurrentDictionary used as a concurrent set (value is ignored).
-    private readonly ConcurrentDictionary<string, bool> _cancelledIds = new(StringComparer.Ordinal);
+    // Subscription cancels: written by Fleck threads via CancelEval(), applied by Tick() after
+    // the command drain, so a cancel always follows the subscribe it targets.
+    private readonly ConcurrentQueue<(Guid ConnectionId, string Id)> _subscriptionCancels = new();
 
     // ── Watchdog state — protected by _abortLock ─────────────────────────────
     private readonly object _abortLock = new();
     private Thread? _mainThread;
     private bool _evalInProgress;
+    private Guid _currentConnectionId;
     private string? _currentEvalId;
     private CancellationTokenSource? _currentCancellation;
     private long _currentGeneration;
     private volatile bool _timedOut;
+
+    // The eval that Tick dequeued and has not yet released. CancelEval cancels its token, so a
+    // cancel that arrives between dequeue and start is not lost.
+    private EvalJob? _takenEval;
 
     private bool _evaluatorReady;
     private bool _disposed;
 
     // Created once because Tick runs every frame, and a lambda that captures the engine allocates
     // a new delegate on every call.
-    private readonly Func<string, string, int, EvalOutcome> _guardedEvaluate;
+    private readonly Func<Guid, string, string, int, EvalOutcome> _guardedEvaluate;
     private readonly Action<Guid, string> _sendToClient;
     private readonly Func<Guid, bool> _isConnected;
 
@@ -175,19 +184,14 @@ public sealed class ReplEngine : IDisposable
             _evaluatorReady = true;
         }
 
-        // 1. Cancel drain — must run before eval dequeue so cancels applied in
-        //    this Tick are visible when we check the eval queue in step 3.
-        //    (CancelEval() already writes to _cancelledIds immediately from the
-        //    Fleck thread, so this step is mainly for abort-running-eval handling
-        //    that couldn't fire on the Fleck thread for ordering reasons.)
-
-        // 2. Command drain.
+        // 1. Command drain.
         while (_commandQueue.TryDequeue(out var cmd))
         {
             if (cmd is JobCancelCmd || IsConnected(cmd.ConnectionId))
                 HandleCommand(cmd);
         }
 
+        // 2. At most one control job start.
         if (_jobRunQueue.TryDequeue(out var jobId))
             _ = _controlRouter!.RunJobAsync(jobId).AsTask();
 
@@ -200,37 +204,24 @@ public sealed class ReplEngine : IDisposable
         // 3. At most one eval per Tick.
         DrainOneEval();
 
-        // 3b. Cancel subscriptions targeted by a cancel request this Tick. (Eval
-        //     cancels were already applied above; ids that match no subscription
-        //     are ignored.)
-        if (!_cancelledIds.IsEmpty)
-        {
-            foreach (var cancelledId in _cancelledIds.Keys)
-                _subscriptions!.Cancel(cancelledId);
-        }
+        // 4. Subscription cancels. A cancel that matches no subscription of its connection
+        //    targeted an eval and is ignored here.
+        while (_subscriptionCancels.TryDequeue(out var cancel))
+            _subscriptions!.Cancel(cancel.ConnectionId, cancel.Id);
 
-        // 4. Subscriptions.
+        // 5. Subscriptions.
         _subscriptions!.Tick(_guardedEvaluate, _sendToClient, _isConnected);
-
-        // 5. Drain stale cancel IDs. Any cancel received during this Tick has
-        //    already preempted a queued eval or aborted the running one.
-        //    Leftover entries are for evals that finished or never existed.
-        if (!_cancelledIds.IsEmpty)
-            _cancelledIds.Clear();
     }
 
     private void DrainOneEval()
     {
-        while (_evalQueue.TryDequeue(out var job))
+        while (TakeEval() is { } job)
         {
-            if (!IsConnected(job.ConnectionId))
+            try
             {
-                job.Dispose();
-                continue;
-            }
-            if (_cancelledIds.TryRemove(job.Id, out _))
-            {
-                using (job)
+                if (!IsConnected(job.ConnectionId))
+                    continue;
+                if (job.Cancellation.IsCancellationRequested)
                 {
                     // Cancelled before it ever ran.
                     _clients!.SendTo(
@@ -244,12 +235,35 @@ public sealed class ReplEngine : IDisposable
                             )
                         )
                     );
+                    continue; // try next in queue — but only process one non-cancelled eval
                 }
-                continue; // try next in queue — but only process one non-cancelled eval
+                ExecuteEval(job);
+                return;
             }
-            ExecuteEval(job);
-            return;
+            finally
+            {
+                ReleaseEval(job);
+            }
         }
+    }
+
+    // Dequeues under _abortLock, so CancelEval finds every job either queued or taken.
+    private EvalJob? TakeEval()
+    {
+        lock (_abortLock)
+        {
+            if (!_evalQueue.TryDequeue(out var job))
+                return null;
+            _takenEval = job;
+            return job;
+        }
+    }
+
+    private void ReleaseEval(EvalJob job)
+    {
+        lock (_abortLock)
+            _takenEval = null;
+        job.Dispose();
     }
 
     public void Dispose()
@@ -271,16 +285,27 @@ public sealed class ReplEngine : IDisposable
     internal void EnqueueEval(EvalJob job) => _evalQueue.Enqueue(job);
 
     /// <summary>
-    /// Records the id as cancelled and immediately aborts the main thread if
-    /// that eval is currently running. Thread-safe; called on Fleck threads.
+    /// Cancels the requesting connection's eval or subscription with this id. A queued or
+    /// taken eval keeps its cancelled token until Tick answers it, and a running eval is
+    /// aborted or cancelled according to the evaluator's timeout mode. Requests of other
+    /// connections are unaffected. Thread-safe; called on Fleck threads.
     /// </summary>
-    internal void CancelEval(string id)
+    internal void CancelEval(Guid connectionId, string id)
     {
-        _cancelledIds.TryAdd(id, true);
-
         lock (_abortLock)
         {
-            if (_evalInProgress && string.Equals(_currentEvalId, id, StringComparison.Ordinal))
+            foreach (var job in _evalQueue)
+            {
+                if (IsRequest(job, connectionId, id))
+                    job.Cancellation.Cancel();
+            }
+            if (_takenEval != null && IsRequest(_takenEval, connectionId, id))
+                _takenEval.Cancellation.Cancel();
+            if (
+                _evalInProgress
+                && _currentConnectionId == connectionId
+                && string.Equals(_currentEvalId, id, StringComparison.Ordinal)
+            )
             {
                 if (_evaluator?.Capabilities.TimeoutMode == TimeoutMode.HardAbort)
 #pragma warning disable MA0035 // HardAbort timeout mode is the documented design — see AGENTS.md "Evaluator timeout is capability-driven".
@@ -290,7 +315,11 @@ public sealed class ReplEngine : IDisposable
                     _currentCancellation?.Cancel();
             }
         }
+        _subscriptionCancels.Enqueue((connectionId, id));
     }
+
+    private static bool IsRequest(EvalJob job, Guid connectionId, string id) =>
+        job.ConnectionId == connectionId && string.Equals(job.Id, id, StringComparison.Ordinal);
 
     internal void EnqueueCommand(IEngineCommand cmd) => _commandQueue.Enqueue(cmd);
 
@@ -329,13 +358,16 @@ public sealed class ReplEngine : IDisposable
 
     private void ExecuteEval(EvalJob job)
     {
-        using (job)
-        {
-            EvalOutcome outcome = RunGuarded(job.Id, job.Code, job.TimeoutMs, job.Cancellation);
-            RecordHistory(job.Code, outcome);
-            _journal!.RecordEval(job.Id, outcome.Success, outcome.DurationMs, outcome.ErrorKind);
-            SendEvalOutcome(job.Id, job.ConnectionId, outcome);
-        }
+        EvalOutcome outcome = RunGuarded(
+            job.ConnectionId,
+            job.Id,
+            job.Code,
+            job.TimeoutMs,
+            job.Cancellation
+        );
+        RecordHistory(job.Code, outcome);
+        _journal!.RecordEval(job.Id, outcome.Success, outcome.DurationMs, outcome.ErrorKind);
+        SendEvalOutcome(job.Id, job.ConnectionId, outcome);
     }
 
     /// <summary>
@@ -344,10 +376,10 @@ public sealed class ReplEngine : IDisposable
     /// (returned by Evaluate() after it catches ThreadAbortException and calls ResetAbort)
     /// into either Timeout or Cancelled based on watchdog state.
     /// </summary>
-    private EvalOutcome GuardedEvaluate(string id, string code, int timeoutMs)
+    private EvalOutcome GuardedEvaluate(Guid connectionId, string id, string code, int timeoutMs)
     {
         using var cancellation = new CancellationTokenSource();
-        return RunGuarded(id, code, timeoutMs, cancellation);
+        return RunGuarded(connectionId, id, code, timeoutMs, cancellation);
     }
 
     private void SendToClient(Guid connectionId, string json) =>
@@ -356,6 +388,7 @@ public sealed class ReplEngine : IDisposable
     private bool IsConnected(Guid connectionId) => _clients!.IsConnected(connectionId);
 
     private EvalOutcome RunGuarded(
+        Guid connectionId,
         string id,
         string code,
         int timeoutMs,
@@ -365,7 +398,12 @@ public sealed class ReplEngine : IDisposable
         long gen;
         lock (_abortLock)
         {
+            // CancelEval holds this lock, so it has either cancelled the token already or will
+            // find this eval in progress.
+            if (cancellation.IsCancellationRequested)
+                return EvalOutcome.Cancelled(0);
             _evalInProgress = true;
+            _currentConnectionId = connectionId;
             _currentEvalId = id;
             gen = ++_currentGeneration;
             _currentCancellation = cancellation;
@@ -399,6 +437,7 @@ public sealed class ReplEngine : IDisposable
             lock (_abortLock)
             {
                 _evalInProgress = false;
+                _currentConnectionId = Guid.Empty;
                 _currentEvalId = null;
                 _currentCancellation = null;
             }
@@ -511,7 +550,6 @@ public sealed class ReplEngine : IDisposable
     {
         CancelPendingEvalsForReset();
         CancelSubscriptionsForReset();
-        _cancelledIds.Clear();
 
         // Rebuild the evaluator.
         try
@@ -539,9 +577,9 @@ public sealed class ReplEngine : IDisposable
 
     private void CancelPendingEvalsForReset()
     {
-        while (_evalQueue.TryDequeue(out var job))
+        while (TakeEval() is { } job)
         {
-            using (job)
+            try
             {
                 _clients!.SendTo(
                     job.ConnectionId,
@@ -554,6 +592,10 @@ public sealed class ReplEngine : IDisposable
                         )
                     )
                 );
+            }
+            finally
+            {
+                ReleaseEval(job);
             }
         }
     }
@@ -657,9 +699,9 @@ public sealed class ReplEngine : IDisposable
         }
         _subscriptions!.CancelAll();
 
-        while (_evalQueue.TryDequeue(out var job))
+        while (TakeEval() is { } job)
         {
-            using (job)
+            try
             {
                 _clients!.SendTo(
                     job.ConnectionId,
@@ -672,6 +714,10 @@ public sealed class ReplEngine : IDisposable
                         )
                     )
                 );
+            }
+            finally
+            {
+                ReleaseEval(job);
             }
         }
     }

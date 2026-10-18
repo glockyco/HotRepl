@@ -109,7 +109,9 @@ commands. The canonical sample catalog is `src/HotRepl.UnityCommands/Commands/`,
 These are non-discoverable requirements; do not "simplify" them away:
 
 - Fleck/WebSocket callbacks enqueue only. The main thread `Tick()` is the sole executor.
-- Tick drain order is fixed: cancels, command queue, at most one eval, subscriptions.
+- Tick drain order is fixed: command queue, at most one control job start, at most one eval,
+  subscription cancels, subscriptions. An eval cancel takes effect on the Fleck thread through that
+  request's own token, so it is never cleared before the eval leaves the queue.
 - `IReplHost` is the only platform boundary. Core must not import BepInEx, Lunaris, UnityEngine,
   MelonLoader, Il2CppInterop, game-specific types, `mcs.dll`, or Roslyn packages.
 - Control handlers execute through the main-thread tick path, never directly from WebSocket

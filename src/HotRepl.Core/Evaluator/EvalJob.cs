@@ -14,8 +14,9 @@ internal sealed class EvalJob : IDisposable
     public int TimeoutMs { get; }
 
     /// <summary>
-    /// Cooperative cancellation source for evaluators that observe cancellation tokens.
-    /// Hard-abort evaluators ignore this and use the engine watchdog path.
+    /// Cancellation source for this request. Tick answers a queued or taken job whose token is
+    /// cancelled without running it, and cooperative evaluators observe the token while running.
+    /// Hard-abort evaluators are stopped through the engine watchdog path instead.
     /// </summary>
     public CancellationTokenSource Cancellation { get; } = new();
 

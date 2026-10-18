@@ -19,7 +19,7 @@ public class LimitEnforcementTests
         var router = MessageRouter.CreateForTests(
             _ => enqueued++,
             _ => throw new InvalidOperationException("Command message must not enqueue eval."),
-            _ => throw new InvalidOperationException("Command message must not cancel."),
+            (_, _) => throw new InvalidOperationException("Command message must not cancel."),
             (_, json) => sent.Add(json),
             new ReplConfig { MaxQueuedCommands = 1 },
             () => 1
@@ -53,7 +53,7 @@ public class LimitEnforcementTests
         var router = MessageRouter.CreateForTests(
             _ => throw new InvalidOperationException("Oversized message must not enqueue."),
             _ => throw new InvalidOperationException("Oversized message must not enqueue eval."),
-            _ => throw new InvalidOperationException("Oversized message must not cancel."),
+            (_, _) => throw new InvalidOperationException("Oversized message must not cancel."),
             (_, json) => sent.Add(json),
             new ReplConfig { MaxMessageBytes = 10 },
             () => 0
