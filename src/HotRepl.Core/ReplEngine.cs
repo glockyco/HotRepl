@@ -36,6 +36,11 @@ namespace HotRepl;
 ///   3. Start at most one queued control job
 ///   4. Execute at most one eval
 ///   5. Tick subscriptions
+///
+/// Work queued by a connection that is no longer registered is dropped when it is
+/// dequeued. That session was displaced or closed, so it has lost its authority and
+/// cannot receive a response. Its job cancellations still run because they only stop
+/// that session's own work.
 /// </summary>
 public sealed class ReplEngine : IDisposable
 {
@@ -80,12 +85,14 @@ public sealed class ReplEngine : IDisposable
     // a new delegate on every call.
     private readonly Func<string, string, int, EvalOutcome> _guardedEvaluate;
     private readonly Action<Guid, string> _sendToClient;
+    private readonly Func<Guid, bool> _isConnected;
 
     public ReplEngine(IReplHost host)
     {
         _host = host;
         _guardedEvaluate = GuardedEvaluate;
         _sendToClient = SendToClient;
+        _isConnected = IsConnected;
     }
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
@@ -176,7 +183,10 @@ public sealed class ReplEngine : IDisposable
 
         // 2. Command drain.
         while (_commandQueue.TryDequeue(out var cmd))
-            HandleCommand(cmd);
+        {
+            if (cmd is JobCancelCmd || IsConnected(cmd.ConnectionId))
+                HandleCommand(cmd);
+        }
 
         if (_jobRunQueue.TryDequeue(out var jobId))
             _ = _controlRouter!.RunJobAsync(jobId).AsTask();
@@ -200,7 +210,7 @@ public sealed class ReplEngine : IDisposable
         }
 
         // 4. Subscriptions.
-        _subscriptions!.Tick(_guardedEvaluate, _sendToClient);
+        _subscriptions!.Tick(_guardedEvaluate, _sendToClient, _isConnected);
 
         // 5. Drain stale cancel IDs. Any cancel received during this Tick has
         //    already preempted a queued eval or aborted the running one.
@@ -213,6 +223,11 @@ public sealed class ReplEngine : IDisposable
     {
         while (_evalQueue.TryDequeue(out var job))
         {
+            if (!IsConnected(job.ConnectionId))
+            {
+                job.Dispose();
+                continue;
+            }
             if (_cancelledIds.TryRemove(job.Id, out _))
             {
                 using (job)
@@ -337,6 +352,8 @@ public sealed class ReplEngine : IDisposable
 
     private void SendToClient(Guid connectionId, string json) =>
         _clients!.SendTo(connectionId, json);
+
+    private bool IsConnected(Guid connectionId) => _clients!.IsConnected(connectionId);
 
     private EvalOutcome RunGuarded(
         string id,

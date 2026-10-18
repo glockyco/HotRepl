@@ -134,7 +134,8 @@ The default security model is loopback binding plus single-client replacement.
   until process exit.
 - Fleck callbacks enqueue work only. The main-thread `Tick()` path is the sole executor.
 - Tick drain order is fixed: cancels, command queue, at most one eval, subscriptions.
-- A new WebSocket connection replaces the previous client and emits `session_evicted`.
+- A new WebSocket connection replaces the previous client and emits `session_evicted`. The previous
+  client's queued requests are dropped, except job cancellations, and its subscriptions stop.
 - Mono.CSharp evaluates C# 7.x; Roslyn evaluators report `latest`.
 - Timeout enforcement is capability-driven: `hardAbort`, `cooperative`, or `unsupported`.
 - An evaluation's console output is returned as `stdout` and still reaches the host's console. Under

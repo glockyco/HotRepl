@@ -41,6 +41,10 @@ internal sealed class ClientRegistry
         var prev = _current;
         if (prev != null && prev != socket)
         {
+            // Deregister before the replacement registers. The engine drops a session's
+            // queued work once it is unregistered, so the displaced session loses its
+            // authority now rather than whenever Fleck reports the close.
+            _clients.TryRemove(prev.ConnectionInfo.Id, out _);
             _log("[HotRepl] New client connected; closing previous connection.");
             try
             {
@@ -75,6 +79,9 @@ internal sealed class ClientRegistry
             _log($"[HotRepl] Client disconnected ({id}).");
         }
     }
+
+    /// <summary>Whether the connection is registered, that is neither closed nor displaced.</summary>
+    public bool IsConnected(Guid connectionId) => _clients.ContainsKey(connectionId);
 
     /// <summary>
     /// Sends to the current client. No-op if no client is connected.
