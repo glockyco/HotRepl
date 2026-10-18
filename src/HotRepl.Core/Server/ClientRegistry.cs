@@ -8,11 +8,11 @@ namespace HotRepl.Server;
 
 /// <summary>
 /// Tracks connected WebSocket clients and enforces the single-client model:
-/// when a second client connects, the previous one is closed.
+/// when a second client connects, the previous one is evicted and closed.
 ///
-/// Send() targets the active client. SendTo() targets a connection and falls
-/// back to the active client for REPL compatibility. SendControlTo() targets only
-/// the originating connection and drops the response when that connection is gone.
+/// SendTo() delivers only to the addressed connection and drops the message when
+/// that connection is gone, so a replacement never receives another session's
+/// responses. Send() targets the active client for unsolicited notifications.
 ///
 /// All methods are called from Fleck's thread pool (Add/Remove) or from the main
 /// thread (Send). ConcurrentDictionary makes cross-thread reads safe; the volatile
@@ -90,24 +90,11 @@ internal sealed class ClientRegistry
     }
 
     /// <summary>
-    /// Sends to a specific connection by ID. Falls back to Send() if the ID is
-    /// no longer present. Use only for REPL-compatible responses; control-plane
-    /// responses use SendControlTo().
-    /// </summary>
-    public void SendTo(Guid connectionId, string json)
-    {
-        if (_clients.TryGetValue(connectionId, out var socket))
-            _send(socket, json);
-        else
-            Send(json); // best-effort delivery to current client
-    }
-
-    /// <summary>
-    /// Sends a control-plane response only to its originating connection.
+    /// Sends a response only to its originating connection.
     /// Returns false when the connection no longer exists; never falls back to
-    /// the replacement client because that would leak another controller's result.
+    /// the replacement client because that would leak another session's result.
     /// </summary>
-    public bool SendControlTo(Guid connectionId, string json)
+    public bool SendTo(Guid connectionId, string json)
     {
         if (!_clients.TryGetValue(connectionId, out var socket))
             return false;

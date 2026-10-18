@@ -37,6 +37,32 @@ public class ClientEvictionTests
         );
     }
 
+    [Fact]
+    public void ClientRegistry_DropsResponseAddressedToDisplacedSession()
+    {
+        var events = new List<string>();
+        var registry = new ClientRegistry(
+            (socket, json) => events.Add($"{socket.ConnectionInfo.Id}:send:{json}"),
+            _ => { }
+        );
+        var firstId = Guid.NewGuid();
+        var secondId = Guid.NewGuid();
+        registry.OnConnected(firstId, new FakeSocket(firstId, events));
+        registry.OnConnected(secondId, new FakeSocket(secondId, events));
+        registry.OnDisconnected(firstId);
+        events.Clear();
+
+        // Both sessions number their requests from one, so the replacement would accept this
+        // as the answer to its own first eval.
+        var delivered = registry.SendTo(
+            firstId,
+            "{\"type\":\"eval_result\",\"id\":\"eval-1\",\"value\":\"first\"}"
+        );
+
+        Assert.False(delivered);
+        Assert.Empty(events);
+    }
+
     private sealed class FakeSocket : IWebSocketConnection
     {
         private readonly List<string> _events;

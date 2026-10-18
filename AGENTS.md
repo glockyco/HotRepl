@@ -115,8 +115,8 @@ These are non-discoverable requirements; do not "simplify" them away:
 - Control handlers execute through the main-thread tick path, never directly from WebSocket
   callbacks.
 - v2 has no auth/lease protocol. Loopback plus single-client replacement is the authority boundary.
-- Addressed control responses go only to the originating connection; never fall back to a
-  replacement client.
+- Addressed responses go only to the originating connection; never fall back to a replacement
+  client.
 - Artifacts are references (`uri`, `path`, `sha256`, `byteSize`, `finalized`), not bulk payloads.
 - BepInEx ships `HotRepl.Core.dll` and Core dependencies side-by-side; do not ILRepack/internalize
   Core, Fleck, or Newtonsoft.Json into `HotRepl.BepInEx.dll`.
