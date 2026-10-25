@@ -2,8 +2,8 @@
 
 ## Purpose
 
-Defines how HotRepl reports C# submission results so users and clients can distinguish successful
-execution from actionable compiler failures.
+Defines how HotRepl reports C# submission results so you and client applications can distinguish
+successful execution from actionable compiler failures.
 
 ## Requirements
 
@@ -15,7 +15,7 @@ code, and message text when the compiler supplies those fields.
 
 #### Scenario: Mono rejects an invalid return statement
 
-- **WHEN** a user submits `return 5;` to the Mono.CSharp evaluator
+- **WHEN** you submit `return 5;` to the Mono.CSharp evaluator
 - **THEN** evaluation fails with error kind `validation_failed` and code `compileError`
 - **AND** the message contains `(1,2): error CS0127:`
 - **AND** the message contains
@@ -48,6 +48,6 @@ completion support, cancellation mode, or submission result.
 
 #### Scenario: Mono trailing expression succeeds
 
-- **WHEN** a user submits `var value = 1; value + 1` to the Mono.CSharp evaluator
+- **WHEN** you submit `var value = 1; value + 1` to the Mono.CSharp evaluator
 - **THEN** evaluation returns the integer value `2`
 - **AND** the evaluator retains its declared capabilities

@@ -1,70 +1,82 @@
 # @hotrepl/sdk
 
-[![npm](https://img.shields.io/npm/v/@hotrepl/sdk.svg)](https://www.npmjs.com/package/@hotrepl/sdk)
-[![license](https://img.shields.io/npm/l/@hotrepl/sdk.svg)](https://github.com/glockyco/HotRepl/blob/main/LICENSE)
+This TypeScript SDK connects scripts and applications to a running Unity game through
+[HotRepl](https://github.com/glockyco/HotRepl). Use it to evaluate C#, call game commands and read
+exported artifacts without implementing the WebSocket protocol yourself.
 
-The official TypeScript SDK for [HotRepl](https://github.com/glockyco/HotRepl) — a runtime C# REPL
-and typed command bridge for Unity games. Use it to inspect, automate, or export data from any Unity
-game running the HotRepl plugin (BepInEx/Mono) or mod (MelonLoader/IL2CPP).
+[npm package](https://www.npmjs.com/package/@hotrepl/sdk) · [Website](https://hotrepl.glockyco.com)
 
-## Requirements
+## Setup
 
-- A Unity game running the HotRepl plugin (`HotRepl.BepInEx.dll`) or mod
-  (`HotRepl.Host.MelonLoader.dll`). The plugin opens `ws://127.0.0.1:18590` by default.
-- A modern JavaScript runtime (Bun or Node) with WebSocket support.
+You need a JavaScript runtime with WebSocket support and a game running a HotRepl host. The host
+supports BepInEx or Lunaris on Mono and MelonLoader on IL2CPP. Follow the
+[game setup instructions](https://github.com/glockyco/HotRepl#set-up-a-game) before connecting.
 
-## Install
-
-```bash
-bun add @hotrepl/sdk           # or: npm install @hotrepl/sdk
+```sh
+npm install @hotrepl/sdk
 ```
 
-## Quickstart
+## Inspect and automate a game
 
 ```ts
 import { connect } from "@hotrepl/sdk";
 
-const session = await connect(); // ws://127.0.0.1:18590 by default
-
-// Raw eval — any C# expression, on the game's main thread:
-const product = await session.eval<string>("UnityEngine.Application.productName");
-// → { hasValue: true, value: "Ardenfall", valueType: "System.String", durationMs: 7 }
-
-// Typed, schema-validated game command:
-const preflight = await session.run<{ writable: boolean; freeMb: number }>(
-  "archive.preflight",
-  {},
-);
-// → { output: { writable: true, freeMb: 41213 }, artifacts: {} }
-
-session.close();
+const session = await connect();
+try {
+  const product = await session.eval<string>("UnityEngine.Application.productName");
+  console.log(product.value);
+  const app = await session.run("unity.app.info", {});
+  console.log(app.output);
+} finally {
+  session.close();
+}
 ```
 
-Point at a non-default backend with `connect({ url: "ws://host:port" })` or by setting `HOTREPL_URL`
-in the environment.
+Use `session.eval()` for C# exploration and `session.run()` for registered, schema-validated
+commands. Close the session when your script or service finishes so its WebSocket does not keep the
+process running.
 
-## What you get
+## Choose an endpoint
 
-- `connect(options?)` — open a WebSocket session against the game.
-- `Session.eval(code, timeoutMs?)` — evaluate C# on the main thread.
-- `Session.run(name, args, options?)` — invoke a typed, schema-validated command registered by the
-  host or a game mod.
-- `Session.complete`, `Session.reset`, `Session.journal`, `Session.watch` — completion, evaluator
-  reset, evaluation/command history, and frame-by-frame value streaming.
-- `Session.close()` — release the underlying WebSocket. Long-running consumers (servers, daemons)
-  should call this on shutdown.
-- Typed errors: `HotReplError`, `HotReplSessionEvicted`, `HotReplArtifactCorrupted`.
+Pass an endpoint directly with `connect({ url: "ws://127.0.0.1:18591" })`. To read `HOTREPL_URL`
+from a Node or Bun process, supply its environment explicitly:
 
-## Reference
+```ts
+const session = await connect({ env: process.env });
+```
 
-- Repository, full docs, and examples:
-  [github.com/glockyco/HotRepl](https://github.com/glockyco/HotRepl)
-- Protocol reference:
-  [`docs/control-plane-protocol.md`](https://github.com/glockyco/HotRepl/blob/main/docs/control-plane-protocol.md)
-- Sibling packages: [`@hotrepl/cli`](https://www.npmjs.com/package/@hotrepl/cli) for shell usage,
-  [`@hotrepl/mcp`](https://www.npmjs.com/package/@hotrepl/mcp) for agent tooling.
-- Issues: [github.com/glockyco/HotRepl/issues](https://github.com/glockyco/HotRepl/issues)
+`connect()` does not read process environment variables on its own. An explicit `url` takes
+precedence over `env.HOTREPL_URL`. The
+[connection implementation](https://github.com/glockyco/HotRepl/blob/main/packages/sdk/src/connect.ts)
+defines the fallback endpoint and supported options, including artifact path mapping.
+
+To give up on a host that does not answer, pass an `AbortSignal` as `connect({ signal })`.
+Cancellation covers the wait for the handshake, closes the pending transport and rejects with the
+signal's reason. Once `connect()` resolves, the signal no longer affects the session, so call
+`session.close()` when you finish.
+
+## Runtime access and artifacts
+
+Evaluation and commands execute with the game's permissions and can change state or write files.
+Only send code and commands you trust, and keep the game host on loopback because the protocol has
+no authentication. Connecting another client replaces your session.
+
+Command results include artifact references. Use `session.artifact(ref)` for an existing reference,
+or read artifacts from a command result, to access files and verify their hashes. The
+[protocol reference](https://github.com/glockyco/HotRepl/blob/main/docs/control-plane-protocol.md#artifacts)
+explains file lifetime and path mapping under Wine or Proton.
+
+## Reference and development
+
+- [Session API](https://github.com/glockyco/HotRepl/blob/main/packages/sdk/src/session.ts) defines
+  evaluation, command calls, watches, journal queries and notifications.
+- [Command authoring](https://github.com/glockyco/HotRepl/blob/main/docs/authoring-commands.md)
+  explains how to expose your own game commands.
+- [AGENTS.md](https://github.com/glockyco/HotRepl/blob/main/AGENTS.md) covers development setup and
+  targeted SDK checks.
+- [CLI](https://www.npmjs.com/package/@hotrepl/cli) and
+  [MCP server](https://www.npmjs.com/package/@hotrepl/mcp) provide shell and coding-agent clients.
 
 ## License
 
-MIT
+[MIT](https://github.com/glockyco/HotRepl/blob/main/LICENSE).

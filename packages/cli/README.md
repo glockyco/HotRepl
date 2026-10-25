@@ -1,76 +1,104 @@
 # @hotrepl/cli
 
-[![npm](https://img.shields.io/npm/v/@hotrepl/cli.svg)](https://www.npmjs.com/package/@hotrepl/cli)
-[![license](https://img.shields.io/npm/l/@hotrepl/cli.svg)](https://github.com/glockyco/HotRepl/blob/main/LICENSE)
+This command-line client lets you inspect and automate a running Unity game through
+[HotRepl](https://github.com/glockyco/HotRepl). Use it from your shell to evaluate C#, invoke game
+commands, inspect the journal and read exported artifacts.
 
-Command-line interface for [HotRepl](https://github.com/glockyco/HotRepl). Talk to a running Unity
-game from your shell — eval C#, invoke typed commands, inspect the journal, stream watch frames,
-read artifacts.
+[npm package](https://www.npmjs.com/package/@hotrepl/cli) · [Website](https://hotrepl.glockyco.com)
 
-## Requirements
+## Setup
 
-- A Unity game running the HotRepl plugin (BepInEx/Mono) or mod (MelonLoader/IL2CPP). The plugin
-  opens `ws://127.0.0.1:18590` by default.
-- Node (the published binary uses `#!/usr/bin/env node`).
+You need Node.js and npm, plus a game running a HotRepl host through BepInEx or Lunaris on Mono, or
+MelonLoader on IL2CPP. Follow the
+[game setup instructions](https://github.com/glockyco/HotRepl#set-up-a-game) first. Installing this
+package does not install a game plugin.
 
-## Run it without installing
+Check the connection without a global installation:
 
-```bash
-bunx @hotrepl/cli info               # or: npx -y @hotrepl/cli info
-bunx @hotrepl/cli eval 'UnityEngine.Application.productName'
+```sh
+npx -y @hotrepl/cli info
+npx -y @hotrepl/cli eval 'UnityEngine.Application.productName'
 ```
 
-## Install globally
+For repeated use, install the `hotrepl` command:
 
-```bash
-bun add -g @hotrepl/cli              # or: npm install -g @hotrepl/cli
+```sh
+npm install -g @hotrepl/cli
 hotrepl info
 ```
 
-## Commands
+## Inspect and call a game command
 
-```text
-hotrepl info                     # handshake summary
-hotrepl wait                     # block until backend is reachable
-hotrepl doctor                   # quick self-check
-hotrepl eval '<C# expr>'         # evaluate C# on the game's main thread
-hotrepl reset                    # reset evaluator state
-hotrepl complete '<prefix>' [N]  # completions for partial C#
-hotrepl run <name> '<json args>' # invoke a typed command
-hotrepl describe <name>          # show a command's schema
-hotrepl artifacts read <ref>     # read and verify an artifact (add --output for bytes)
-hotrepl journal [--limit N]      # recent eval/command history
-hotrepl watch '<C# expr>'        # stream frame-by-frame values
+```sh
+hotrepl describe unity.app.info --json
+hotrepl run unity.app.info '{}'
+hotrepl journal --limit 10 --json
 ```
 
-Global flags: `--format text|json|jsonl`, `--json` (alias), `--jsonl` (alias),
-`--url ws://host:port`, `--limit N`, `--output <file>`.
+Use `describe --json` to see the argument schema before calling a command. Text output shows only
+its name, version, kind and state-mutation flag. Use `eval` for one-off C# exploration and `reset`
+to clear evaluator state.
 
-`artifacts read` decodes an artifact as text. A binary artifact such as a screenshot needs
-`--output <file>`, which writes the verified bytes and prints the path and size.
+Pass `--url ws://127.0.0.1:18591` or set `HOTREPL_URL` to connect to a different endpoint. The
+[argument parser](https://github.com/glockyco/HotRepl/blob/main/packages/cli/src/index.ts) defines
+output and connection options. The
+[command dispatcher](https://github.com/glockyco/HotRepl/blob/main/packages/cli/src/commands/dispatch.ts)
+defines the available commands.
 
-## Environment
+## Wait for the game and watch values
 
-| Variable      | Effect                                        |
-| ------------- | --------------------------------------------- |
-| `HOTREPL_URL` | Backend URL (default `ws://127.0.0.1:18590`). |
+```sh
+hotrepl wait --timeout-ms 60000
+hotrepl watch 'UnityEngine.Time.frameCount' --jsonl
+```
 
-## Exit codes
+`hotrepl wait` retries the connection until the host completes its handshake, so a script can start
+before the game is ready. `--timeout-ms` changes the deadline that
+[the wait implementation](https://github.com/glockyco/HotRepl/blob/main/packages/cli/src/commands/wait.ts)
+sets by default. When the deadline expires, the command returns the timeout status from the
+exit-code mapping.
 
-The CLI follows [sysexits.h](https://www.man7.org/linux/man-pages/man3/sysexits.h.3head.html): `0`
-success, `2` validation/invalid request, `69` backend unreachable, `70` internal failure, `75`
-session evicted, `76` artifact corrupted. Full mapping in
-[`packages/cli/src/exit-codes.ts`](https://github.com/glockyco/HotRepl/blob/main/packages/cli/src/exit-codes.ts).
+`hotrepl watch` writes each value as it arrives. `--jsonl` writes one JSON object per tick, and
+`--json` streams a JSON array that closes when the watch ends or is interrupted. Press Ctrl+C once
+to close the session and finish writing output, and again to exit immediately if cleanup stalls.
 
-## Reference
+## Read an artifact
 
-- Repository: [github.com/glockyco/HotRepl](https://github.com/glockyco/HotRepl)
-- Protocol reference:
-  [`docs/control-plane-protocol.md`](https://github.com/glockyco/HotRepl/blob/main/docs/control-plane-protocol.md)
-- Sibling packages: [`@hotrepl/sdk`](https://www.npmjs.com/package/@hotrepl/sdk) for programmatic
-  use, [`@hotrepl/mcp`](https://www.npmjs.com/package/@hotrepl/mcp) for agent tooling.
-- Issues: [github.com/glockyco/HotRepl/issues](https://github.com/glockyco/HotRepl/issues)
+Run a command with `--json` to obtain its artifact references. Pass one complete reference as JSON
+to `hotrepl artifacts read`. Text artifacts print to the terminal by default. Add `--output` for
+binary data or to save verified bytes:
+
+```sh
+hotrepl artifacts read '<artifact-reference-json>' --output ./artifact.bin
+```
+
+Replace `<artifact-reference-json>` with the reference returned by your command. The output option
+writes or overwrites the named local file. Artifact reads require access to the path reported by the
+game. See the
+[artifact reference](https://github.com/glockyco/HotRepl/blob/main/docs/control-plane-protocol.md#artifacts)
+for file lifetime and Wine or Proton path mapping.
+
+## Runtime access and connection failures
+
+Evaluation and commands run with the game's permissions and can change game state or write files.
+Keep the host on loopback because the protocol has no authentication.
+
+If the client cannot connect, start the game and check its loader log for HotRepl startup errors.
+Another CLI or MCP connection replaces the current client, so close other clients when a session is
+displaced. The
+[exit-code mapping](https://github.com/glockyco/HotRepl/blob/main/packages/cli/src/exit-codes.ts)
+defines failure statuses for scripts.
+
+## Reference and development
+
+- [Protocol reference](https://github.com/glockyco/HotRepl/blob/main/docs/control-plane-protocol.md)
+  describes requests, results and artifacts.
+- [AGENTS.md](https://github.com/glockyco/HotRepl/blob/main/AGENTS.md) covers development setup and
+  CLI checks.
+- [TypeScript SDK](https://www.npmjs.com/package/@hotrepl/sdk) and
+  [MCP server](https://www.npmjs.com/package/@hotrepl/mcp) provide programmatic and coding-agent
+  access.
 
 ## License
 
-MIT
+[MIT](https://github.com/glockyco/HotRepl/blob/main/LICENSE).

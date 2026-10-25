@@ -1,54 +1,73 @@
 # @hotrepl/protocol
 
-[![npm](https://img.shields.io/npm/v/@hotrepl/protocol.svg)](https://www.npmjs.com/package/@hotrepl/protocol)
-[![license](https://img.shields.io/npm/l/@hotrepl/protocol.svg)](https://github.com/glockyco/HotRepl/blob/main/LICENSE)
+This package provides TypeScript types and schemas for the
+[HotRepl](https://github.com/glockyco/HotRepl) WebSocket protocol. Use it when you build a custom
+client, generate bindings or validate game-runtime messages. For normal TypeScript automation, use
+[@hotrepl/sdk](https://www.npmjs.com/package/@hotrepl/sdk) instead.
 
-TypeScript types and JSON schemas for the [HotRepl](https://github.com/glockyco/HotRepl) WebSocket
-protocol — the wire format a HotRepl-instrumented Unity game speaks to its clients (SDK, CLI, MCP
-server, custom integrations).
-
-Most consumers should depend on [`@hotrepl/sdk`](https://www.npmjs.com/package/@hotrepl/sdk)
-instead. Use this package directly only when you are building an alternative SDK, a non-TypeScript
-client, or a tool that needs the schemas (e.g., a code generator or a test fixture validator).
+[npm package](https://www.npmjs.com/package/@hotrepl/protocol) ·
+[Protocol reference](https://hotrepl.glockyco.com/protocol/)
 
 ## Install
 
-```bash
-bun add @hotrepl/protocol      # or: npm install @hotrepl/protocol
+```sh
+npm install @hotrepl/protocol
 ```
 
-## What's in the box
+You do not need a running game to use the types and schemas. Connecting a custom client requires a
+game running a HotRepl host. See the
+[game setup instructions](https://github.com/glockyco/HotRepl#set-up-a-game).
 
-- **TypeScript types** for every protocol message (`HandshakeMessage`, `EvalResultMessage`,
-  `CommandCallMessage`, `JobAcceptedMessage`, `SessionEvictedMessage`, …).
-- **Discriminant constants** — `MESSAGE_TYPES`, `PROTOCOL_VERSION`, `ERROR_KINDS`, `defaultLimits`.
-- **JSON Schema files** for every public message, exported under `schemas/` and generated from the
-  same TypeScript source via `bun run schemas:export`.
+## Use types and schemas
 
-## Usage
+Import types, message discriminants and schema objects from the package root:
 
 ```ts
-import { type HandshakeMessage, MESSAGE_TYPES, PROTOCOL_VERSION } from "@hotrepl/protocol";
+import {
+  type HandshakeMessage,
+  HandshakeMessageSchema,
+  MESSAGE_TYPES,
+  PROTOCOL_VERSION,
+} from "@hotrepl/protocol";
 
-function isHandshake(message: { type: string }): message is HandshakeMessage {
-  return message.type === MESSAGE_TYPES.handshake;
+function summarizeHandshake(message: HandshakeMessage): string {
+  return `${message.host.name}: protocol ${message.protocolVersion}`;
 }
+
+console.log(MESSAGE_TYPES.handshake, PROTOCOL_VERSION);
+console.log(HandshakeMessageSchema);
 ```
 
-Schemas (Draft 2020-12) live alongside the types if you need to validate wire frames:
+TypeScript types do not validate incoming JSON. Use the exported schema objects with a compatible
+validator before treating external data as typed messages. The
+[source exports](https://github.com/glockyco/HotRepl/blob/main/packages/protocol/src/index.ts)
+define the available types, schemas and constants.
 
-```ts
-import handshakeSchema from "@hotrepl/protocol/schemas/handshake.schema.json"
-  with { type: "json" };
+The package also ships generated JSON Schema files. Its
+[package manifest](https://github.com/glockyco/HotRepl/blob/main/packages/protocol/package.json)
+exports only the package root, so do not import JSON files through a `@hotrepl/protocol/schemas/`
+subpath. Import schema objects from the root or obtain standalone files from the installed package
+for tools that need files.
+
+## Generate schemas and change the protocol
+
+From the repository root, regenerate standalone schemas after changing their source:
+
+```sh
+bun run schemas:export
 ```
 
-## Reference
+The
+[export script](https://github.com/glockyco/HotRepl/blob/main/packages/protocol/scripts/export-schemas.ts)
+defines the output location and schema format. The package itself does not connect to a game or
+change game files.
 
-- Full protocol reference:
-  [`docs/control-plane-protocol.md`](https://github.com/glockyco/HotRepl/blob/main/docs/control-plane-protocol.md)
-- Repository: [github.com/glockyco/HotRepl](https://github.com/glockyco/HotRepl)
-- Issues: [github.com/glockyco/HotRepl/issues](https://github.com/glockyco/HotRepl/issues)
+The
+[protocol reference](https://github.com/glockyco/HotRepl/blob/main/docs/control-plane-protocol.md)
+explains message semantics. [AGENTS.md](https://github.com/glockyco/HotRepl/blob/main/AGENTS.md)
+covers development setup, protocol changes and checks. Keep the C# protocol implementation and
+TypeScript schemas aligned when changing a message.
 
 ## License
 
-MIT
+[MIT](https://github.com/glockyco/HotRepl/blob/main/LICENSE).
