@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { resolve } from "node:path";
 import { CLI_ERROR_CODES, exitCodeForKind } from "../src/exit-codes";
 
 const errorKinds = [
@@ -48,7 +49,7 @@ describe("CLI exit codes", () => {
     const result = Bun.spawnSync({
       cmd: [process.execPath, "packages/cli/src/bin.ts", "info"],
       env: { ...process.env, HOTREPL_URL: "ws://127.0.0.1:1" },
-      cwd: import.meta.dir.replace(/\/packages\/cli\/test$/, ""),
+      cwd: resolve(import.meta.dir, "../../.."),
       stderr: "pipe",
       stdout: "pipe",
     });
@@ -59,7 +60,7 @@ describe("CLI exit codes", () => {
   test("bin exits 2 when --format value is invalid", () => {
     const result = Bun.spawnSync({
       cmd: [process.execPath, "packages/cli/src/bin.ts", "--format", "invalid", "info"],
-      cwd: import.meta.dir.replace(/\/packages\/cli\/test$/, ""),
+      cwd: resolve(import.meta.dir, "../../.."),
       stderr: "pipe",
       stdout: "pipe",
     });
