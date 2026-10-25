@@ -80,13 +80,18 @@ describe("WebSocket transport", () => {
       }
       expect(values).toEqual([10, 11]);
 
-      let evictionReason = "";
+      const evictionReasons: string[] = [];
       session.onSessionEvicted((event) => {
-        evictionReason = event.reason;
+        evictionReasons.push(event.reason);
       });
       runtime.evict("displaced");
-      await expect(session.eval("1 + 1")).rejects.toBeInstanceOf(HotReplSessionEvicted);
-      expect(evictionReason).toBe("displaced");
+      try {
+        await session.eval("1 + 1");
+        expect.unreachable("Expected the evicted session to reject the request.");
+      } catch (error) {
+        expect(error).toBeInstanceOf(HotReplSessionEvicted);
+      }
+      expect(evictionReasons).toEqual(["displaced"]);
     } finally {
       server.close();
     }
@@ -172,11 +177,15 @@ describe("WebSocket transport", () => {
     try {
       const transport = await WebSocketTransport.connect(`ws://127.0.0.1:${server.port}`);
 
-      await expect(transport.request({ type: "eval", id: "eval-1", code: "1 + 1" }))
-        .rejects.toMatchObject({
+      try {
+        await transport.request({ type: "eval", id: "eval-1", code: "1 + 1" });
+        expect.unreachable("Expected the protocol error to reject the request.");
+      } catch (error) {
+        expect(error).toMatchObject({
           kind: "invalid_request",
           code: "badRequest",
         });
+      }
     } finally {
       server.stop(true);
     }
@@ -254,15 +263,12 @@ describe("WebSocket transport", () => {
       await Bun.write(hostPath, "payload");
       const session = await connect({
         url: server.url,
-        resolveArtifactPath: (ref) =>
-          ref.path?.startsWith("Z:\\") === true
-            ? ref.path.slice(2).replaceAll("\\", "/")
-            : undefined,
+        resolveArtifactPath: (ref) => ref.path === "Z:\\foreign\\artifact" ? hostPath : undefined,
       });
 
       const bytes = await session.artifact({
         uri: "file:///Z:/foreign/artifact",
-        path: `Z:${hostPath.replaceAll("/", "\\")}`,
+        path: "Z:\\foreign\\artifact",
         sha256: "239f59ed55e737c77147cf55ad0c1b030b6d7ee748a7426952f9b852d5a935e5",
         byteSize: 7,
         contentType: "text/plain",
@@ -305,8 +311,17 @@ describe("WebSocket transport", () => {
           url: `ws://127.0.0.1:${server.port}`,
           signal: controller.signal,
         });
-        if (action === "abort") await expect(connecting).rejects.toBe(reason);
-        else await expect(connecting).rejects.toThrow("connection closed");
+        let failure: unknown;
+        try {
+          await connecting;
+        } catch (error) {
+          failure = error;
+        }
+        if (action === "abort") expect(failure).toBe(reason);
+        else {
+          expect(failure).toBeInstanceOf(Error);
+          expect((failure as Error).message).toContain("connection closed");
+        }
         await closed.promise;
       } finally {
         server.stop(true);

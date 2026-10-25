@@ -69,6 +69,10 @@ unformatted C# fails `dotnet build`.
 
 ### TypeScript packages
 
+Windows package development uses the Bun version declared in `package.json`, since the Nix
+development shell supports Darwin and Linux. Run `bun run test` and `bun run typecheck` for the
+package gate on Windows.
+
 ```bash
 bun test packages/protocol/test
 bun test packages/sdk/test packages/testing/test packages/conformance/test
