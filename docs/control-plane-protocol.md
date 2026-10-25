@@ -89,6 +89,10 @@ is `null`, `truncated` is `true`, and `truncatedBytes` reports the original byte
 
 `reset` clears persistent evaluator variables and returns `reset_result`.
 
+Evaluation results return captured console output in `stdout` while preserving output to the host's
+console. Under BepInEx 5's console patches, capture records one line per string write and does not
+record character writes. Do not treat the captured text as a byte-for-byte transcript.
+
 ## Subscriptions
 
 ```json

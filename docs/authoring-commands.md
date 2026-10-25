@@ -224,3 +224,17 @@ without duplicating command logic. The Lunaris host references the standalone
 `HotRepl.UnityCommands` assembly and registers the catalog inside its single plugin. All three entry
 points use `UnityCommandCatalog.Register`, whose returned registration set must be disposed when the
 loader unloads the plugin.
+
+## Host lifecycle
+
+Dispose command registrations and the engine when a loader unloads the plugin so re-enabling it does
+not retain handlers or occupy the previous server's port. Engine disposal closes the listener and
+client sockets, cancels jobs and subscriptions, disposes the evaluator and console capture, and
+restores Fleck's logging hook.
+
+Release the shared Unity coroutine-host reference on unload. Destroy a loader-created coroutine
+GameObject when the loader does not own its lifetime, as the MelonLoader entry point does.
+
+The engine obtains console capture from the host. Use `ConsoleRedirectCapture` where replacing
+`Console.Out` is supported. BepInEx's adapter listens to its console log source when its console
+patches are active because those patches intercept `Console.SetOut`.
