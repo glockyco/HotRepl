@@ -10,12 +10,6 @@ export function json(value: unknown): string {
   return `${JSON.stringify(value)}\n`;
 }
 
-export function jsonl(values: Iterable<unknown>): string {
-  let output = "";
-  for (const value of values) output += json(value);
-  return output;
-}
-
 export function printable(value: unknown): string {
   if (value === undefined) return "";
   if (typeof value === "string") return value;
