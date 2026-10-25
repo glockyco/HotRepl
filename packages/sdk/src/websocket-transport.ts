@@ -91,9 +91,11 @@ export class WebSocketTransport implements RuntimeTransport {
   static connect(
     url: string,
     resolveArtifactPath?: ArtifactPathResolver,
+    signal?: AbortSignal,
   ): Promise<WebSocketTransport> {
+    signal?.throwIfAborted();
     const transport = new WebSocketTransport(new WebSocket(url), resolveArtifactPath);
-    return transport.open();
+    return transport.open(signal);
   }
 
   handshake(): Promise<HandshakeMessage> {
@@ -206,15 +208,22 @@ export class WebSocketTransport implements RuntimeTransport {
     this.socket.close();
   }
 
-  private open(): Promise<WebSocketTransport> {
+  private open(signal?: AbortSignal): Promise<WebSocketTransport> {
     return new Promise((resolve, reject) => {
       const failOpen = (error: unknown): void => {
+        signal?.removeEventListener("abort", onAbort);
         reject(error);
         this.failAll(error);
+        this.socket.close();
+      };
+      const onAbort = (): void => failOpen(signal?.reason);
+      const opened = (transport: WebSocketTransport): void => {
+        signal?.removeEventListener("abort", onAbort);
+        resolve(transport);
       };
 
       this.socket.addEventListener("message", (event) => {
-        void this.handleSocketMessage(event.data).then(resolve, failOpen);
+        void this.handleSocketMessage(event.data).then(opened, failOpen);
       });
       this.socket.addEventListener("error", () => {
         failOpen(new Error("HotRepl WebSocket connection failed."));
@@ -229,8 +238,10 @@ export class WebSocketTransport implements RuntimeTransport {
       (this.socket as unknown as { on?: (e: string, fn: () => void) => void })
         .on?.("error", () => {});
       this.socket.addEventListener("close", () => {
-        this.failAll(new Error("HotRepl WebSocket connection closed."));
+        failOpen(new Error("HotRepl WebSocket connection closed."));
       });
+      signal?.addEventListener("abort", onAbort, { once: true });
+      if (signal?.aborted) onAbort();
     });
   }
 

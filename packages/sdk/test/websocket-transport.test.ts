@@ -275,4 +275,42 @@ describe("WebSocket transport", () => {
       server.close();
     }
   });
+
+  test.each(["abort", "close"])(
+    "settles a pending handshake on %s and closes the socket",
+    async (action) => {
+      const controller = new AbortController();
+      const closed = Promise.withResolvers<void>();
+      const reason = new Error("Connection cancelled.");
+      const server = Bun.serve({
+        hostname: "127.0.0.1",
+        port: 0,
+        fetch(request, server) {
+          if (server.upgrade(request)) return undefined;
+          return new Response("Expected WebSocket upgrade.", { status: 426 });
+        },
+        websocket: {
+          open(socket) {
+            if (action === "abort") controller.abort(reason);
+            else socket.close();
+          },
+          message() {},
+          close() {
+            closed.resolve();
+          },
+        },
+      });
+      try {
+        const connecting = connect({
+          url: `ws://127.0.0.1:${server.port}`,
+          signal: controller.signal,
+        });
+        if (action === "abort") await expect(connecting).rejects.toBe(reason);
+        else await expect(connecting).rejects.toThrow("connection closed");
+        await closed.promise;
+      } finally {
+        server.stop(true);
+      }
+    },
+  );
 });
