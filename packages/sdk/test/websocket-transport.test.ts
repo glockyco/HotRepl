@@ -97,6 +97,76 @@ describe("WebSocket transport", () => {
     }
   });
 
+  test("does not cancel a watch after its final value", async () => {
+    const runtime = new FakeRuntime();
+    runtime.setWatch("Health", [{ value: 10, final: false }, { value: 11, final: true }]);
+    const server = serveRuntime(runtime);
+    try {
+      const session = await connect({ url: server.url });
+      const values: number[] = [];
+      for await (const tick of session.watch<number>("Health")) {
+        if (tick.hasValue) values.push(tick.value ?? 0);
+      }
+      expect(values).toEqual([10, 11]);
+      // A round trip lets the server observe all earlier client frames.
+      await session.reset();
+      expect(runtime.cancelled()).toEqual([]);
+    } finally {
+      server.close();
+    }
+  });
+
+  test.each([false, true])(
+    "handles cancellation after a watch error with final=%s",
+    async (final) => {
+      const runtime = new FakeRuntime();
+      runtime.setWatch("Health", [{
+        error: {
+          kind: "cancelled",
+          code: "watchStopped",
+          message: "Watch stopped.",
+          retryable: false,
+        },
+        final,
+      }]);
+      const server = serveRuntime(runtime);
+      try {
+        const session = await connect({ url: server.url });
+        let failure: unknown;
+        try {
+          for await (const _tick of session.watch("Health")) {
+            expect.unreachable("Expected the watch error to reject the iterator.");
+          }
+        } catch (error) {
+          failure = error;
+        }
+        expect(failure).toBeInstanceOf(HotReplError);
+        expect(failure).toMatchObject({ kind: "cancelled", code: "watchStopped" });
+        await session.reset();
+        expect(runtime.cancelled()).toEqual(final ? [] : ["watch-1"]);
+      } finally {
+        server.close();
+      }
+    },
+  );
+
+  test("cancels a watch when its consumer stops before the final value", async () => {
+    const runtime = new FakeRuntime();
+    runtime.setWatch("Health", [{ value: 10, final: false }]);
+    const server = serveRuntime(runtime);
+    try {
+      const session = await connect({ url: server.url });
+      for await (const tick of session.watch<number>("Health")) {
+        expect(tick.value).toBe(10);
+        break;
+      }
+      await session.reset();
+      expect(runtime.cancelled()).toEqual(["watch-1"]);
+    } finally {
+      server.close();
+    }
+  });
+
   test("routes protocol error frames to subscription iterators", async () => {
     const runtime = new FakeRuntime();
     const server = Bun.serve<{ closeEviction: () => void }>({

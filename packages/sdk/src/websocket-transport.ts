@@ -133,11 +133,10 @@ export class WebSocketTransport implements RuntimeTransport {
     try {
       this.socket.send(JSON.stringify(request));
       for await (const message of queue) {
+        // Consumers can close the iterator as soon as they receive the final frame.
+        final = message.final;
         yield message;
-        if (message.final) {
-          final = true;
-          return;
-        }
+        if (final) return;
       }
     } finally {
       this.subscriptions.delete(request.id);
