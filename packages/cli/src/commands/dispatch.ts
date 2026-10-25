@@ -1,6 +1,6 @@
-import type { Session, WatchTick } from "@hotrepl/sdk";
+import type { Session } from "@hotrepl/sdk";
 import { writeFile } from "node:fs/promises";
-import { type CliFormat, json, jsonl, line, printable, serializableResult } from "../format";
+import { type CliFormat, json, line, printable, serializableResult } from "../format";
 
 export interface CommandRequest {
   args: string[];
@@ -9,7 +9,11 @@ export interface CommandRequest {
   output?: string;
 }
 
-export async function dispatchCommand(session: Session, request: CommandRequest): Promise<string> {
+export async function dispatchCommand(
+  session: Session,
+  request: CommandRequest,
+  writeStdout: (chunk: string) => void,
+): Promise<string> {
   const [command, ...args] = request.args;
   switch (command) {
     case "info":
@@ -26,7 +30,7 @@ export async function dispatchCommand(session: Session, request: CommandRequest)
     case "complete":
       return renderComplete(session, args, request.format);
     case "watch":
-      return renderWatch(session, args, request.format);
+      return renderWatch(session, args, request.format, writeStdout);
     case "run":
       return renderRun(session, args, request.format);
     case "describe":
@@ -73,13 +77,30 @@ async function renderComplete(
   return completions.map(line).join("");
 }
 
-async function renderWatch(session: Session, args: string[], format: CliFormat): Promise<string> {
+async function renderWatch(
+  session: Session,
+  args: string[],
+  format: CliFormat,
+  writeStdout: (chunk: string) => void,
+): Promise<string> {
   const [code = ""] = args;
-  const ticks: Array<WatchTick> = [];
-  for await (const tick of session.watch(code)) ticks.push(tick);
-  if (format === "jsonl") return jsonl(ticks);
-  if (format === "json") return json(ticks);
-  return ticks.filter((tick) => tick.hasValue).map((tick) => line(printable(tick.value))).join("");
+  let first = true;
+  if (format === "json") writeStdout("[");
+  try {
+    for await (const tick of session.watch(code)) {
+      if (format === "json") {
+        writeStdout(`${first ? "" : ","}${JSON.stringify(tick)}`);
+        first = false;
+      } else if (format === "jsonl") {
+        writeStdout(json(tick));
+      } else if (tick.hasValue) {
+        writeStdout(line(printable(tick.value)));
+      }
+    }
+  } finally {
+    if (format === "json") writeStdout("]\n");
+  }
+  return "";
 }
 
 async function renderRun(session: Session, args: string[], format: CliFormat): Promise<string> {
