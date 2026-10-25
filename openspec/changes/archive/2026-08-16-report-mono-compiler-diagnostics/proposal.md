@@ -1,7 +1,7 @@
 ## Why
 
 The BepInEx evaluator discards Mono compiler diagnostics and returns text such as
-`(1,1): InteractiveHost`. Users cannot identify or correct invalid C# submissions from this output.
+`(1,1): InteractiveHost`. You cannot identify or correct invalid C# submissions from this output.
 
 ## What Changes
 

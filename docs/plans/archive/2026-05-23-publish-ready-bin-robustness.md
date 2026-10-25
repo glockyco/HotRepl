@@ -198,7 +198,7 @@ caller had a proper try/catch around await connect().
 
 Add a no-op .on('error', ...) listener purely to suppress the
 EventEmitter re-throw. The W3C addEventListener handler above it still
-runs user logic. In browsers, .on is undefined and the optional call
+runs application logic. In browsers, .on is undefined and the optional call
 short-circuits with no behavioural change.
 
 The added regression test triggers a connect failure against a
@@ -715,7 +715,7 @@ fix(mcp): convert backend failures to isError tool results
 Tool handlers previously threw on backend errors, which the MCP
 server transport surfaced as a JSON-RPC error response. MCP clients
 (Claude Desktop, Cursor, Zed) treat JSON-RPC errors as transport
-failures and may hide them from the user. The MCP spec reserves
+failures and may hide them from you. The MCP spec reserves
 JSON-RPC errors for protocol/transport problems and asks servers to
 surface execution failures inline via CallToolResult.isError.
 

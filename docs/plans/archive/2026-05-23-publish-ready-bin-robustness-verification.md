@@ -33,7 +33,7 @@ bun test packages/sdk packages/testing packages/mcp packages/cli
 ## Live verification harness
 
 `scripts/verify-live-ardenfall.ts` exercises both bins against a running Ardenfall instance.
-**Local-only**: CI cannot launch a Unity game, so this script is invoked manually by a maintainer
+**Local-only**: CI cannot launch a Unity game, so invoke this script manually
 after `bun run hotrepl:launch` in the `ardenfall-compendium` checkout.
 
 Final run output:

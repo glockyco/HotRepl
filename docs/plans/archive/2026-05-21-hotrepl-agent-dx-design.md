@@ -235,8 +235,8 @@ configurations:
   operator-provided secure tunnel/transport, or require an explicitly named dangerous override; a
   bearer token over cleartext `ws://` is not sufficient protection.
 - `authRequired:false` is reported as an insecure/degraded control posture in `status` and `doctor`.
-  High-level mutating CLI workflows should refuse unauthenticated control by default unless the user
-  passes an explicit override.
+  High-level mutating CLI workflows should refuse unauthenticated control by default unless you
+  pass an explicit override.
 - Token fingerprints are correlation/debugging aids only. They never prove authorization.
 - `--token` remains an escape hatch because command-line arguments may be visible to other
   processes; profiles should prefer token files, environment handles, or host-specific config

@@ -4179,7 +4179,7 @@ jobs:
 
 The CI verifies the shared source compiles against `HotRepl.Core`. The loader csprojs need
 game-specific UnityEngine.dll references that aren't reproducible in CI without per-game licensed
-binaries — they're verified manually during template instantiation by maintainers.
+binaries. Verify them manually during template instantiation.
 
 - [x] **Step 2: Commit**
 

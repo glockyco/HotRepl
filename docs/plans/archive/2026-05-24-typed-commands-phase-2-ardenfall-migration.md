@@ -36,9 +36,9 @@ has no auth or lease handshake.
 
 ## Preconditions
 
-- Work directly in `/Users/joaichberger/Projects/ardenfall-compendium`; the user explicitly
-  requested no git worktrees for this roadmap.
-- Run `git status --short --branch` before editing. At plan-writing time, unrelated user edits
+- Work directly in `/Users/joaichberger/Projects/ardenfall-compendium`. Do not use git worktrees for
+  this roadmap.
+- Run `git status --short --branch` before editing. At plan-writing time, unrelated edits
   existed in item/stat/category extraction files. Do not revert them.
 - Build HotRepl first from `/Users/joaichberger/Projects/HotRepl` so
   `src/HotRepl.Core/bin/Debug/netstandard2.1/HotRepl.Core.dll` is current.
@@ -576,7 +576,7 @@ docs(spec): record Ardenfall typed-command migration
 - The plan covers every Phase 2 spec acceptance criterion.
 - The command inventory preserves all ten names and versions.
 - The plan explicitly removes old auth/lease/job-result request protocol.
-- The plan avoids touching unrelated item/stat/category user edits in the Ardenfall checkout.
+- The plan avoids touching unrelated item/stat/category edits in the Ardenfall checkout.
 - Verification commands cover C#, controller tests, and TypeScript typecheck.
 
 ## Closeout evidence

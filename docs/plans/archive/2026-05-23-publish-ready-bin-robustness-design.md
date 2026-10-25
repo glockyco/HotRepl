@@ -11,14 +11,14 @@ archived: 2026-06-25
 # Publish-ready bin robustness
 
 **Date:** 2026-05-23\
-**Status:** Draft — pending user review\
+**Status:** Draft, pending review\
 **Authors:** Opus
 
 ## Goal
 
-A first-time user runs `npx -y @hotrepl/mcp` (or `npx -y @hotrepl/cli ...`) before their Unity game
+You run `npx -y @hotrepl/mcp` (or `npx -y @hotrepl/cli ...`) for the first time before your Unity game
 is running. Today the MCP bin emits an uncaught stack trace and exits 0, which most MCP clients
-(Claude Desktop, Cursor, Zed) surface as "MCP server crashed." The user sees no actionable error and
+(Claude Desktop, Cursor, Zed) surface as "MCP server crashed." You see no actionable error and
 no path forward.
 
 This spec defines the changes needed across `@hotrepl/sdk`, `@hotrepl/mcp`, and `@hotrepl/cli` so
@@ -675,7 +675,7 @@ blocks the merge. Failures on (5)–(6) are documented as known gaps and tracked
   the event but the SessionManager doesn't try to reconnect. Worth fixing — separate concern.
 - **MCP streaming/SSE transport.** stdio only for now.
 - **CLI `--debug` flag** that shows stack traces. Could be added later; current behavior (clean
-  messages always) is correct for normal users.
+  messages always) is correct for normal use.
 - **Telemetry / structured logging.** stderr logs are unstructured; that's fine for v2.0.
 
 ## Implementation order

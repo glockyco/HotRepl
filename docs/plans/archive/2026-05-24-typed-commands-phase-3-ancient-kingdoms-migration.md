@@ -339,7 +339,7 @@ in the deploy output is a regression.
 
 `mods/HotReplCommands/HotReplCommands.csproj` references `HotRepl.Core.dll` from a configurable
 HotRepl output path. Defaults may assume the HotRepl repo is a sibling checkout, but the path must
-be overridable from `Local.props` and must not be hardcoded to one user's home directory.
+be overridable from `Local.props` and must not hardcode a personal home directory.
 
 ### 5.10 Documentation updates
 

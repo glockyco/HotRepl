@@ -5,7 +5,7 @@
 
 [Model Context Protocol](https://modelcontextprotocol.io) stdio server for
 [HotRepl](https://github.com/glockyco/HotRepl). Wire it into any MCP-compatible coding agent so the
-agent can eval C#, invoke typed commands, and inspect a running Unity game on the user's behalf.
+agent can eval C#, invoke typed commands, and inspect a running Unity game for you.
 
 ## Requirements
 

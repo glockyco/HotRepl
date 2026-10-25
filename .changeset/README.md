@@ -40,8 +40,8 @@ free; you don't need to list them in your changeset.
 
 ## Releasing
 
-The maintainer doesn't run `bun changeset publish` by hand. The `changesets/action` workflow opens a
-Version PR; merging it triggers the publish + GitHub Release step.
+Do not run `bun changeset publish` by hand. The `changesets/action` workflow opens a Version PR.
+Merging it triggers publishing and GitHub Release creation.
 
 ## Why no `2.0.0` changeset exists
 

@@ -249,7 +249,7 @@ and a completed `game.quit`.
 - **Partial-failure output:** Ardenfall currently treats validation/precondition failures as
   no-output failures. Phase 2 keeps that rule; successful snapshots with row diagnostics remain
   successful results and write `diagnostics.json` as an artifact.
-- **User edits in Ardenfall:** the checkout currently has unrelated item/stat/category changes. The
+- The Ardenfall checkout currently has unrelated item/stat/category changes. The
   migration must avoid reverting them and keep edits focused to control/controller/docs files unless
   a test update must adapt around the changed code.
 - **Loopback default:** because protocol v2/v3 has no auth or lease handshake, Ardenfall deployment

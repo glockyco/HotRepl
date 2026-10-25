@@ -188,7 +188,7 @@ return ControlCommandResult.PreconditionFailed<CompendiumExportResult>("dataExpo
 return context.PreconditionFailed("dataExporterMissing", "...");
 ```
 
-The non-generic `ControlCommandContext` base remains for users who only need its read-only members
+The non-generic `ControlCommandContext` base remains for code that only needs its read-only members
 (`RequestId`, `Timeout`, `JobId`, `Progress`, `Artifacts`). The static `ControlCommandResult`
 factories are **removed** — there is one way to build a result, on the context.
 

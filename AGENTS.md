@@ -116,7 +116,7 @@ These are non-discoverable requirements; do not "simplify" them away:
   Core, Fleck, or Newtonsoft.Json into `HotRepl.BepInEx.dll`.
 - Evaluator timeout is capability-driven. `HardAbort` may abort the main thread; `Cooperative`
   cannot preempt every runtime loop.
-- Mono.CSharp evaluates user code as C# 7.x. Do not raise this without replacing the evaluator.
+- Mono.CSharp evaluates submitted code as C# 7.x. Do not raise this without replacing the evaluator.
 - Do not update `mcs.dll` without running the full smoke test suite against a running game.
 
 ## Domain Constraints Agents Often Get Wrong

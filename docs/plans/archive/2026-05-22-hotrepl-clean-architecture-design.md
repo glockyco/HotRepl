@@ -791,7 +791,7 @@ A first-class testing story is what makes the architecture obvious to follow.
 | Parsing artifact refs by hand                               | Cannot hash-verify; cannot stream           | `Artifact.bytes()` / `.json()`         |
 | Mixing transport / orchestration / presentation in CLI      | Coupled changes; hard to test               | CLI = `@hotrepl/sdk` + formatter       |
 | Multiple exception classes with different fields            | Error handling boilerplate per consumer     | One `HotReplError` with closed `.kind` |
-| `--lease` flag exposed to humans                            | UX clutter; users guess when to set it      | Removed entirely                       |
+| `--lease` flag exposed to humans                            | Unclear when to set it                       | Removed entirely                       |
 | `JobEvent` machinery latent in the protocol                 | Mental overhead; misleading                 | Removed                                |
 | Profile + discovery for one local game                      | Configuration cargo-cult                    | Default URL + override                 |
 | Job substates (`accepted/cancelling`) leaking               | Caller has to model server lifecycle        | `running → done                        |
