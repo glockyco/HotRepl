@@ -43,6 +43,9 @@ free; you don't need to list them in your changeset.
 Do not run `bun changeset publish` by hand. The `changesets/action` workflow opens a Version PR.
 Merging it triggers publishing and GitHub Release creation.
 
+The Changesets config selects dprint so generated changelogs follow the repository formatting rules.
+Run `bun run version` in the pinned development shell to use the release workflow's formatter.
+
 ## Why no `2.0.0` changeset exists
 
 The first publish at `2.0.0` was done manually with `npm publish --access public` because npm's

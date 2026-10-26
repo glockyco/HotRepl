@@ -10,7 +10,7 @@
     "schemas:export": "bun run --cwd packages/protocol schemas:export",
     "guidance:check": "python3 scripts/check-command-examples.py",
     "changeset": "changeset",
-    "version": "changeset version && dprint fmt packages/*/CHANGELOG.md",
+    "version": "changeset version",
     "release": "bun run build && changeset publish"
   },
   "devDependencies": {
