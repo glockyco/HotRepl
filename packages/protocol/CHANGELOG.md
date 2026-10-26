@@ -1,5 +1,14 @@
 # @hotrepl/protocol
 
+## 4.0.2
+
+### Patch Changes
+
+- [#44](https://github.com/glockyco/HotRepl/pull/44)
+  [`4c1bf80`](https://github.com/glockyco/HotRepl/commit/4c1bf8009d94023cfa213629c3396882899ddd53)
+  Thanks [@glockyco](https://github.com/glockyco)! - Fix cancellation acknowledgements to echo the
+  affected `jobId`, matching the documented protocol.
+
 ## 4.0.1
 
 ### Patch Changes
