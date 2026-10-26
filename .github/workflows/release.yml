@@ -50,20 +50,21 @@ jobs:
 
       - name: Create Release PR or publish to npm
         id: changesets
-        uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1.9.0
+        uses: changesets/action@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
         with:
           # `bun run release` builds dist/ first, then runs
           # `changeset publish`, which checks every package.json's
           # version against the npm registry and publishes only the
           # ones that aren't there yet. Idempotent: running on a push
           # that has no version bumps is a no-op.
-          publish: nix develop --command bun run release
+          publish-script: nix develop --command bun run release
           # Changesets formats generated changelogs with the configured dprint
           # formatter so the Version PR passes the repository formatting gate.
-          version: nix develop --command bun run version
-          commit: "chore(release): version packages"
-          title: "chore(release): version packages"
-          # createGithubReleases defaults to true; left implicit.
+          version-script: nix develop --command bun run version
+          commit-message: "chore(release): version packages"
+          pr-title: "chore(release): version packages"
+          # GitHub Releases remain enabled so published packages receive release notes.
+          create-github-releases: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Belt-and-braces: trusted publishing already generates
