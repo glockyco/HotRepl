@@ -1,5 +1,26 @@
 # @hotrepl/sdk
 
+## 4.1.0
+
+### Minor Changes
+
+- [`5373fe9`](https://github.com/glockyco/HotRepl/commit/5373fe97298e073790e0ac8f8909ccb8d3951fef)
+  Thanks [@glockyco](https://github.com/glockyco)! - Add an optional `signal` to `connect` options
+  to cancel connection establishment and close pending transports. Connection failures and protocol
+  mismatches now close their transports, and sockets closed before the handshake reject instead of
+  leaving connection promises pending.
+
+### Patch Changes
+
+- [#43](https://github.com/glockyco/HotRepl/pull/43)
+  [`35be7fd`](https://github.com/glockyco/HotRepl/commit/35be7fd6039a855606cf604308b06db2e73a0f8b)
+  Thanks [@glockyco](https://github.com/glockyco)! - Stop sending redundant cancellation frames
+  after a watch completes with a final value or error. Watches interrupted before a final frame
+  still cancel their active subscription.
+- Updated dependencies
+  [[`4c1bf80`](https://github.com/glockyco/HotRepl/commit/4c1bf8009d94023cfa213629c3396882899ddd53)]:
+  - @hotrepl/protocol@4.0.2
+
 ## 4.0.2
 
 ### Patch Changes

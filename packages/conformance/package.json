@@ -14,8 +14,8 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@hotrepl/protocol": "4.0.1",
-    "@hotrepl/sdk": "4.0.2",
+    "@hotrepl/protocol": "4.0.2",
+    "@hotrepl/sdk": "4.1.0",
     "@hotrepl/testing": "2.0.0"
   }
 }
