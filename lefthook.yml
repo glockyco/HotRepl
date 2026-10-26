@@ -25,12 +25,6 @@ pre-commit:
       glob: "*.{md,json,jsonc,json5,yml,yaml,toml,ts}"
       run: scripts/run-in-nix.sh dprint fmt --allow-no-files {staged_files}
       stage_fixed: true
-    plans-docs:
-      glob: "docs/plans/**/*.md"
-      run: omp-plans index && omp-plans check
-      stage_fixed: true
-      skip:
-        - run: "! command -v omp-plans"
     typos:
       run: scripts/run-in-nix.sh typos
     actionlint:
