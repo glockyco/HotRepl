@@ -58,11 +58,8 @@ jobs:
           # ones that aren't there yet. Idempotent: running on a push
           # that has no version bumps is a no-op.
           publish: nix develop --command bun run release
-          # `bun run version` calls `changeset version` and then
-          # `dprint fmt` on the regenerated CHANGELOGs, so the Version
-          # PR commit lands already-formatted. Without this, dprint
-          # rewraps long Changesets output and fails the next CI run
-          # (issue first hit on the 3.0.0 release).
+          # Changesets formats generated changelogs with the configured dprint
+          # formatter so the Version PR passes the repository formatting gate.
           version: nix develop --command bun run version
           commit: "chore(release): version packages"
           title: "chore(release): version packages"

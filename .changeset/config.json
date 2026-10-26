@@ -1,9 +1,10 @@
 {
-  "$schema": "https://unpkg.com/@changesets/config@3.1.4/schema.json",
+  "$schema": "https://unpkg.com/@changesets/config@4.0.1/schema.json",
   "changelog": [
     "@changesets/changelog-github",
     { "repo": "glockyco/HotRepl" }
   ],
+  "format": "dprint",
   "commit": false,
   "fixed": [],
   "linked": [],
