@@ -1,4 +1,4 @@
-import { families, sharedTypes, validateAllExamples } from "$lib/data/protocol";
+import { families, sharedTypes, validateAllExamples } from "#lib/data/protocol.js";
 import { codeToHtml } from "shiki";
 import type { PageServerLoad } from "./$types";
 

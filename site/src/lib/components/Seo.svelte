@@ -7,7 +7,7 @@
     SITE_NAME,
     canonicalUrl,
     ogImageUrl,
-  } from "$lib/seo/site";
+  } from "#lib/seo/site.js";
 
   interface Props {
     /** Full page <title>. Should already include the brand suffix. */
