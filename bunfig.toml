@@ -1,0 +1,3 @@
+[install]
+# Delay new package releases so regressions can surface before an update is installed.
+minimumReleaseAge = 259200
