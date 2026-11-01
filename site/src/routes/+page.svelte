@@ -45,7 +45,7 @@
   </div>
   <div class="hero-ctas">
     <a class="btn btn-primary" href="#quickstart">See it work →</a>
-    <a class="btn btn-secondary" href="/protocol/">Protocol</a>
+    <a class="btn btn-secondary" href="/protocol">Protocol</a>
     <a
       class="btn btn-secondary"
       href="https://github.com/glockyco/HotRepl"
@@ -186,7 +186,7 @@
       <strong>Host-side typed automation</strong>
       <code>docs/authoring-commands.md</code>
     </a>
-    <a class="path-card" href="/protocol/">
+    <a class="path-card" href="/protocol">
       <span class="path-card__label">Protocol reference</span>
       <strong>Clients and frame debugging</strong>
       <code>command_call</code>

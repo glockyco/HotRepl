@@ -19,7 +19,7 @@
 <Seo
   title="Protocol Reference — HotRepl"
   description="Complete reference for the HotRepl v2 WebSocket protocol — all message types, JSON examples, and JSON Schemas."
-  path="/protocol/"
+  path="/protocol"
 />
 
 <svelte:window

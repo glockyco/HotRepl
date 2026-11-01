@@ -186,7 +186,7 @@ async function main() {
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://hotrepl.glockyco.com/protocol/</loc>
+    <loc>https://hotrepl.glockyco.com/protocol</loc>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
