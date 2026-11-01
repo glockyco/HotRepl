@@ -14,7 +14,7 @@
     title: string;
     /** <meta name="description"> body. Plain prose. */
     description: string;
-    /** Site-relative path used to compute canonical and og:url, e.g. "/protocol/". */
+    /** Served site-relative path used to compute canonical and og:url, e.g. "/protocol". */
     path: string;
   }
 

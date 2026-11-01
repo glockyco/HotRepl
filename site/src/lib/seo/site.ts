@@ -11,10 +11,9 @@ export const OG_IMAGE_HEIGHT = 630;
 export const OG_IMAGE_ALT = "HotRepl — Runtime C# REPL and typed command bridge for Unity games";
 export const OG_LOCALE = "en_US";
 
-/** Absolute canonical URL for a site-relative path (e.g. "/protocol/"). */
+/** Absolute canonical URL for the served site-relative path (e.g. "/protocol"). */
 export function canonicalUrl(path: string): string {
-  const normalised = path.endsWith("/") ? path : `${path}/`;
-  return `${SITE_URL}${normalised}`;
+  return `${SITE_URL}${path}`;
 }
 
 export function ogImageUrl(): string {
