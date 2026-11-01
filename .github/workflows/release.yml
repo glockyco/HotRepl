@@ -25,14 +25,23 @@ jobs:
   release:
     name: release
     runs-on: ubuntu-latest
-    # contents:write       push the Version PR's commits/tags, create GH Releases
-    # pull-requests:write  open and update the Version PR
-    # id-token:write       request the OIDC JWT for npm trusted publishing
+    # The App token writes release branches and PRs so their pushes trigger CI.
+    # id-token:write requests the OIDC JWT for npm trusted publishing.
     permissions:
-      contents: write
-      pull-requests: write
+      contents: read
       id-token: write
     steps:
+      - name: Create repository-scoped release token
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.DEPENDENCY_UPDATER_CLIENT_ID }}
+          private-key: ${{ secrets.DEPENDENCY_UPDATER_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+          permission-contents: write
+          permission-pull-requests: write
+
       # fetch-depth: 0 gives @changesets/changelog-github full git
       # history so it can resolve PR numbers and commit authors when
       # generating per-package CHANGELOG.md entries.
@@ -40,6 +49,7 @@ jobs:
         with:
           fetch-depth: 0
           lfs: false
+          token: ${{ steps.app-token.outputs.token }}
 
       - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
 
@@ -66,7 +76,7 @@ jobs:
           # GitHub Releases remain enabled so published packages receive release notes.
           create-github-releases: true
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           # Belt-and-braces: trusted publishing already generates
           # provenance automatically for public-repo + public-package
           # combinations, but the explicit flag matches the npm
