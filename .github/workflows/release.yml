@@ -62,6 +62,7 @@ jobs:
         id: changesets
         uses: changesets/action@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
         with:
+          github-token: ${{ steps.app-token.outputs.token }}
           # `bun run release` builds dist/ first, then runs
           # `changeset publish`, which checks every package.json's
           # version against the npm registry and publishes only the
@@ -76,7 +77,6 @@ jobs:
           # GitHub Releases remain enabled so published packages receive release notes.
           create-github-releases: true
         env:
-          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           # Belt-and-braces: trusted publishing already generates
           # provenance automatically for public-repo + public-package
           # combinations, but the explicit flag matches the npm
