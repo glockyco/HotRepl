@@ -198,7 +198,8 @@ Listing only the directly-changed package is enough.
 
 The workflow opens a `chore(release): version packages` PR on push to `main`. Merging that PR
 publishes via npm trusted publishing (OIDC, no token) and creates one tagged GitHub Release per
-published package.
+published package. The workflow authenticates release branch pushes and PR operations with the
+dependency updater GitHub App so GitHub runs CI for the release PR.
 
 ## Shell Conventions
 
