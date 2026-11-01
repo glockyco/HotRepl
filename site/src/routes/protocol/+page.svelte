@@ -1,7 +1,7 @@
 <script lang="ts">
-  import MessageCard from "$lib/components/MessageCard.svelte";
-  import ProtocolNav from "$lib/components/ProtocolNav.svelte";
-  import Seo from "$lib/components/Seo.svelte";
+  import MessageCard from "#lib/components/MessageCard.svelte";
+  import ProtocolNav from "#lib/components/ProtocolNav.svelte";
+  import Seo from "#lib/components/Seo.svelte";
   import type { PageServerData } from "./$types";
 
   let { data }: { data: PageServerData } = $props();

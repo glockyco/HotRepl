@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { PageServerData } from "./$types";
-  import Seo from "$lib/components/Seo.svelte";
+  import Seo from "#lib/components/Seo.svelte";
   let { data }: { data: PageServerData } = $props();
 
   const description =
