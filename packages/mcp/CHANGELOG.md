@@ -1,5 +1,14 @@
 # @hotrepl/mcp
 
+## 3.0.4
+
+### Patch Changes
+
+- Updated dependencies
+  [[`5373fe9`](https://github.com/glockyco/HotRepl/commit/5373fe97298e073790e0ac8f8909ccb8d3951fef),
+  [`35be7fd`](https://github.com/glockyco/HotRepl/commit/35be7fd6039a855606cf604308b06db2e73a0f8b)]:
+  - @hotrepl/sdk@4.1.0
+
 ## 3.0.3
 
 ### Patch Changes

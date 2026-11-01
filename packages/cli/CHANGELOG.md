@@ -1,5 +1,22 @@
 # @hotrepl/cli
 
+## 3.1.0
+
+### Minor Changes
+
+- [`ca9c0d7`](https://github.com/glockyco/HotRepl/commit/ca9c0d7a2a1ce2e3706cc89f3aed6423063d835c)
+  Thanks [@glockyco](https://github.com/glockyco)! - Make `hotrepl wait` retry unavailable hosts
+  until its deadline, configurable with `--timeout-ms`, and return the timeout exit code when the
+  host does not answer. Stream `watch` ticks immediately in text, JSON, and JSONL output while
+  preserving output and cleanup on interruption or failure.
+
+### Patch Changes
+
+- Updated dependencies
+  [[`5373fe9`](https://github.com/glockyco/HotRepl/commit/5373fe97298e073790e0ac8f8909ccb8d3951fef),
+  [`35be7fd`](https://github.com/glockyco/HotRepl/commit/35be7fd6039a855606cf604308b06db2e73a0f8b)]:
+  - @hotrepl/sdk@4.1.0
+
 ## 3.0.3
 
 ### Patch Changes
