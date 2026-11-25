@@ -7,7 +7,18 @@
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
-    <meta name="theme-color" content="#020507" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#020507" media="(prefers-color-scheme: dark)" />
+    <script>
+      try {
+        const theme = localStorage.getItem("hotrepl-theme");
+        if (theme === "light" || theme === "dark") {
+          document.documentElement.dataset.theme = theme;
+        }
+      } catch {
+        // Restricted storage must not prevent the system palette from rendering.
+      }
+    </script>
     %sveltekit.head%
   </head>
   <body>

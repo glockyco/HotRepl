@@ -1,6 +1,19 @@
 <script lang="ts">
   import "../app.css";
   let { children } = $props();
+
+  function toggleTheme() {
+    const root = document.documentElement;
+    const current = root.dataset.theme ??
+      (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    const theme = current === "dark" ? "light" : "dark";
+    root.dataset.theme = theme;
+    try {
+      localStorage.setItem("hotrepl-theme", theme);
+    } catch {
+      // Keep the selected palette usable even when storage is restricted.
+    }
+  }
 </script>
 
 <div class="site-shell">
@@ -12,6 +25,10 @@
       <a class="nav-link" href="https://github.com/glockyco/HotRepl" rel="noopener noreferrer">
         GitHub
       </a>
+      <button class="theme-toggle" onclick={toggleTheme}>
+        <span class="theme-to-light"><span class="sr-only">Switch to </span>Light<span class="sr-only"> mode</span></span>
+        <span class="theme-to-dark"><span class="sr-only">Switch to </span>Dark<span class="sr-only"> mode</span></span>
+      </button>
     </nav>
   </header>
 
@@ -72,6 +89,59 @@
     color: var(--text);
   }
 
+
+  .theme-toggle {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text);
+    padding: 4px 10px;
+    min-height: 36px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .theme-toggle:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .theme-to-light {
+    display: none;
+  }
+
+  :global(:root[data-theme="dark"]) .theme-to-light {
+    display: inline;
+  }
+
+  :global(:root[data-theme="dark"]) .theme-to-dark {
+    display: none;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :global(:root:not([data-theme])) .theme-to-light {
+      display: inline;
+    }
+
+    :global(:root:not([data-theme])) .theme-to-dark {
+      display: none;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .nav-inner {
+      gap: 12px;
+      padding: 8px 16px;
+      height: auto;
+      min-height: 52px;
+      flex-wrap: wrap;
+    }
+
+    .nav-link {
+      font-size: 0.8125rem;
+    }
+  }
   .site-main {
     flex: 1;
     max-width: 960px;

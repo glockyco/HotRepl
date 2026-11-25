@@ -309,7 +309,7 @@
 
   .btn-primary {
     background: var(--accent);
-    color: oklch(0.1 0 0);
+    color: var(--on-accent);
   }
 
   .btn-primary:hover {
@@ -424,7 +424,7 @@
   }
 
   .example-pane--result :global(.shiki) {
-    background-color: oklch(0.135 0.012 240) !important;
+    background-color: var(--code-result-bg) !important;
     border-color: var(--accent-dim);
   }
 

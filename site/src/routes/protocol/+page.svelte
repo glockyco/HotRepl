@@ -149,7 +149,7 @@
     height: 52px;
     border-radius: 50%;
     background: var(--accent);
-    color: oklch(0.1 0 0);
+    color: var(--on-accent);
     border: none;
     font-size: 1.25rem;
     line-height: 1;
@@ -244,7 +244,7 @@
 
   .sheet-close:hover {
     color: var(--text);
-    background-color: oklch(1 0 0 / 8%);
+    background-color: var(--hover-bg);
   }
 
 

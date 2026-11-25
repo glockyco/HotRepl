@@ -8,7 +8,12 @@ export const load: PageServerLoad = async () => {
   // Fail the build if any example is structurally invalid.
   validateAllExamples(families, sharedTypes);
 
-  const highlightJson = (code: string) => codeToHtml(code, { lang: "json", theme: "github-dark" });
+  const highlightJson = (code: string) =>
+    codeToHtml(code, {
+      lang: "json",
+      themes: { light: "github-light-high-contrast", dark: "github-dark" },
+      defaultColor: false,
+    });
 
   const highlightedFamilies = await Promise.all(
     families.map(async (family) => ({

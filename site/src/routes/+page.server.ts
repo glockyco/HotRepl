@@ -2,7 +2,7 @@ import { codeToHtml } from "shiki";
 
 export const prerender = true;
 
-const THEME = "github-dark";
+const themes = { light: "github-light-high-contrast", dark: "github-dark" };
 
 const sdkSource = `import { connect } from "@hotrepl/sdk";
 
@@ -77,11 +77,11 @@ hotrepl_journal
 
 export async function load() {
   const [sdkHtml, sdkResultHtml, cliHtml, mcpConfigHtml, mcpToolsHtml] = await Promise.all([
-    codeToHtml(sdkSource, { lang: "typescript", theme: THEME }),
-    codeToHtml(sdkResult, { lang: "javascript", theme: THEME }),
-    codeToHtml(cliSource, { lang: "shellsession", theme: THEME }),
-    codeToHtml(mcpConfigSource, { lang: "json", theme: THEME }),
-    codeToHtml(mcpToolsSource, { lang: "bash", theme: THEME }),
+    codeToHtml(sdkSource, { lang: "typescript", themes, defaultColor: false }),
+    codeToHtml(sdkResult, { lang: "javascript", themes, defaultColor: false }),
+    codeToHtml(cliSource, { lang: "shellsession", themes, defaultColor: false }),
+    codeToHtml(mcpConfigSource, { lang: "json", themes, defaultColor: false }),
+    codeToHtml(mcpToolsSource, { lang: "bash", themes, defaultColor: false }),
   ]);
 
   return { sdkHtml, sdkResultHtml, cliHtml, mcpConfigHtml, mcpToolsHtml };

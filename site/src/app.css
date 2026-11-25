@@ -1,19 +1,39 @@
 @import "tailwindcss";
 
 :root {
-  --bg:          oklch(0.11 0.01 240);
-  --surface:     oklch(0.16 0.01 240);
-  --surface-2:   oklch(0.20 0.015 240);
-  --border:      oklch(0.28 0.02 240);
-  --text:        oklch(0.93 0.01 240);
-  --muted:       oklch(0.58 0.02 240);
-  --accent:      oklch(0.75 0.18 45);
-  --accent-dim:  oklch(0.75 0.18 45 / 15%);
-  --badge-cs:    oklch(0.75 0.18 45);
-  --badge-sc:    oklch(0.65 0.15 220);
-  --code-bg:     oklch(0.13 0.01 240);
+  --bg:          light-dark(#ffffff, oklch(0.11 0.01 240));
+  --surface:     light-dark(#f6f8fa, oklch(0.16 0.01 240));
+  --surface-2:   light-dark(#eef1f4, oklch(0.20 0.015 240));
+  --border:      light-dark(#d0d7de, oklch(0.28 0.02 240));
+  --text:        light-dark(#1f2328, oklch(0.93 0.01 240));
+  --muted:       light-dark(#59636e, oklch(0.58 0.02 240));
+  --accent:      light-dark(#a63b0b, oklch(0.75 0.18 45));
+  --accent-dim:  light-dark(#fff0e6, oklch(0.75 0.18 45 / 15%));
+  --badge-cs:    light-dark(#963509, oklch(0.75 0.18 45));
+  --badge-sc:    light-dark(#07566b, oklch(0.65 0.15 220));
+  --code-bg:     light-dark(#ffffff, oklch(0.13 0.01 240));
+  --code-result-bg: light-dark(#fffaf5, oklch(0.135 0.012 240));
+  --on-accent:   light-dark(#ffffff, oklch(0.1 0 0));
+  --hover-bg:    light-dark(#e8edf2, oklch(1 0 0 / 8%));
   --radius:      6px;
+  color-scheme: light dark;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
   color-scheme: dark;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+
+[id] {
+  scroll-margin-top: 72px;
 }
 
 @theme inline {
@@ -45,4 +65,9 @@ body {
   overflow-x: auto;
   font-size: 0.875rem;
   line-height: 1.6;
+}
+
+.shiki,
+.shiki span {
+  color: light-dark(var(--shiki-light), var(--shiki-dark)) !important;
 }
