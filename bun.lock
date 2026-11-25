@@ -14,12 +14,12 @@
     },
     "packages/cli": {
       "name": "@hotrepl/cli",
-      "version": "3.0.3",
+      "version": "3.1.0",
       "bin": {
         "hotrepl": "./dist/bin.js",
       },
       "dependencies": {
-        "@hotrepl/sdk": "4.0.2",
+        "@hotrepl/sdk": "4.1.0",
       },
       "devDependencies": {
         "@hotrepl/testing": "2.0.0",
@@ -29,19 +29,19 @@
       "name": "@hotrepl/conformance",
       "version": "2.0.0",
       "dependencies": {
-        "@hotrepl/protocol": "4.0.1",
-        "@hotrepl/sdk": "4.0.2",
+        "@hotrepl/protocol": "4.0.2",
+        "@hotrepl/sdk": "4.1.0",
         "@hotrepl/testing": "2.0.0",
       },
     },
     "packages/mcp": {
       "name": "@hotrepl/mcp",
-      "version": "3.0.3",
+      "version": "3.0.4",
       "bin": {
         "hotrepl-mcp": "./dist/bin.js",
       },
       "dependencies": {
-        "@hotrepl/sdk": "4.0.2",
+        "@hotrepl/sdk": "4.1.0",
         "@modelcontextprotocol/sdk": "^1.29.0",
         "zod": "^4.0.0",
       },
@@ -51,16 +51,16 @@
     },
     "packages/protocol": {
       "name": "@hotrepl/protocol",
-      "version": "4.0.1",
+      "version": "4.0.2",
       "dependencies": {
         "typebox": "^1.0.0",
       },
     },
     "packages/sdk": {
       "name": "@hotrepl/sdk",
-      "version": "4.0.2",
+      "version": "4.1.0",
       "dependencies": {
-        "@hotrepl/protocol": "4.0.1",
+        "@hotrepl/protocol": "4.0.2",
       },
       "devDependencies": {
         "@hotrepl/testing": "2.0.0",
@@ -70,8 +70,8 @@
       "name": "@hotrepl/testing",
       "version": "2.0.0",
       "dependencies": {
-        "@hotrepl/protocol": "4.0.1",
-        "@hotrepl/sdk": "4.0.2",
+        "@hotrepl/protocol": "4.0.2",
+        "@hotrepl/sdk": "4.1.0",
       },
     },
     "site": {
